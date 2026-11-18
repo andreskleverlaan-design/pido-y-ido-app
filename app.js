@@ -81,8 +81,11 @@
     var fill = opts.fill ? 'fill="currentColor"' : 'fill="none"';
     return '<svg width="' + (size || 20) + '" height="' + (size || 20) + '" viewBox="0 0 24 24" ' + fill + ' stroke="currentColor" stroke-width="' + (opts.sw || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + P[name] + '</svg>';
   }
-  function logo(size) {
-    return '<svg class="logo" width="' + size + '" height="' + size + '" viewBox="0 0 48 48" aria-label="Pido y Ido"><path d="M24 4C12.4 4 4 11.6 4 21c0 5.4 2.8 10.2 7.3 13.3L8.5 44l10.7-5.7c1.5.3 3.1.5 4.8.5 11.6 0 20-7.6 20-17.4S35.6 4 24 4z" fill="#FF6B2C"/><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="26" r="4.2"/><circle cx="33" cy="26" r="4.2"/><path d="M15 26l5.5-7h6.5l6 7M19 19h-4M27 19l1.8-4H32"/></g></svg>';
+  // Logo "P met stip" (2a): kind = 'mark' (green P, light bg) | 'white' (dark bg) | 'icon' (green rounded square)
+  function logo(size, kind) {
+    kind = kind || 'mark';
+    if (kind === 'icon') return '<svg class="logo" width="' + size + '" height="' + size + '" viewBox="0 0 100 100" aria-label="Pido y Ido"><rect width="100" height="100" rx="24" fill="#1F4D3A"/><path d="M38 80V45a18 18 0 1 1 13 17.4" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round"/><circle cx="62" cy="63" r="7" fill="#FF6B2C"/></svg>';
+    return '<svg class="logo" width="' + size + '" height="' + size + '" viewBox="0 0 100 100" aria-label="Pido y Ido"><path d="M36 84V45a20 20 0 1 1 14 19.2" fill="none" stroke="' + (kind === 'white' ? '#fff' : '#1F4D3A') + '" stroke-width="11" stroke-linecap="round"/><circle cx="63" cy="65" r="8" fill="#FF6B2C"/></svg>';
   }
   function photo(src, cls, style) {
     return '<div class="ph ' + (cls || '') + '"' + (style ? ' style="' + style + '"' : '') + '><span class="ph-ico">' + ic('fire', 26) + '</span><img src="' + esc(src) + '" alt="" loading="lazy" onerror="this.classList.add(\'broken\')"></div>';
@@ -251,7 +254,7 @@
       ['/dom', 'bike', '#FFF1E0', '#8A4A00', 'Soy domiciliario', 'Bolsa de domiciliarios y pedidos por WhatsApp'],
       ['/promo', 'qr', '#EAE6F5', '#4A3C7A', 'Recomiendo y gano', 'Tu enlace y QR de promotor, y tus ganancias']
     ];
-    return '<div class="start-hero"><div class="row">' + logo(52) + '<div><div class="num" style="font-size:24px;letter-spacing:-.4px">Pido y Ido</div><div class="small" style="opacity:.85">Villanueva, Casanare</div></div></div>' +
+    return '<div class="start-hero"><div class="row" style="gap:10px">' + logo(48, 'white') + '<div><div style="font-family:var(--head);font-weight:500;font-size:26px;letter-spacing:-.6px;line-height:1.1">Pido y Ido</div><div class="small" style="opacity:.85">Villanueva, Casanare</div></div></div>' +
       '<h1 class="mt20" style="font-size:26px;line-height:1.15;letter-spacing:-.4px">Pide comida del pueblo y te la llevan a la casa.</h1>' +
       '<p class="small" style="opacity:.85;margin:8px 0 0">Prototipo de demostración. Todo funciona, pero los datos quedan solo en este celular y no se cobra nada.</p></div>' +
       '<div class="screen" style="min-height:0;padding-top:20px"><div class="t-h2" style="margin-bottom:12px">¿Cómo quieres entrar?</div>' +
@@ -281,7 +284,7 @@
     var list = RESTAURANTS.filter(function (r) { return !ui.cat || r.cats.indexOf(ui.cat) >= 0; });
     var openN = RESTAURANTS.filter(function (r) { return S.open[r.id]; }).length;
     var h = '<div class="screen has-tabs' + (cartCount() ? ' has-cta' : '') + '">' +
-      '<div class="row">' + logo(40) + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + esc(S.user.address.split(',')[0]) + ', Villanueva</span>' + ic('down', 16) + '</div></button>' +
+      '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + esc(S.user.address.split(',')[0]) + ', Villanueva</span>' + ic('down', 16) + '</div></button>' +
       '<a class="icon-btn" href="#/confirmar" aria-label="Carrito" style="position:relative">' + ic('bag', 20) + (cartCount() ? '<span style="position:absolute;top:-2px;right:-2px;background:var(--cta);color:#fff;border-radius:999px;min-width:18px;height:18px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">' + cartCount() + '</span>' : '') + '</a></div>' +
       '<h1 class="t-title mt16" style="font-size:28px">¿Qué se te antoja hoy, ' + esc(first(S.user.name)) + '?</h1>' +
       '<a class="search mt16" href="#/buscar">' + ic('search', 20) + '<span class="muted">Busca empanadas, pizza, arepas…</span></a>';
@@ -642,7 +645,7 @@
     if (assigned.length) {
       h += '<div class="card mt16" style="padding:4px 14px">' + assigned.map(function (o) {
         var r = R(o.restId), rd = rider(o.riderId);
-        return '<a class="list-row" href="#/wa/' + o.id + '">' + logo(44) + '<div class="grow"><div class="row between"><span class="b">' + r.name + '</span>' + statusBadge(o) + '</div><div class="small muted ellipsis">Para ' + esc(rd ? rd.name : '') + ' · Domicilio #' + o.id + '</div></div></a>';
+        return '<a class="list-row" href="#/wa/' + o.id + '">' + logo(44, 'icon') + '<div class="grow"><div class="row between"><span class="b">' + r.name + '</span>' + statusBadge(o) + '</div><div class="small muted ellipsis">Para ' + esc(rd ? rd.name : '') + ' · Domicilio #' + o.id + '</div></div></a>';
       }).join('') + '</div>';
     } else {
       h += '<div class="empty mt16"><div class="ic">' + ic('msg', 26) + '</div>Todavía no hay pedidos enviados a domiciliarios.<br>Desde el panel del restaurante, marca un pedido como listo y envíaselo a alguien.</div><a class="btn btn-outline btn-block" href="#/rest">Abrir panel del restaurante</a>';
@@ -683,7 +686,7 @@
     var d = r.dishes.filter(function (x) { return o.items[0] && x.id === o.items[0].id; })[0];
     var cash = o.pay === 'ef' ? '<b>Cobrar ' + fmt(o.total) + ' en efectivo</b>' + (o.cashGiven > o.total ? '<br>Paga con ' + fmt(o.cashGiven) + ' · lleva ' + fmt(o.cashGiven - o.total) + ' de vueltas' : '') : '<b>Ya pagó por ' + (o.pay === 'nequi' ? 'Nequi' : 'Daviplata') + '.</b> No cobrar.';
     var mapQ = o.geo ? o.geo.lat + ',' + o.geo.lng : o.customer.address + ', Villanueva, Casanare';
-    var h = '<div class="wa"><div class="wa-head"><a href="#/dom" aria-label="Volver" style="padding:6px">' + ic('back', 22) + '</a>' + logo(40) + '<div class="grow"><div class="b">' + r.name + '</div><div class="xs muted">vía Pido y Ido · WhatsApp de ' + esc(rd ? rd.name : 'domiciliario') + '</div></div></div><div class="wa-body">' +
+    var h = '<div class="wa"><div class="wa-head"><a href="#/dom" aria-label="Volver" style="padding:6px">' + ic('back', 22) + '</a>' + logo(40, 'icon') + '<div class="grow"><div class="b">' + r.name + '</div><div class="xs muted">vía Pido y Ido · WhatsApp de ' + esc(rd ? rd.name : 'domiciliario') + '</div></div></div><div class="wa-body">' +
       '<div class="day-pill">Hoy ' + hora(o.sentAt || now()) + '</div>' +
       '<div class="bubble order">' + photo(d ? d.img : r.img, '', 'height:120px;width:100%') + '<div style="padding:10px 12px"><div class="b" style="color:var(--cta);font-size:15px">Domicilio #' + o.id + '</div>' +
       '<div class="mt8"><b>Recoger:</b> ' + r.name + ', ' + r.address + '</div><div class="mt4"><b>Entregar:</b> ' + esc(o.customer.address) + '</div><div class="mt4"><b>Cliente:</b> ' + esc(o.customer.name) + ' · ' + phoneFmt(o.customer.phone) + '</div>' +
@@ -712,7 +715,7 @@
         var on = x.id === pr.id;
         return '<button class="card flat row grow" style="padding:10px;gap:8px;' + (on ? 'border:2px solid var(--orange)' : '') + '" data-a="promoRest" data-v="' + x.id + '">' + photo(x.img, 'thumb', 'width:36px;height:36px;border-radius:999px') + '<span class="small b ellipsis" style="text-align:left">' + x.short + '</span></button>';
       }).join('') + '</div>' +
-      '<div class="qr-card mt16"><div class="qr-wrap"><canvas id="qr" width="210" height="210"></canvas><div class="qr-logo">' + logo(40) + '</div></div><div class="t-h3 mt12">' + pr.name + '</div>' +
+      '<div class="qr-card mt16"><div class="qr-wrap"><canvas id="qr" width="210" height="210"></canvas><div class="qr-logo">' + logo(40, 'icon') + '</div></div><div class="t-h3 mt12">' + pr.name + '</div>' +
       '<div class="linkbox"><span>' + esc(pretty) + '</span><button class="btn btn-soft btn-sm" style="height:38px" data-a="copyLink">' + ic('copy', 16) + ' Copiar</button></div>' +
       '<button class="btn btn-ghost btn-block mt8" data-a="downloadQR" style="color:var(--green)">' + ic('download', 18) + ' Descargar QR para imprimir</button>' +
       '<a class="small muted" href="' + esc('#/r/' + pr.id + '?p=' + S.promo.slug) + '" style="text-decoration:underline">Probar el enlace aquí</a></div>' +
@@ -827,7 +830,7 @@
       x.drawImage(img, W / 2 - L / 2, oy + qs / 2 - L / 2, L, L); finish();
     };
     img.onerror = finish;
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(logo(48).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(logo(48, 'icon').replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
     function finish() {
       x.fillStyle = '#1F4D3A'; x.font = '700 44px Poppins, sans-serif'; x.fillText('Pido y Ido · Villanueva', W / 2, oy + qs + 110);
       x.fillStyle = '#6B6B6B'; x.font = '500 30px Inter, sans-serif'; x.fillText('Escanea con la cámara del celular', W / 2, oy + qs + 160);
