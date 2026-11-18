@@ -137,6 +137,14 @@
     if (ownPrivate) check(await rest.from('riders').delete().eq('id', id).eq('owner', restUid));
   }
 
+  // Restaurant's own photo (cover or dish) -> public URL. Needs the 'fotos' bucket (supabase/003-fotos.sql).
+  async function uploadPhoto(blob) {
+    if (!restUid) throw new Error('not_logged');
+    var path = restUid + '/' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + '.jpg';
+    check(await rest.storage.from('fotos').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false }));
+    return rest.storage.from('fotos').getPublicUrl(path).data.publicUrl;
+  }
+
   // ---------- rider board profile ----------
   async function saveProfile(id, p) {
     await ensureCust();
@@ -182,7 +190,7 @@
     fetchAll: fetchAll, placeOrder: placeOrder, cancelOrder: cancelOrder, rateOrder: rateOrder,
     deliver: deliver, orderForRider: orderForRider,
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder,
-    addMyRider: addMyRider, linkRider: linkRider, unlinkRider: unlinkRider,
+    addMyRider: addMyRider, uploadPhoto: uploadPhoto, linkRider: linkRider, unlinkRider: unlinkRider,
     saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
   };

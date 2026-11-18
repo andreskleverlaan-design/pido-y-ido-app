@@ -306,3 +306,88 @@ textarea.input{min-height:76px;line-height:1.4}
 .map-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);color:var(--orange);pointer-events:none;z-index:500;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 .map-pin svg circle{fill:#fff;stroke:#fff}
 .dashed-btn.need{border-color:var(--orange);color:var(--orange)}
+
+/* ===== Design pass v3: photos, restaurant account, setup, rider status ===== */
+.ph img{opacity:1;transition:opacity .35s}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.skel{border-radius:16px;background:linear-gradient(90deg,#EFE9E2 0%,#F8F4EF 40%,#EFE9E2 80%);background-size:200% 100%;animation:shimmer 1.3s linear infinite}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+
+/* Branded header for restaurant login/registration and rider link */
+.auth-hero{position:relative;height:calc(232px + var(--safe-t));overflow:hidden}
+.auth-hero .ph{background:linear-gradient(135deg,#2B5A45,#1F4D3A)}
+.auth-fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,38,28,.55) 0%,rgba(14,38,28,.35) 45%,rgba(14,38,28,.88) 100%)}
+.auth-top{position:absolute;left:16px;right:16px;top:calc(14px + var(--safe-t));display:flex;align-items:center;gap:12px}
+.icon-btn.glass{background:rgba(255,255,255,.18);color:#fff;box-shadow:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.auth-brand{display:flex;align-items:center;gap:9px;color:#fff;font-family:var(--head);font-weight:500;font-size:17px;letter-spacing:-.2px}
+.auth-tag{font-family:var(--body);font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;background:var(--orange);color:#fff;border-radius:999px;padding:3px 8px}
+.auth-title{position:absolute;left:20px;right:20px;bottom:40px;color:#fff}
+.auth-kicker{font-size:13px;font-weight:600;color:#FFC9A8;margin-bottom:4px}
+.auth-title h1{font-family:var(--head);font-weight:700;font-size:27px;line-height:1.15;letter-spacing:-.5px}
+.auth-body{position:relative;margin-top:-24px;background:var(--bg);border-radius:24px 24px 0 0;padding:20px 16px 0}
+.input-ic{position:relative;display:flex;align-items:center}
+.input-ic>svg{position:absolute;left:14px;color:var(--muted);pointer-events:none}
+.input-ic .input{padding-left:44px}
+.input-ic .pre{position:absolute;left:44px;font-weight:600;color:var(--text);pointer-events:none;font-size:15px}
+.input-ic .pre+.input{padding-left:82px}
+.input:focus{border-color:var(--orange);background:#fff;box-shadow:0 0 0 4px rgba(255,107,44,.12)}
+.perks{display:grid;gap:10px}
+.perk{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:500}
+.pi{width:36px;height:36px;border-radius:12px;background:var(--gtint);color:var(--green);display:flex;align-items:center;justify-content:center;flex:none}
+.steps{display:flex;align-items:center;gap:6px}
+.step{display:flex;align-items:center;gap:6px;flex:none}
+.step .n{width:22px;height:22px;border-radius:999px;background:var(--track);color:var(--muted);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.step .t{font-size:12px;font-weight:600;color:var(--muted)}
+.step.on .n{background:var(--orange);color:#fff}.step.on .t{color:var(--text)}
+.step.done .n{background:var(--green);color:#fff}
+.step-line{flex:1;height:2px;background:var(--border);border-radius:2px;min-width:8px}
+
+/* Photo picker */
+.pick-row{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;margin:0 -2px;scrollbar-width:none}
+.pick-row::-webkit-scrollbar{display:none}
+.pick{border:1.5px solid var(--border)!important;position:relative}
+.pick.on{border:3px solid var(--orange)!important;box-shadow:0 4px 12px rgba(255,107,44,.3)}
+.pick-up{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1.5px dashed var(--orange);background:var(--soft);color:var(--tint-t);font-size:11px;font-weight:700;position:relative;cursor:pointer}
+.pick-up input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+/* Cover preview in Menú */
+.cover{position:relative;height:150px;border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+.cover-fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.65))}
+.cover-txt{position:absolute;left:14px;right:14px;bottom:12px;color:#fff}
+.save-bar{display:none}.save-bar.show{display:block;animation:up .25s ease-out}
+
+/* Setup card on the restaurant dashboard */
+.setup{border:1.5px solid #FFD8C2;background:linear-gradient(180deg,#FFF6F1,#fff 60%)}
+.ring-pct{--p:0;width:52px;height:52px;border-radius:999px;background:conic-gradient(var(--orange) calc(var(--p)*1%),var(--track) 0);display:flex;align-items:center;justify-content:center;flex:none}
+.ring-pct span{width:40px;height:40px;border-radius:999px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.setup-list{border-top:1px solid var(--divider)}
+.setup-row{display:flex;align-items:center;gap:12px;padding:11px 0;width:100%;text-align:left;border-bottom:1px solid var(--divider)}
+.setup-row:last-child{border-bottom:0;padding-bottom:0}
+.setup-row .done{color:var(--muted);text-decoration:line-through;font-weight:500}
+.sc{width:24px;height:24px;border-radius:999px;border:2px solid var(--dashed);flex:none;display:flex;align-items:center;justify-content:center}
+.sc.ok{background:var(--green);border-color:var(--green);color:#fff}
+
+/* Rider delivery link */
+.route{position:relative;display:grid;gap:14px}
+.route:before{content:'';position:absolute;left:13px;top:26px;bottom:26px;border-left:2px dashed var(--dashed)}
+.route-row{display:flex;gap:12px;align-items:flex-start;position:relative}
+.rdot{width:28px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex:none}
+.rdot.from{background:var(--gtint);color:var(--green)}.rdot.to{background:var(--tint);color:var(--cta)}
+.pin-wrap{position:relative;display:block;width:232px;margin-left:auto;margin-right:auto;height:64px}
+.pin-wrap input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;border:0;caret-color:transparent}
+.pin-boxes{display:flex;gap:8px;height:100%;pointer-events:none}
+.pin-boxes i{flex:1;border-radius:14px;background:var(--input);border:2px solid transparent;display:flex;align-items:center;justify-content:center;font-style:normal;font-family:var(--head);font-weight:700;font-size:28px}
+.pin-wrap input:focus+.pin-boxes i.cur,.pin-wrap input:focus+.pin-boxes i:first-child:empty{border-color:var(--orange);background:#fff}
+.big-check.pop{animation:pop .45s ease-out;box-shadow:0 0 0 10px rgba(31,77,58,.06)}
+
+/* Rider status: glowing "available" light + expected return time */
+.rstat{display:inline-flex;align-items:center;gap:7px;font-size:12px;flex:none;line-height:1.25}
+.rstat.free{color:var(--green);font-weight:700;background:var(--gtint);padding:6px 11px 6px 9px;border-radius:999px}
+.rstat.busy{color:var(--route-t);background:var(--route);padding:6px 10px;border-radius:12px;text-align:left;max-width:132px}
+.rstat.busy svg{flex:none}
+.glow{width:11px;height:11px;border-radius:999px;flex:none;background:radial-gradient(circle at 35% 35%,#F2FFF6 0 18%,#47E886 42%,#12A150 100%);
+  box-shadow:0 0 4px 1px rgba(52,222,120,.9),0 0 10px 3px rgba(52,222,120,.55);animation:glow 1.6s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 3px 1px rgba(52,222,120,.85),0 0 8px 2px rgba(52,222,120,.45),0 0 0 0 rgba(52,222,120,.45)}
+  50%{box-shadow:0 0 6px 2px rgba(52,222,120,1),0 0 16px 6px rgba(52,222,120,.6),0 0 0 6px rgba(52,222,120,0)}}
+@media (prefers-reduced-motion:reduce){.glow,.skel,.save-bar.show{animation:none}}
+.label.mt8{margin-top:8px}.label.mt12{margin-top:12px}.label.mt16{margin-top:16px}
