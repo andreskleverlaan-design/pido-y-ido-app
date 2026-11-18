@@ -1,6 +1,7 @@
 /* Pido y Ido — prototipo funcional (datos de demo guardados en este celular) */
 (function () {
   'use strict';
+  var BASE = ((document.currentScript && document.currentScript.src) || '').replace(/app\.js[^/]*$/, '');
   var CLOUD = window.PYI_CLOUD || null;
   var ONLINE = !!CLOUD;
 
@@ -218,8 +219,8 @@
   function mapsLink(g) { return 'https://www.google.com/maps/search/?api=1&query=' + g.lat + ',' + g.lng; }
   function loadLeaflet(cb) {
     if (window.L) return cb();
-    var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'vendor/leaflet/leaflet.css'; document.head.appendChild(c);
-    var sc = document.createElement('script'); sc.src = 'vendor/leaflet/leaflet.js'; sc.onload = cb; sc.onerror = function () { toast('No se pudo abrir el mapa. Revisa tu internet.'); }; document.head.appendChild(sc);
+    var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = BASE + 'vendor/leaflet/leaflet.css'; document.head.appendChild(c);
+    var sc = document.createElement('script'); sc.src = BASE + 'vendor/leaflet/leaflet.js'; sc.onload = cb; sc.onerror = function () { toast('No se pudo abrir el mapa. Revisa tu internet.'); }; document.head.appendChild(sc);
   }
   // opts: { title, sub, start, zone: {lat,lng,radius}, onPick(pos) }
   function openMap(opts) {
