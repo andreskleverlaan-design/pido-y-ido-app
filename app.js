@@ -8,15 +8,36 @@
   // ---------- Helpers ----------
   var PX = function (id, w) { return 'https://images.pexels.com/photos/' + id + '/pexels-photo-' + id + '.jpeg?auto=compress&cs=tinysrgb&w=' + (w || 500); };
   var US = function (id, w) { return 'https://images.unsplash.com/photo-' + id + '?w=' + (w || 500) + '&q=70&auto=format&fit=crop'; };
+  // Free-licence stock photos (Pexels / Unsplash licence: free to use, no attribution needed).
+  // Swap for the restaurants' own photos: they can upload them in Menú.
   var IMG = {
-    carne: US('1558030006-450675393462'), asado: PX(14515096, 900), pollo: US('1598103442097-8b74394b95c6'),
-    emp: PX(6535195), arepa: PX(29496090), burger: US('1568901346375-23c9450c58cd'),
+    asado: PX(31917730, 900),   // Pexels 31917730 "Traditional Argentine asado grilled steak" (Raul Corrado)
+    carne: PX(18299599),        // Pexels 18299599 "Grilled meat on the barbecue"
+    parrilla: PX(4294500, 900), // Pexels 4294500 "Roasting meat and sausages on barbecue grid"
+    pollo: PX(6163330),         // Pexels 6163330 "Roasted chicken on a white plate" (Maksim Goncharenok)
+    emp: PX(12263158),          // Pexels 12263158 "Close up of empanadas on plate"
+    arepa: PX(29496090),
+    almuerzo: PX(29450678),     // Pexels 29450678 "Delicious Latin American cuisine"
+    pescado: PX(16931505),      // Pexels 16931505 "Fried fish with salad on plate"
+    burger: PX(3356409),        // Pexels 3356409 "Hamburger and fries" (Engin Akyurt)
     pizza: US('1574071318508-1cdbab80d002'), pizza2: US('1513104890138-7c749659a591', 900),
-    jugo: US('1546173159-315724a31696'), pincho: US('1555939594-58d7cb561ad1', 900)
+    jugo: US('1546173159-315724a31696'), pincho: US('1555939594-58d7cb561ad1', 900),
+    moto: PX(7362948, 1000)     // Pexels 7362948 "Man with food delivery bag riding a motorcycle"
   };
+  // Photos that restaurants may already have saved in the database: show the better replacement.
+  var IMG_OLD = { '14515096': 'asado', '6535195': 'emp', '1558030006-450675393462': 'carne', '1598103442097-8b74394b95c6': 'pollo', '1568901346375-23c9450c58cd': 'burger' };
+  var IMG_ESC_ASADO, IMG_ESC_MOTO; // set after esc() exists
+  function imgSrc(src, w) {
+    src = String(src || '');
+    var m = src.match(/photos\/(\d+)\/|photo-([\w-]+)\?/);
+    var k = m && IMG_OLD[m[1] || m[2]]; if (k) src = IMG[k];
+    if (w && /^https:\/\/images\.(pexels|unsplash)\.com\//.test(src)) src = src.replace(/([?&])w=\d+/, '$1w=' + w);
+    return src;
+  }
   function fmt(n) { return '$' + String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function now() { return Date.now(); }
+  IMG_ESC_ASADO = esc(imgSrc(IMG.asado, 900)); IMG_ESC_MOTO = esc(imgSrc(IMG.moto, 900));
   function ago(t) {
     var m = Math.floor((now() - t) / 60000);
     if (m < 1) return 'hace un momento';
@@ -78,7 +99,10 @@
     refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/>',
     install: '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01M12 6v7M9 10l3 3 3-3"/>',
     gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C9.5 3 11 5 12 8c1-3 2.5-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
-    fire: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.3.4 1.5 1.7 2.8 3.5 2.8z"/>'
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    camplus: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><path d="M12 10v6M9 13h6"/>',
+        fire: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.3.4 1.5 1.7 2.8 3.5 2.8z"/>'
   };
   function ic(name, size, opts) {
     opts = opts || {};
@@ -91,8 +115,10 @@
     if (kind === 'icon') return '<svg class="logo" width="' + size + '" height="' + size + '" viewBox="0 0 100 100" aria-label="Pido y Ido"><rect width="100" height="100" rx="24" fill="#1F4D3A"/><path d="M38 80V45a18 18 0 1 1 13 17.4" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round"/><circle cx="62" cy="63" r="7" fill="#FF6B2C"/></svg>';
     return '<svg class="logo" width="' + size + '" height="' + size + '" viewBox="0 0 100 100" aria-label="Pido y Ido"><path d="M36 84V45a20 20 0 1 1 14 19.2" fill="none" stroke="' + (kind === 'white' ? '#fff' : '#1F4D3A') + '" stroke-width="11" stroke-linecap="round"/><circle cx="63" cy="65" r="8" fill="#FF6B2C"/></svg>';
   }
-  function photo(src, cls, style) {
-    return '<div class="ph ' + (cls || '') + '"' + (style ? ' style="' + style + '"' : '') + '><span class="ph-ico">' + ic('fire', 26) + '</span><img src="' + esc(src) + '" alt="" loading="lazy" onerror="this.classList.add(\'broken\')"></div>';
+  // w = wanted width in px for the photo service (thumbs small, heroes big; phones are ~2x)
+  function photo(src, cls, style, w) {
+    if (!w) w = /thumb/.test(cls || '') ? 200 : (style && /width:100%|inset:0/.test(style)) ? 900 : 400;
+    return '<div class="ph ' + (cls || '') + '"' + (style ? ' style="' + style + '"' : '') + '><span class="ph-ico">' + ic('fire', 26) + '</span>' + (src ? '<img src="' + esc(imgSrc(src, w)) + '" alt="" loading="lazy" decoding="async" onload="this.classList.add(\'in\')" onerror="this.classList.add(\'broken\')">' : '') + '</div>';
   }
 
   // ---------- Seed data ----------
@@ -125,7 +151,7 @@
         { id: 'jugo', name: 'Jugo de maracuyá', desc: 'En agua o en leche', price: 5000, img: IMG.jugo }
       ] }
   ];
-  var CATS = [['Empanadas', IMG.emp], ['Asados', IMG.carne], ['Arepas', IMG.arepa], ['Hamburguesas', IMG.burger], ['Pizza', IMG.pizza], ['Jugos', IMG.jugo]];
+  var CATS = [['Empanadas', IMG.emp], ['Asados', IMG.carne], ['Pollo', IMG.pollo], ['Arepas', IMG.arepa], ['Almuerzos', IMG.almuerzo], ['Hamburguesas', IMG.burger], ['Pizza', IMG.pizza], ['Jugos', IMG.jugo]];
   var NO_REST = { id: '', name: 'Restaurante', short: 'Restaurante', img: '', rating: 0, count: 0, eta: '30–40 min', pickup: '15 min', min: 0, fee: 0, cats: [], sub: '', address: '', phone: '', nequi: '', dishes: [] };
   function R(id) { for (var i = 0; i < RESTAURANTS.length; i++) if (RESTAURANTS[i].id === id) return RESTAURANTS[i]; return ONLINE ? NO_REST : RESTAURANTS[0]; }
   // restaurants customers can order from (online: only those with a menu)
@@ -197,6 +223,25 @@
   function restRating(r) { var x = S.ratings[r.id]; return x ? x : { rating: r.rating, count: r.count }; }
   function ratingTxt(r) { var x = restRating(r); return x.count ? x.rating.toFixed(1).replace('.', ',') + ' (' + x.count + ')' : 'Nuevo'; }
   function riderBusy(id) { return S.orders.some(function (o) { return o.riderId === id && o.status === 'en_camino'; }); }
+  // When is a rider on a delivery expected back? Sent time + ride there and back (~20 km/h in town) + 5 min at the door.
+  function riderBack(id) {
+    var os = S.orders.filter(function (o) { return o.riderId === id && o.status === 'en_camino'; });
+    if (!os.length) return null;
+    var best = 0;
+    os.forEach(function (o) {
+      var r = R(o.restId), d = hasLoc(r) && o.geo ? km(r, o.geo) * 1.3 : 1.5;
+      var mins = Math.max(8, Math.round(d / 20 * 60 * 2 + 5));
+      best = Math.max(best, (o.sentAt || o.acceptedAt || o.createdAt || now()) + mins * 60000);
+    });
+    return best;
+  }
+  function riderStatus(id, compact) {
+    var back = riderBack(id);
+    if (!back) return '<span class="rstat free"><span class="glow"></span>Libre</span>';
+    var m = Math.round((back - now()) / 60000);
+    if (compact) return '<span class="rstat busy" title="Vuelve ~' + hora(back) + '">' + ic('bike', 14) + '<span><b>En ruta</b><br>' + (m > 0 ? '~' + m + ' min' : 'ya casi') + '</span></span>';
+    return '<span class="rstat busy">' + ic('bike', 14) + '<span><b>En ruta' + (m > 0 ? ' · ' + m + ' min' : '') + '</b><br>' + (m > 0 ? 'libre ~' + hora(back) : 'debería volver ya') + '</span></span>';
+  }
   function cartLines() {
     if (!S.cart.restId) return [];
     var r = R(S.cart.restId);
@@ -338,31 +383,51 @@
       '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="regDo">Ver mi panel</button><a class="btn btn-ghost btn-block" style="height:44px" href="#/rest">Saltar</a></div>';
   }
 
+  // ---------- Restaurant account (online): branded header, steps, inputs with icons ----------
+  function authHero(kicker, title, back) {
+    return '<div class="auth-hero">' + photo(IMG.asado, '', 'position:absolute;inset:0;height:100%;width:100%') + '<div class="auth-fade"></div>' +
+      '<div class="auth-top">' + (back ? '<a class="icon-btn glass" href="#' + back + '" aria-label="Volver">' + ic('back', 22) + '</a>' : '') +
+      '<span class="auth-brand">' + logo(30, 'icon') + 'Pido y Ido <span class="auth-tag">Restaurantes</span></span></div>' +
+      '<div class="auth-title"><div class="auth-kicker">' + kicker + '</div><h1>' + title + '</h1></div></div>';
+  }
+  function steps(list, at) {
+    return '<div class="steps">' + list.map(function (t, i) {
+      return '<div class="step' + (i < at ? ' done' : i === at ? ' on' : '') + '"><span class="n">' + (i < at ? ic('check', 12, { sw: 3.2 }) : i + 1) + '</span><span class="t">' + t + '</span></div>';
+    }).join('<span class="step-line"></span>') + '</div>';
+  }
+  function fieldIc(id, label, icon, input, hint, prefix) {
+    return '<div class="field"><label class="label" for="' + id + '">' + label + '</label><div class="input-ic">' + ic(icon, 18) + (prefix ? '<span class="pre">' + prefix + '</span>' : '') + input + '</div>' + (hint ? '<div class="xs muted mt4">' + hint + '</div>' : '') + '</div>';
+  }
+  var SETUP_STEPS = ['Cuenta', 'Menú', 'Ubicación', 'Abrir'];
   function scrRestRegistroLive() {
     var f = ui.reg || (ui.reg = { name: '', phone: '', addr: '', pass: '' });
     var logged = !!CLOUD.restUid(), err = ui.regErr || {};
-    return '<div class="screen has-cta" style="padding-bottom:calc(170px + var(--safe-b))">' + topbar(logged ? 'Completa tu restaurante' : 'Registra tu restaurante', '/', 'Gratis para empezar') +
-      '<div class="muted small" style="margin-top:-6px">En 10 minutos recibes pedidos. Después agregas tu menú (o te ayudamos a pasarlo).</div>' +
-      '<div class="card mt16"><div class="field"><label class="label" for="rg1">Nombre del restaurante</label><input class="input' + (err.name ? ' err' : '') + '" id="rg1" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="Asadero El Llanero"></div>' +
-      (logged ? '' : '<div class="field"><label class="label" for="rg2">WhatsApp del negocio</label><input class="input' + (err.phone ? ' err' : '') + '" id="rg2" data-m="ui.reg.phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="310 000 0000"><div class="xs muted mt4">Con este número entras a tu panel.</div></div>') +
-      '<div class="field"><label class="label" for="rg3">Dirección</label><input class="input' + (err.addr ? ' err' : '') + '" id="rg3" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro"></div>' +
-      (logged ? '' : '<div class="field"><label class="label" for="rg4">Crea una clave</label><input class="input' + (err.pass ? ' err' : '') + '" id="rg4" data-m="ui.reg.pass" type="password" autocomplete="new-password" value="' + esc(f.pass) + '" placeholder="Mínimo 6 letras o números"></div>') +
+    var perks = [['bell', 'Los pedidos te llegan al celular, con sonido'], ['bike', 'Despachas con tus propios domiciliarios'], ['clock', 'Listo en 10 minutos, sin papeleo']];
+    return '<div class="screen flush has-cta auth" style="padding-bottom:calc(150px + var(--safe-b))">' + authHero('Gratis para empezar', logged ? 'Completa tu restaurante' : 'Vende a domicilio en Villanueva', '/') +
+      '<div class="auth-body">' + steps(SETUP_STEPS, 0) +
+      (logged ? '' : '<div class="perks mt16">' + perks.map(function (p) { return '<div class="perk"><span class="pi">' + ic(p[0], 18) + '</span>' + p[1] + '</div>'; }).join('') + '</div>') +
+      '<div class="card mt16">' +
+      fieldIc('rg1', 'Nombre del restaurante', 'store', '<input class="input' + (err.name ? ' err' : '') + '" id="rg1" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="Asadero El Llanero" autocomplete="organization">') +
+      (logged ? '' : fieldIc('rg2', 'WhatsApp del negocio', 'msg', '<input class="input' + (err.phone ? ' err' : '') + '" id="rg2" data-m="ui.reg.phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="310 000 0000" autocomplete="tel-national">', 'Con este número entras a tu panel.', '+57')) +
+      fieldIc('rg3', 'Dirección', 'pin', '<input class="input' + (err.addr ? ' err' : '') + '" id="rg3" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro" autocomplete="street-address">') +
+      (logged ? '' : fieldIc('rg4', 'Crea una clave', 'lock', '<input class="input' + (err.pass ? ' err' : '') + '" id="rg4" data-m="ui.reg.pass" type="password" autocomplete="new-password" value="' + esc(f.pass) + '" placeholder="Mínimo 6 letras o números">')) +
       (ui.regMsg ? '<div class="err-msg">' + esc(ui.regMsg) + '</div>' : '') + '</div>' +
-      (logged ? '' : '<div class="small muted center mt16">¿Ya tienes cuenta? <a class="link" href="#/rest/login">Inicia sesión</a></div>') + '</div>' +
-      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="regDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Un momento…' : logged ? 'Crear mi restaurante' : 'Crear mi cuenta') + '</button></div>';
+      (logged ? '' : '<div class="small muted center mt16">¿Ya tienes cuenta? <a class="link" href="#/rest/login">Inicia sesión</a></div>') + '</div></div>' +
+      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="regDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Un momento…' : logged ? 'Crear mi restaurante' : 'Crear mi cuenta') + (ui.busy ? '' : ic('right', 20)) + '</button></div>';
   }
   function scrRestLogin() {
     var f = ui.login || (ui.login = { phone: '', pass: '' });
-    return '<div class="screen has-cta">' + topbar('Entra a tu restaurante', '/', 'Panel del restaurante') +
-      '<div class="card"><div class="field"><label class="label" for="lg1">WhatsApp del negocio</label><input class="input" id="lg1" data-m="ui.login.phone" inputmode="tel" autocomplete="username" value="' + esc(f.phone) + '" placeholder="310 000 0000"></div>' +
-      '<div class="field"><label class="label" for="lg2">Clave</label><input class="input" id="lg2" data-m="ui.login.pass" type="password" autocomplete="current-password" data-enter="restLoginDo" value="' + esc(f.pass) + '"></div>' +
+    return '<div class="screen flush has-cta auth">' + authHero('Panel del restaurante', 'Hola de nuevo', '/') +
+      '<div class="auth-body"><div class="card">' +
+      fieldIc('lg1', 'WhatsApp del negocio', 'msg', '<input class="input" id="lg1" data-m="ui.login.phone" inputmode="tel" autocomplete="username" value="' + esc(f.phone) + '" placeholder="310 000 0000">', '', '+57') +
+      fieldIc('lg2', 'Clave', 'lock', '<input class="input" id="lg2" data-m="ui.login.pass" type="password" autocomplete="current-password" data-enter="restLoginDo" value="' + esc(f.pass) + '" placeholder="Tu clave">') +
       (ui.loginMsg ? '<div class="err-msg">' + esc(ui.loginMsg) + '</div>' : '') + '</div>' +
-      '<div class="small muted center mt16">¿Aún no estás en Pido y Ido? <a class="link" href="#/rest/registro">Registra tu restaurante</a></div>' +
-      '<div class="xs muted center mt8">¿Olvidaste tu clave? Escríbele a Pido y Ido y te ayudamos.</div></div>' +
+      '<div class="card flat mt16 row"><span class="pi">' + ic('store', 18) + '</span><div class="grow small">¿Aún no estás en Pido y Ido?<br><a class="link" href="#/rest/registro">Registra tu restaurante gratis</a></div></div>' +
+      '<div class="xs muted center mt16">¿Olvidaste tu clave? Escríbele a Pido y Ido y te ayudamos.</div></div></div>' +
       '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="restLoginDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Entrando…' : 'Entrar') + '</button></div>';
   }
   function scrLoading(title) {
-    return '<div class="screen">' + topbar(title || 'Pido y Ido', '/') + '<div class="empty"><div class="ic">' + ic('refresh', 26) + '</div>Cargando…</div></div>';
+    return '<div class="screen">' + topbar(title || 'Pido y Ido', '/') + '<div class="skel" style="height:150px"></div><div class="skel mt12" style="height:18px;width:60%"></div><div class="skel mt8" style="height:14px;width:40%"></div><div class="skel mt20" style="height:150px"></div><div class="skel mt12" style="height:18px;width:55%"></div><div class="sr-only">Cargando…</div></div>';
   }
 
   // ---------- Customer ----------
@@ -436,7 +501,7 @@
     h += r.dishes.map(function (d) {
       var q = S.cart.restId === r.id ? (S.cart.items[d.id] || 0) : 0;
       return '<div class="dish"><div class="grow">' + (d.top ? '<span class="badge orange" style="margin-bottom:6px">Más pedido</span>' : '') + '<div class="b" style="font-size:15px">' + d.name + '</div><div class="small muted mt4">' + d.desc + '</div><div class="b mt8">' + fmt(d.price) + '</div></div>' +
-        '<div class="ph" style="width:96px;height:96px"><div class="imgwrap">' + '<img src="' + esc(d.img) + '" alt="" loading="lazy" onerror="this.classList.add(\'broken\')" style="width:100%;height:100%;object-fit:cover">' + '</div>' +
+        '<div class="ph" style="width:96px;height:96px"><div class="imgwrap">' + (d.img ? '<img src="' + esc(imgSrc(d.img, 240)) + '" alt="" loading="lazy" decoding="async" onerror="this.classList.add(\'broken\')" style="width:100%;height:100%;object-fit:cover">' : '') + '</div>' +
         (q ? '<div class="qty has"><button data-a="dec" data-r="' + r.id + '" data-d="' + d.id + '" aria-label="Quitar">' + ic('minus', 18) + '</button><span class="n">' + q + '</span><button data-a="add" data-r="' + r.id + '" data-d="' + d.id + '" aria-label="Agregar">' + ic('plus', 18) + '</button></div>'
           : '<div class="qty"><button data-a="add" data-r="' + r.id + '" data-d="' + d.id + '" aria-label="Agregar ' + esc(d.name) + '">' + ic('plus', 20) + '</button></div>') +
         '</div></div>';
@@ -617,6 +682,28 @@
       '<button class="toggle" data-a="toggleOpen" style="background:' + (open ? 'var(--gtint)' : 'var(--track)') + ';color:' + (open ? 'var(--green)' : 'var(--muted)') + '">' + (open ? 'Abierto' : 'Cerrado') +
       '<span class="tr" style="background:' + (open ? 'var(--green)' : '#C9C1B7') + ';--k:' + (open ? '19px' : '3px') + '"></span></button></div>';
   }
+  // Online: "get ready" card until the restaurant has a menu, a photo, a map pin and is open.
+  function setupItems(r) {
+    var own = r.img && !PHOTOS.some(function (p) { return p[1] === r.img; });
+    return [
+      { ok: true, t: 'Cuenta creada', s: '' },
+      { ok: r.dishes.length >= 3, t: 'Agrega tu menú', s: r.dishes.length ? r.dishes.length + ' de 3 platos o más' : 'Con precio y foto', href: '#/rest/menu' },
+      { ok: !!r.img, t: 'Pon una foto de portada', s: own ? '' : 'Mejor una foto real de tu comida', href: '#/rest/menu' },
+      { ok: hasLoc(r), t: 'Marca tu local en el mapa', s: 'Y hasta dónde entregas', href: '#/rest/menu' },
+      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' }
+    ];
+  }
+  function setupDone(r) { return setupItems(r).every(function (x) { return x.ok; }); }
+  function setupCard(r) {
+    var it = setupItems(r), n = it.filter(function (x) { return x.ok; }).length;
+    if (n === it.length) return '';
+    return '<div class="card setup mt12"><div class="row between"><div><div class="t-h3">Prepara tu restaurante</div><div class="small muted mt4">' + n + ' de ' + it.length + ' pasos listos</div></div><span class="ring-pct" style="--p:' + Math.round(n / it.length * 100) + '"><span>' + Math.round(n / it.length * 100) + '%</span></span></div>' +
+      '<div class="setup-list mt12">' + it.map(function (x) {
+        var inner = '<span class="sc' + (x.ok ? ' ok' : '') + '">' + (x.ok ? ic('check', 14, { sw: 3 }) : '') + '</span><span class="grow"><span class="b' + (x.ok ? ' done' : '') + '">' + x.t + '</span>' + (!x.ok && x.s ? '<span class="xs muted" style="display:block">' + x.s + '</span>' : '') + '</span>' + (x.ok ? '' : ic('right', 18));
+        if (x.ok) return '<div class="setup-row">' + inner + '</div>';
+        return x.a ? '<button class="setup-row" data-a="' + x.a + '">' + inner + '</button>' : '<a class="setup-row" href="' + x.href + '">' + inner + '</a>';
+      }).join('') + '</div></div>';
+  }
   function scrRest(query) {
     if (!ONLINE && query && query.r && RESTAURANTS.some(function (x) { return x.id === query.r; })) { S.restId = query.r; save(); }
     var r = R(S.restId);
@@ -635,9 +722,8 @@
       '<div class="stats mt16"><div class="stat"><div class="xs muted">Hoy</div><div class="v">' + (base[0] + today.length) + '</div><div class="xs muted">pedidos</div></div>' +
       '<div class="stat"><div class="xs muted">Ventas</div><div class="v">$' + Math.round((base[1] + today.reduce(function (a, o) { return a + o.total; }, 0)) / 1000) + 'k</div><div class="xs muted">COP</div></div>' +
       '<div class="stat"><div class="xs muted">Promedio</div><div class="v">' + avgMin + '</div><div class="xs muted">min</div></div></div>' +
-      (ONLINE && !r.dishes.length ? '<a class="note amber mt12" style="display:block" href="#/rest/menu"><b>Agrega tu menú</b> para que los clientes te encuentren. Toca aquí.</a>' : '') +
-      (ONLINE && r.dishes.length && !hasLoc(r) ? '<a class="note amber mt12" style="display:block" href="#/rest/menu"><b>Marca tu restaurante en el mapa</b> para que solo te pidan de tu zona de entrega. Toca aquí.</a>' : '') +
-      (S.open[r.id] ? '' : '<div class="note amber mt12"><b>Estás cerrado.</b> ' + (ONLINE ? 'Cuando quieras recibir pedidos, toca <b>Abierto</b> arriba.' : 'Los clientes ven tu menú, pero no pueden pedir.') + '</div>') +
+      (ONLINE ? setupCard(r) : '') +
+      (S.open[r.id] || (ONLINE && !setupDone(r)) ? '' : '<div class="note amber mt12"><b>Estás cerrado.</b> ' + (ONLINE ? 'Cuando quieras recibir pedidos, toca <b>Abierto</b> arriba.' : 'Los clientes ven tu menú, pero no pueden pedir.') + '</div>') +
       '<div class="chips scroll mt16">' + [['nuevos', 'Nuevos'], ['preparando', 'Preparando'], ['camino', 'En camino'], ['hechos', 'Entregados']].map(function (t) {
         var n = groups[t[0]].length;
         return '<button class="chip' + (ui.rtab === t[0] ? ' on' : '') + '" data-a="rtab" data-v="' + t[0] + '">' + t[1] + (n ? ' <span class="cnt">' + n + '</span>' : '') + '</button>';
@@ -687,7 +773,7 @@
     var rowsH = ids.map(function (rid) {
       var rd = S.riders[rid], busy = riderBusy(rid), c = avColor(rid), on = sel === rid;
       return '<button class="radio-row' + (on ? ' on' : '') + '" data-a="choose" data-id="' + id + '" data-v="' + rid + '"><span class="avatar sm" style="background:' + c[0] + ';color:' + c[1] + '">' + initials(rd.name) + '</span><span class="grow"><span class="b" style="display:block">' + esc(rd.name) + '</span><span class="small muted">' + esc(rd.vehicle || 'Moto') + ' · ' + phoneFmt(rd.phone) + '</span></span>' +
-        '<span class="badge ' + (busy ? 'route' : 'green') + '">' + (busy ? 'En ruta' : 'Libre') + '</span><span class="ring"></span></button>';
+        riderStatus(rid) + '<span class="ring"></span></button>';
     }).join('');
     rowsH += '<button class="radio-row' + (sel === 'yo' ? ' on' : '') + '" data-a="choose" data-id="' + id + '" data-v="yo"><span class="avatar sm" style="background:var(--track);color:var(--text)">' + ic('store', 18) + '</span><span class="grow"><span class="b" style="display:block">Lo llevo yo</span><span class="small muted">Alguien del restaurante</span></span><span class="ring"></span></button>';
     var rd = sel === 'yo' ? null : S.riders[sel];
@@ -718,7 +804,7 @@
       '<div class="card mt12" style="padding:4px 14px">' + (ids.length ? ids.map(function (rid) {
         var rd = S.riders[rid], c = avColor(rid), busy = riderBusy(rid);
         return '<div class="list-row"><span class="avatar sm" style="background:' + c[0] + ';color:' + c[1] + '">' + initials(rd.name) + '</span><div class="grow"><div class="b ellipsis">' + esc(rd.name) + '</div><div class="small muted ellipsis">' + esc(rd.vehicle || 'Moto') + ' · ' + phoneFmt(rd.phone) + '</div></div>' +
-          '<span class="badge ' + (busy ? 'route' : 'green') + '">' + (busy ? 'En ruta' : 'Libre') + '</span>' +
+          riderStatus(rid, true) +
           '<a class="icon-btn green" style="width:40px;height:40px" target="_blank" rel="noopener" href="' + waLink(rd.phone, 'Hola ' + first(rd.name) + ', te escribo de ' + r.name + '.') + '" aria-label="WhatsApp">' + ic('msg', 18) + '</a>' +
           '<button class="icon-btn" style="width:40px;height:40px;box-shadow:none;background:var(--track)" data-a="removeRider" data-v="' + rid + '" aria-label="Quitar">' + ic('x', 18) + '</button></div>';
       }).join('') : '<div class="empty">Aún no tienes domiciliarios guardados.</div>') + '</div>' +
@@ -815,39 +901,93 @@
   }
 
   // ---------- Restaurant: menu + data (online) ----------
-  var PHOTOS = [['Asado', IMG.asado], ['Carne', IMG.carne], ['Pollo', IMG.pollo], ['Empanadas', IMG.emp], ['Arepas', IMG.arepa], ['Hamburguesa', IMG.burger], ['Pizza', IMG.pizza], ['Pincho', IMG.pincho], ['Jugo', IMG.jugo]];
-  function photoPick(cur, action) {
-    return '<div class="chips mt8" style="gap:8px">' + PHOTOS.map(function (p) {
-      var on = cur === p[1];
-      return '<button data-a="' + action + '" data-v="' + esc(p[1]) + '" aria-label="' + p[0] + '" style="padding:0;border-radius:12px;overflow:hidden;width:56px;height:56px;border:' + (on ? '3px solid var(--orange)' : '1.5px solid var(--border)') + '">' + photo(p[1], '', 'width:100%;height:100%') + '</button>';
-    }).join('') + '</div>';
+  var PHOTOS = [['Asado', IMG.asado], ['Carne', IMG.carne], ['Parrilla', IMG.parrilla], ['Pollo', IMG.pollo], ['Empanadas', IMG.emp], ['Arepas', IMG.arepa], ['Almuerzo', IMG.almuerzo], ['Pescado', IMG.pescado], ['Hamburguesa', IMG.burger], ['Pizza', IMG.pizza], ['Pizza 2', IMG.pizza2], ['Pincho', IMG.pincho], ['Jugo', IMG.jugo]];
+  // Gallery of stock photos + "upload your own" tile. kind = 'rest' (cover) | 'dish'
+  function photoPick(cur, action, kind) {
+    var own = cur && !PHOTOS.some(function (p) { return p[1] === cur; });
+    var tile = 'padding:0;border-radius:14px;overflow:hidden;width:64px;height:64px;flex:none;';
+    return '<div class="pick-row mt8">' +
+      '<label class="pick-up" style="' + tile + '">' + ic(ui.upBusy ? 'refresh' : 'camera', 20) + '<span>' + (ui.upBusy ? 'Subiendo' : 'Tu foto') + '</span><input type="file" accept="image/*" data-file="' + (kind === 'dish' ? 'dishImg' : 'restImg') + '"></label>' +
+      (own ? '<button aria-label="Tu foto" class="pick on" style="' + tile + '">' + photo(cur, '', 'width:100%;height:100%', 200) + '</button>' : '') +
+      PHOTOS.map(function (p) {
+        return '<button data-a="' + action + '" data-v="' + esc(p[1]) + '" aria-label="' + p[0] + '" class="pick' + (cur === p[1] ? ' on' : '') + '" style="' + tile + '">' + photo(p[1], '', 'width:100%;height:100%', 200) + '</button>';
+      }).join('') + '</div>';
   }
+  // Shrink + crop a phone photo before upload (cover 3:2, dish square), JPEG.
+  function shrinkPhoto(file, kind) {
+    return new Promise(function (ok, bad) {
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function () {
+        var W = kind === 'dish' ? 640 : 1200, H = kind === 'dish' ? 640 : 800;
+        var sc = Math.max(W / im.width, H / im.height), sw = W / sc, sh = H / sc;
+        if (sc > 1) { W = Math.round(W / sc); H = Math.round(H / sc); sc = 1; sw = W; sh = H; }
+        var c = document.createElement('canvas'); c.width = W; c.height = H;
+        c.getContext('2d').drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, 0, 0, W, H);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) { b ? ok({ blob: b, dataUrl: c.toDataURL('image/jpeg', 0.72) }) : bad(new Error('img')); }, 'image/jpeg', 0.78);
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); bad(new Error('img')); };
+      im.src = url;
+    });
+  }
+  function uploadOwnPhoto(file, kind) {
+    if (ui.upBusy) return;
+    ui.upBusy = true; refreshPick(kind);
+    shrinkPhoto(file, kind).then(function (x) {
+      if (!ONLINE) return x.dataUrl; // demo: stays on this phone
+      if (!CLOUD.uploadPhoto) throw new Error('no_upload');
+      return CLOUD.uploadPhoto(x.blob);
+    }).then(function (src) {
+      ui.upBusy = false;
+      if (kind === 'dish') { ui.dish.img = src; } else if (ui.rm) { ui.rm.img = src; }
+      refreshPick(kind); toast(kind === 'dish' ? 'Foto lista' : 'Foto lista. Toca Guardar datos.');
+    }, function (e) {
+      ui.upBusy = false; refreshPick(kind);
+      toast(/bucket|not found|no_upload|row-level|policy/i.test(String(e && e.message)) ? 'Subir tus propias fotos se activa muy pronto. Por ahora elige una de la lista.' : 'No se pudo subir la foto. Revisa tu internet.');
+    });
+  }
+  function refreshPick(kind) {
+    if (kind === 'dish') { var w = document.getElementById('dishPh'); if (w) w.innerHTML = photoPick(ui.dish.img, 'dishImg', 'dish'); }
+    else render();
+  }
+  var RM_KEYS = ['name', 'sub', 'address', 'phone', 'nequi', 'fee', 'min', 'eta', 'img', 'cats', 'lat', 'lng', 'radius'];
+  function rmDirty(r, f) { return RM_KEYS.some(function (k) { return JSON.stringify(f[k] == null ? '' : f[k]) !== JSON.stringify((k === 'radius' ? (r.radius || 3) : r[k]) == null ? '' : (k === 'radius' ? (r.radius || 3) : r[k])); }); }
   function scrRestMenu() {
     var r = R(S.restId);
     var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, img: r.img, cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3 });
     var chip = function (key, val, label) { return '<button class="chip sm' + (String(f[key]) === String(val) ? ' on' : '') + '" data-a="rmSet" data-k="' + key + '" data-v="' + esc(val) + '">' + label + '</button>'; };
-    var h = '<div class="screen has-tabs">' + restHeader(r) + '<h1 class="t-title mt20" style="font-size:22px">Tu menú</h1>' +
-      '<div class="small muted mt4">Lo que ven los clientes. Los cambios se ven al instante.</div><div class="card mt12" style="padding:4px 14px">' +
+    var dirty = rmDirty(r, f);
+    var h = '<div class="screen has-tabs' + (dirty ? ' has-cta' : '') + '">' + restHeader(r) +
+      // cover photo, as customers see it
+      '<div class="cover mt16">' + photo(f.img, '', 'position:absolute;inset:0;width:100%;height:100%', 900) + '<div class="cover-fade"></div>' +
+      '<div class="cover-txt"><div class="xs" style="opacity:.85">Así te ven los clientes</div><div class="t-h2" style="color:#fff">' + esc(f.name || r.name) + '</div></div></div>' +
+      '<div class="label mt12">Foto de portada</div>' + photoPick(f.img, 'rmImg', 'rest') +
+      // dishes
+      '<div class="row between mt24"><h2 class="t-h2">Tu menú</h2><span class="small muted">' + r.dishes.length + ' platos</span></div>' +
+      '<div class="card mt12" style="padding:4px 14px">' +
       (r.dishes.length ? r.dishes.map(function (d) {
-        return '<div class="list-row">' + photo(d.img, 'thumb s44') + '<div class="grow"><div class="b ellipsis">' + esc(d.name) + '</div><div class="small muted ellipsis">' + fmt(d.price) + (d.desc ? ' · ' + esc(d.desc) : '') + '</div></div>' +
+        return '<div class="list-row">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b ellipsis">' + esc(d.name) + '</div><div class="small muted ellipsis">' + (d.desc ? esc(d.desc) : 'Sin descripción') + '</div><div class="b mt4" style="font-size:14px">' + fmt(d.price) + '</div></div>' +
           '<button class="icon-btn" style="width:40px;height:40px;box-shadow:none;background:var(--track)" data-a="dishDel" data-v="' + esc(d.id) + '" aria-label="Quitar">' + ic('x', 18) + '</button></div>';
-      }).join('') : '<div class="empty">Aún no hay platos. Agrega el primero.</div>') + '</div>' +
+      }).join('') : '<div class="empty" style="padding:22px 8px"><div class="ic">' + ic('fire', 24) + '</div>Aún no hay platos. Agrega el primero: con foto y precio se vende más.</div>') + '</div>' +
       '<button class="dashed-btn mt12" data-a="dishForm">' + ic('plus', 18) + ' Agregar un plato</button>' +
+      // delivery
+      '<h2 class="t-h2 mt24">Entrega</h2><div class="card mt12">' +
+      '<div class="label">Ubicación del restaurante</div><button class="dashed-btn' + (hasLoc(f) ? ' done' : ' need') + '" data-a="rmLoc">' + ic(hasLoc(f) ? 'check' : 'map', 18) + (hasLoc(f) ? 'Marcado en el mapa · cambiar' : 'Marcar mi restaurante en el mapa') + '</button>' +
+      '<div class="label mt16">¿Hasta dónde entregas?</div><div class="chips">' + [2, 3, 5, 8].map(function (v) { return chip('radius', v, v + ' km'); }).join('') + '</div>' +
+      '<div class="label mt16">Domicilio</div><div class="chips">' + [0, 2000, 3000, 4000, 5000].map(function (v) { return chip('fee', v, v ? fmt(v) : 'Gratis'); }).join('') + '</div>' +
+      '<div class="label mt16">Pedido mínimo</div><div class="chips">' + [0, 10000, 15000, 20000].map(function (v) { return chip('min', v, v ? fmt(v) : 'Sin mínimo'); }).join('') + '</div>' +
+      '<div class="label mt16">Tiempo de entrega</div><div class="chips">' + ['20–30 min', '30–40 min', '40–60 min'].map(function (v) { return chip('eta', v, v); }).join('') + '</div></div>' +
+      // details
       '<h2 class="t-h2 mt24">Datos del restaurante</h2><div class="card mt12">' +
-      '<div class="field"><label class="label" for="rm1">Nombre</label><input class="input" id="rm1" data-m="ui.rm.name" value="' + esc(f.name) + '"></div>' +
-      '<div class="field"><label class="label" for="rm2">Qué vendes (corto)</label><input class="input" id="rm2" data-m="ui.rm.sub" value="' + esc(f.sub) + '" placeholder="Carne a la llanera · Pollo asado"></div>' +
-      '<div class="field"><label class="label" for="rm3">Dirección</label><input class="input" id="rm3" data-m="ui.rm.address" value="' + esc(f.address) + '"></div>' +
-      '<div class="row" style="gap:10px"><div class="grow field"><label class="label" for="rm4">WhatsApp</label><input class="input" id="rm4" data-m="ui.rm.phone" inputmode="tel" value="' + esc(f.phone) + '"></div>' +
-      '<div class="grow field"><label class="label" for="rm5">Nequi / Daviplata</label><input class="input" id="rm5" data-m="ui.rm.nequi" inputmode="tel" value="' + esc(f.nequi) + '"></div></div>' +
-      '<div class="label mt8">Ubicación del restaurante</div><button class="dashed-btn' + (hasLoc(f) ? ' done' : ' need') + '" data-a="rmLoc">' + ic(hasLoc(f) ? 'check' : 'map', 18) + (hasLoc(f) ? 'Marcado en el mapa · cambiar' : 'Marcar mi restaurante en el mapa') + '</button>' +
-      '<div class="label mt12">¿Hasta dónde entregas?</div><div class="chips">' + [2, 3, 5, 8].map(function (v) { return chip('radius', v, v + ' km'); }).join('') + '</div>' +
-      '<div class="label mt12">Domicilio</div><div class="chips">' + [0, 2000, 3000, 4000, 5000].map(function (v) { return chip('fee', v, v ? fmt(v) : 'Gratis'); }).join('') + '</div>' +
-      '<div class="label mt12">Pedido mínimo</div><div class="chips">' + [0, 10000, 15000, 20000].map(function (v) { return chip('min', v, v ? fmt(v) : 'Sin mínimo'); }).join('') + '</div>' +
-      '<div class="label mt12">Tiempo de entrega</div><div class="chips">' + ['20–30 min', '30–40 min', '40–60 min'].map(function (v) { return chip('eta', v, v); }).join('') + '</div>' +
-      '<div class="label mt12">Categorías</div><div class="chips">' + CATS.map(function (c) { return '<button class="chip sm' + (f.cats.indexOf(c[0]) >= 0 ? ' on' : '') + '" data-a="rmCat" data-v="' + c[0] + '">' + c[0] + '</button>'; }).join('') + '</div>' +
-      '<div class="label mt12">Foto principal</div>' + photoPick(f.img, 'rmImg') +
+      '<div class="field"><label class="label" for="rm1">Nombre</label><input class="input" id="rm1" data-m="ui.rm.name" data-dirty="1" value="' + esc(f.name) + '"></div>' +
+      '<div class="field"><label class="label" for="rm2">Qué vendes (corto)</label><input class="input" id="rm2" data-m="ui.rm.sub" data-dirty="1" value="' + esc(f.sub) + '" placeholder="Carne a la llanera · Pollo asado"></div>' +
+      '<div class="field"><label class="label" for="rm3">Dirección</label><input class="input" id="rm3" data-m="ui.rm.address" data-dirty="1" value="' + esc(f.address) + '"></div>' +
+      '<div class="row" style="gap:10px"><div class="grow field"><label class="label" for="rm4">WhatsApp</label><input class="input" id="rm4" data-m="ui.rm.phone" data-dirty="1" inputmode="tel" value="' + esc(f.phone) + '"></div>' +
+      '<div class="grow field"><label class="label" for="rm5">Nequi / Daviplata</label><input class="input" id="rm5" data-m="ui.rm.nequi" data-dirty="1" inputmode="tel" value="' + esc(f.nequi) + '"></div></div>' +
+      '<div class="label mt8">Categorías</div><div class="chips">' + CATS.map(function (c) { return '<button class="chip sm' + (f.cats.indexOf(c[0]) >= 0 ? ' on' : '') + '" data-a="rmCat" data-v="' + c[0] + '">' + c[0] + '</button>'; }).join('') + '</div>' +
       '<button class="btn btn-green btn-block mt16" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Guardando…' : 'Guardar datos') + '</button></div>' +
-      '<button class="btn btn-ghost btn-block mt12" data-a="restLogout">Cerrar sesión</button></div>' + tabs('rest', 'menu');
+      '<button class="btn btn-ghost btn-block mt12" data-a="restLogout">Cerrar sesión</button></div>' +
+      '<div class="cta-wrap above-tabs save-bar' + (dirty ? ' show' : '') + '" id="saveBar"><button class="btn btn-green btn-block" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + ic('check', 18) + (ui.busy ? 'Guardando…' : 'Guardar cambios') + '</button></div>' + tabs('rest', 'menu');
     return h;
   }
   function scrEntrega(dbId) {
@@ -858,15 +998,19 @@
       e = ui.ent;
     }
     var i = e.info;
-    var h = '<div class="screen has-cta">' + topbar('Confirmar entrega', null, 'Pido y Ido · domiciliario');
-    if (!i) return h + '<div class="empty">Cargando…</div></div>';
-    if (i.missing) return h + '<div class="empty">No encontramos este pedido.' + (e.msg ? '<br>' + esc(e.msg) : '') + '</div></div>';
-    h += '<div class="card"><div class="b">Domicilio #' + String(i.id).padStart(4, '0') + ' · ' + esc(i.rest) + '</div><div class="small muted mt4">Para ' + esc(i.name) + ' · ' + esc(i.address) + '</div></div>';
-    if (e.done || i.status === 'entregado') return h + '<div class="card mt12 center"><div class="big-check">' + ic('check', 44, { sw: 2.6 }) + '</div><div class="t-h2 mt12">¡Pedido entregado!</div><div class="small muted mt4">Gracias. El restaurante ya lo ve como entregado.</div></div></div>';
-    if (['listo', 'en_camino'].indexOf(i.status) < 0) return h + '<div class="note amber mt12">Este pedido no está en camino (' + esc(STATUS_TXT[i.status] || i.status) + ').</div></div>';
-    return h + '<div class="card mt12"><div class="b">Pídele al cliente el código de 4 números</div><input class="input mt12 center num" id="entPin" inputmode="numeric" maxlength="4" placeholder="• • • •" data-enter="entregaDo" style="font-size:28px;letter-spacing:12px">' +
-      '<div class="err-msg center">' + esc(e.msg || '') + '</div></div></div>' +
-      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="entregaDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Revisando…' : 'Confirmar entrega') + '</button></div>';
+    var h = '<div class="screen flush has-cta auth">' + authHero('Pido y Ido · domiciliario', 'Confirmar entrega', null).replace('auth-tag">Restaurantes', 'auth-tag">Domicilios').replace(IMG_ESC_ASADO, IMG_ESC_MOTO) + '<div class="auth-body">';
+    if (!i) return h + '<div class="skel" style="height:120px"></div><div class="skel mt12" style="height:150px"></div></div></div>';
+    if (i.missing) return h + '<div class="card center"><div class="t-h3">No encontramos este pedido</div><div class="small muted mt4">' + (e.msg ? esc(e.msg) : 'Revisa el enlace que te mandó el restaurante.') + '</div></div></div></div>';
+    h += '<div class="card"><div class="row between"><span class="badge dark">Domicilio #' + String(i.id).padStart(4, '0') + '</span>' + (i.total ? '<span class="b">' + fmt(i.total) + '</span>' : '') + '</div>' +
+      '<div class="route mt12"><div class="route-row"><span class="rdot from">' + ic('store', 14) + '</span><div><div class="xs muted">Recoger en</div><div class="b">' + esc(i.rest) + '</div></div></div>' +
+      '<div class="route-row"><span class="rdot to">' + ic('pin', 14) + '</span><div><div class="xs muted">Entregar a ' + esc(i.name) + '</div><div class="b">' + esc(i.address) + '</div></div></div></div></div>';
+    if (e.done || i.status === 'entregado') return h + '<div class="card mt12 center"><div class="big-check pop">' + ic('check', 44, { sw: 2.6 }) + '</div><div class="t-h2 mt12">¡Pedido entregado!</div><div class="small muted mt4">Gracias. El restaurante ya lo ve como entregado.</div></div></div></div>';
+    if (['listo', 'en_camino'].indexOf(i.status) < 0) return h + '<div class="note amber mt12">Este pedido no está en camino (' + esc(STATUS_TXT[i.status] || i.status) + ').</div></div></div>';
+    return h + '<div class="card mt12 center"><div class="t-h3">Pídele al cliente su código</div><div class="small muted mt4">Son 4 números. El cliente los ve en su app.</div>' +
+      '<label class="pin-wrap mt16"><input id="entPin" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="4" aria-label="Código de 4 números" data-enter="entregaDo" data-pin="1">' +
+      '<span class="pin-boxes" aria-hidden="true"><i></i><i></i><i></i><i></i></span></label>' +
+      '<div class="err-msg center">' + esc(e.msg || '') + '</div></div></div></div>' +
+      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="entregaDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Revisando…' : ic('check', 20) + 'Confirmar entrega') + '</button></div>';
   }
 
   // ---------- Promoter ----------
@@ -1340,10 +1484,10 @@
         '<label class="label mt12" for="dn">Nombre</label><input class="input" id="dn" placeholder="Carne a la llanera" autocomplete="off">' +
         '<label class="label mt12" for="dd">Descripción (opcional)</label><input class="input" id="dd" placeholder="300 g, yuca, papa y ají" autocomplete="off">' +
         '<label class="label mt12" for="dp">Precio</label><input class="input" id="dp" inputmode="numeric" placeholder="25000">' +
-        '<div class="label mt12">Foto</div><div id="dishPh">' + photoPick(ui.dish.img, 'dishImg') + '</div>' +
+        '<div class="label mt12">Foto del plato</div><div id="dishPh">' + photoPick(ui.dish.img, 'dishImg', 'dish') + '</div><div class="xs muted mt4">Una foto propia vende más. Tómala con buena luz, de cerca.</div>' +
         '<div id="dErr" class="err-msg"></div><button class="btn btn-primary btn-block mt16" data-a="dishAdd">Agregar al menú</button>');
     },
-    dishImg: function (el) { ui.dish.img = el.dataset.v; var w = document.getElementById('dishPh'); if (w) w.innerHTML = photoPick(ui.dish.img, 'dishImg'); },
+    dishImg: function (el) { ui.dish.img = el.dataset.v; refreshPick('dish'); },
     dishAdd: function (el) {
       var n = document.getElementById('dn').value.trim(), d = document.getElementById('dd').value.trim(), pr = +String(document.getElementById('dp').value).replace(/\D/g, '');
       if (!n) { document.getElementById('dErr').textContent = 'Escribe el nombre del plato.'; return; }
@@ -1499,10 +1643,13 @@
   document.addEventListener('input', function (ev) {
     var t = ev.target;
     if (t.dataset.m) { setPath(t.dataset.m, t.value); t.classList.remove('err'); }
+    if (t.dataset.pin) { t.value = t.value.replace(/\D/g, '').slice(0, 4); var bx = t.parentNode.querySelectorAll('.pin-boxes i'); for (var k = 0; k < bx.length; k++) { bx[k].textContent = t.value[k] || ''; bx[k].className = k === t.value.length ? 'cur' : ''; } }
+    if (t.dataset.dirty) { var sb = document.getElementById('saveBar'); if (sb) sb.classList.add('show'); }
     if (t.dataset.live === 'q') { ui.q = t.value; var res = document.getElementById('results'); if (res) res.innerHTML = searchResults(); }
   });
   document.addEventListener('change', function (ev) {
     var t = ev.target;
+    if ((t.dataset.file === 'restImg' || t.dataset.file === 'dishImg') && t.files && t.files[0]) { uploadOwnPhoto(t.files[0], t.dataset.file === 'dishImg' ? 'dish' : 'rest'); t.value = ''; return; }
     if (t.dataset.file && t.files && t.files[0]) { (t.dataset.file === 'menu' ? ui.reg : ui.signup)[t.dataset.file] = true; render(); toast('Foto agregada'); }
   });
   document.addEventListener('keydown', function (ev) {
