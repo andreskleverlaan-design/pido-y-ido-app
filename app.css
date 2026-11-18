@@ -300,3 +300,9 @@ textarea.input{min-height:76px;line-height:1.4}
 .welcome-cta{padding:14px 20px calc(22px + var(--safe-b));display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:auto}
 .welcome-login{height:40px;font-size:14px;color:var(--muted)}
 .welcome-login b{color:var(--green);margin-left:4px}
+/* map picker */
+.map-wrap{position:relative;height:340px;border-radius:16px;overflow:hidden;background:var(--input);border:1.5px solid var(--border)}
+.map-wrap #pmap{position:absolute;inset:0}
+.map-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);color:var(--orange);pointer-events:none;z-index:500;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.map-pin svg circle{fill:#fff;stroke:#fff}
+.dashed-btn.need{border-color:var(--orange);color:var(--orange)}

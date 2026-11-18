@@ -204,6 +204,47 @@
   function cartCount() { return cartLines().reduce(function (a, l) { return a + l.qty; }, 0); }
   function cartSubtotal() { return cartLines().reduce(function (a, l) { return a + l.qty * l.price; }, 0); }
   function cartFee() { return S.cart.restId && S.cart.mode === 'dom' ? R(S.cart.restId).fee : 0; }
+  // ---------- Map: pin + delivery zone ----------
+  var TOWN = { lat: 4.6075, lng: -72.9289 }; // Villanueva, Casanare
+  function km(a, b) {
+    var rad = Math.PI / 180, dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 6371 * 2 * Math.asin(Math.sqrt(h));
+  }
+  function hasLoc(r) { return r && typeof r.lat === 'number' && typeof r.lng === 'number'; }
+  // null = fine (or unknown), otherwise distance in km beyond the restaurant's zone
+  function tooFar(r, g) { if (!hasLoc(r) || !g) return null; var d = km(r, g); return d > (r.radius || 3) ? d : null; }
+  function kmTxt(d) { return (Math.round(d * 10) / 10).toString().replace('.', ',') + ' km'; }
+  function mapsLink(g) { return 'https://www.google.com/maps/search/?api=1&query=' + g.lat + ',' + g.lng; }
+  function loadLeaflet(cb) {
+    if (window.L) return cb();
+    var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'vendor/leaflet/leaflet.css'; document.head.appendChild(c);
+    var sc = document.createElement('script'); sc.src = 'vendor/leaflet/leaflet.js'; sc.onload = cb; sc.onerror = function () { toast('No se pudo abrir el mapa. Revisa tu internet.'); }; document.head.appendChild(sc);
+  }
+  // opts: { title, sub, start, zone: {lat,lng,radius}, onPick(pos) }
+  function openMap(opts) {
+    sheet('<div class="t-h2">' + opts.title + '</div><div class="small muted mt4">' + (opts.sub || 'Mueve el mapa hasta que el pin quede encima.') + '</div>' +
+      '<div class="map-wrap mt12"><div id="pmap"></div><div class="map-pin">' + ic('pin', 40, { fill: true, sw: 1.5 }) + '</div></div>' +
+      '<div id="mapMsg" class="small mt8 center muted"></div>' +
+      '<button class="btn btn-outline btn-block mt8" data-a="mapGps">' + ic('map', 18) + ' Usar mi ubicación (GPS)</button>' +
+      '<button class="btn btn-primary btn-block mt8" data-a="mapOk">Confirmar aquí</button>');
+    ui.mapPick = opts;
+    loadLeaflet(function () {
+      var el = document.getElementById('pmap'); if (!el || !window.L) return;
+      var st = opts.start || TOWN;
+      var m = L.map(el, { zoomControl: true, attributionControl: true }).setView([st.lat, st.lng], opts.start ? 17 : 15);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+      if (opts.zone && hasLoc(opts.zone)) L.circle([opts.zone.lat, opts.zone.lng], { radius: (opts.zone.radius || 3) * 1000, color: '#1F4D3A', weight: 2, fillOpacity: 0.06 }).addTo(m);
+      var upd = function () {
+        var msg = document.getElementById('mapMsg'); if (!msg || !opts.zone) return;
+        var c = m.getCenter(), d = tooFar(opts.zone, { lat: c.lat, lng: c.lng });
+        msg.innerHTML = d ? '<b style="color:#B02E1D">Fuera de la zona de entrega (' + kmTxt(d) + ')</b>' : '';
+      };
+      m.on('moveend', upd); upd();
+      ui.map = m;
+      setTimeout(function () { m.invalidateSize(); }, 200);
+    });
+  }
 
   // ---------- UI helpers ----------
   function toast(msg) {
@@ -416,11 +457,13 @@
     var short = r.min - sub;
     var cashVal = co.cash === 'exact' ? total : +co.cash;
     if (co.cash !== 'exact' && cashVal <= total) { co.cash = 'exact'; cashVal = total; }
+    var far = S.cart.mode === 'dom' && tooFar(r, co.geo);
     var h = '<div class="screen has-cta">' + topbar('Confirmar pedido', '/r/' + r.id, r.name);
     if (S.cart.mode === 'dom') {
       h += '<div class="card"><div class="row b" style="gap:8px"><span class="orange">' + ic('pin', 18) + '</span>¿Dónde te lo llevamos?</div>' +
         '<textarea class="input mt12" id="addr" data-m="user.address" rows="2" placeholder="Barrio, calle y cómo llegar (ej.: dos casas después de la iglesia, puerta azul)">' + esc(S.user.address) + '</textarea>' +
-        '<button class="dashed-btn mt8' + (co.geo ? ' done' : '') + '" data-a="geo">' + ic(co.geo ? 'check' : 'map', 18) + (co.geo ? 'Ubicación guardada en el mapa' : 'Poner pin en el mapa (opcional)') + '</button>' +
+        '<button class="dashed-btn mt8' + (co.geo ? ' done' : '') + (ONLINE && !co.geo ? ' need' : '') + '" data-a="geo">' + ic(co.geo ? 'check' : 'map', 18) + (co.geo ? 'Casa marcada en el mapa · cambiar' : ONLINE ? 'Marca tu casa en el mapa' : 'Poner pin en el mapa (opcional)') + '</button>' +
+        (far ? '<div class="note amber mt8">Estás a ' + kmTxt(km(r, co.geo)) + ' y ' + esc(r.short) + ' entrega hasta ' + kmTxt(r.radius || 3) + '. Puedes elegir <b>Recoger</b>.</div>' : '') +
         '<div class="row mt12" style="gap:10px"><div class="grow"><label class="label" for="nm">Tu nombre</label><input class="input" id="nm" data-m="user.name" value="' + esc(S.user.name) + '" autocomplete="name"></div>' +
         '<div class="grow"><label class="label" for="ph">Celular</label><input class="input" id="ph" data-m="user.phone" inputmode="tel" value="' + esc(S.user.phone) + '" autocomplete="tel"></div></div>' +
         '<label class="label mt12" for="note">Nota para la cocina</label><input class="input" id="note" data-m="co.note" value="' + esc(co.note) + '" placeholder="Ej.: carne término medio, sin ají"></div>';
@@ -447,7 +490,7 @@
       '<div class="divider dashed"></div><div class="row between"><span class="t-h3">Total</span><span class="num" style="font-size:18px">' + fmt(total) + '</span></div></div>' +
       (short > 0 ? '<div class="note amber mt12">El pedido mínimo es ' + fmt(r.min) + '. Te faltan <b>' + fmt(short) + '</b>. <a class="b" href="#/r/' + r.id + '" style="text-decoration:underline">Agregar más</a></div>' : '') +
       '<button class="btn btn-ghost btn-block mt8" data-a="clearCart">Vaciar carrito</button>';
-    h += '</div><div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="placeOrder"' + (short > 0 || !S.open[r.id] || ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Enviando pedido…' : S.open[r.id] ? 'Hacer pedido · ' + fmt(total) : 'Restaurante cerrado') + '</button></div>';
+    h += '</div><div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="placeOrder"' + (short > 0 || !S.open[r.id] || ui.busy || far ? ' disabled' : '') + '>' + (ui.busy ? 'Enviando pedido…' : S.open[r.id] ? 'Hacer pedido · ' + fmt(total) : 'Restaurante cerrado') + '</button></div>';
     return h;
   }
   function statusLine(o) {
@@ -592,6 +635,7 @@
       '<div class="stat"><div class="xs muted">Ventas</div><div class="v">$' + Math.round((base[1] + today.reduce(function (a, o) { return a + o.total; }, 0)) / 1000) + 'k</div><div class="xs muted">COP</div></div>' +
       '<div class="stat"><div class="xs muted">Promedio</div><div class="v">' + avgMin + '</div><div class="xs muted">min</div></div></div>' +
       (ONLINE && !r.dishes.length ? '<a class="note amber mt12" style="display:block" href="#/rest/menu"><b>Agrega tu menú</b> para que los clientes te encuentren. Toca aquí.</a>' : '') +
+      (ONLINE && r.dishes.length && !hasLoc(r) ? '<a class="note amber mt12" style="display:block" href="#/rest/menu"><b>Marca tu restaurante en el mapa</b> para que solo te pidan de tu zona de entrega. Toca aquí.</a>' : '') +
       (S.open[r.id] ? '' : '<div class="note amber mt12"><b>Estás cerrado.</b> ' + (ONLINE ? 'Cuando quieras recibir pedidos, toca <b>Abierto</b> arriba.' : 'Los clientes ven tu menú, pero no pueden pedir.') + '</div>') +
       '<div class="chips scroll mt16">' + [['nuevos', 'Nuevos'], ['preparando', 'Preparando'], ['camino', 'En camino'], ['hechos', 'Entregados']].map(function (t) {
         var n = groups[t[0]].length;
@@ -609,7 +653,7 @@
   }
   function restOrderCard(o) {
     var items = o.items.map(function (i) { return '<div class="row between" style="padding:2px 0"><span><b>' + i.qty + '×</b> ' + esc(i.name) + '</span><span>' + fmt(i.qty * i.price) + '</span></div>'; }).join('');
-    var cust = '<div class="small mt8"><b>' + esc(o.customer.name) + '</b> · ' + (o.mode === 'rec' ? 'Recoge en el local' : esc(o.customer.address)) + '</div><div class="small mt4"><b>' + payTxt(o).split(' · ')[0] + '</b>' + (payTxt(o).indexOf(' · ') > 0 ? ' · ' + payTxt(o).split(' · ').slice(1).join(' · ') : '') + '</div>';
+    var cust = '<div class="small mt8"><b>' + esc(o.customer.name) + '</b> · ' + (o.mode === 'rec' ? 'Recoge en el local' : esc(o.customer.address)) + (o.mode === 'dom' && o.geo ? ' · <a class="link" target="_blank" rel="noopener" href="' + mapsLink(o.geo) + '">Ver en el mapa</a>' : '') + '</div><div class="small mt4"><b>' + payTxt(o).split(' · ')[0] + '</b>' + (payTxt(o).indexOf(' · ') > 0 ? ' · ' + payTxt(o).split(' · ').slice(1).join(' · ') : '') + '</div>';
     var note = o.note ? '<div class="note grey mt8">Nota: ' + esc(o.note) + '</div>' : '';
     if (o.status === 'recibido') {
       return '<div class="order-card"><div class="oh"><span class="row" style="gap:8px"><span class="pulse"></span>Pedido nuevo · ' + ago(o.createdAt) + '</span><span>#' + o.id + '</span></div><div class="ob">' + items + note + '<div class="divider"></div>' + cust +
@@ -659,6 +703,7 @@
     return '*Domicilio #' + o.id + '* · ' + r.name + '\n' +
       'Recoger: ' + r.address + '\n' +
       'Entregar: ' + o.customer.address + '\n' +
+      (o.geo ? 'Mapa: ' + mapsLink(o.geo) + '\n' : '') +
       'Cliente: ' + o.customer.name + ' · ' + phoneFmt(o.customer.phone) + '\n' +
       cash + '\n' +
       (ONLINE ? 'Al entregar, pide al cliente el código de 4 números y confírmalo aquí: ' + location.href.split('#')[0] + '#/entrega/' + o.dbId
@@ -778,7 +823,7 @@
   }
   function scrRestMenu() {
     var r = R(S.restId);
-    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, img: r.img, cats: r.cats.slice() });
+    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, img: r.img, cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3 });
     var chip = function (key, val, label) { return '<button class="chip sm' + (String(f[key]) === String(val) ? ' on' : '') + '" data-a="rmSet" data-k="' + key + '" data-v="' + esc(val) + '">' + label + '</button>'; };
     var h = '<div class="screen has-tabs">' + restHeader(r) + '<h1 class="t-title mt20" style="font-size:22px">Tu menú</h1>' +
       '<div class="small muted mt4">Lo que ven los clientes. Los cambios se ven al instante.</div><div class="card mt12" style="padding:4px 14px">' +
@@ -793,7 +838,9 @@
       '<div class="field"><label class="label" for="rm3">Dirección</label><input class="input" id="rm3" data-m="ui.rm.address" value="' + esc(f.address) + '"></div>' +
       '<div class="row" style="gap:10px"><div class="grow field"><label class="label" for="rm4">WhatsApp</label><input class="input" id="rm4" data-m="ui.rm.phone" inputmode="tel" value="' + esc(f.phone) + '"></div>' +
       '<div class="grow field"><label class="label" for="rm5">Nequi / Daviplata</label><input class="input" id="rm5" data-m="ui.rm.nequi" inputmode="tel" value="' + esc(f.nequi) + '"></div></div>' +
-      '<div class="label mt8">Domicilio</div><div class="chips">' + [0, 2000, 3000, 4000, 5000].map(function (v) { return chip('fee', v, v ? fmt(v) : 'Gratis'); }).join('') + '</div>' +
+      '<div class="label mt8">Ubicación del restaurante</div><button class="dashed-btn' + (hasLoc(f) ? ' done' : ' need') + '" data-a="rmLoc">' + ic(hasLoc(f) ? 'check' : 'map', 18) + (hasLoc(f) ? 'Marcado en el mapa · cambiar' : 'Marcar mi restaurante en el mapa') + '</button>' +
+      '<div class="label mt12">¿Hasta dónde entregas?</div><div class="chips">' + [2, 3, 5, 8].map(function (v) { return chip('radius', v, v + ' km'); }).join('') + '</div>' +
+      '<div class="label mt12">Domicilio</div><div class="chips">' + [0, 2000, 3000, 4000, 5000].map(function (v) { return chip('fee', v, v ? fmt(v) : 'Gratis'); }).join('') + '</div>' +
       '<div class="label mt12">Pedido mínimo</div><div class="chips">' + [0, 10000, 15000, 20000].map(function (v) { return chip('min', v, v ? fmt(v) : 'Sin mínimo'); }).join('') + '</div>' +
       '<div class="label mt12">Tiempo de entrega</div><div class="chips">' + ['20–30 min', '30–40 min', '40–60 min'].map(function (v) { return chip('eta', v, v); }).join('') + '</div>' +
       '<div class="label mt12">Categorías</div><div class="chips">' + CATS.map(function (c) { return '<button class="chip sm' + (f.cats.indexOf(c[0]) >= 0 ? ' on' : '') + '" data-a="rmCat" data-v="' + c[0] + '">' + c[0] + '</button>'; }).join('') + '</div>' +
@@ -1021,6 +1068,12 @@
     cash: function (el) { S.co.cash = el.dataset.v; save(); render(); },
     clearCart: function () { S.cart = { restId: null, items: {}, mode: 'dom' }; save(); go('/inicio'); },
     geo: function () {
+      if (ONLINE) {
+        var r = R(S.cart.restId);
+        openMap({ title: '¿Dónde está tu casa?', sub: 'Mueve el mapa hasta que el pin quede encima de tu casa.', start: S.co.geo || (hasLoc(r) ? r : null),
+          zone: hasLoc(r) ? r : null, onPick: function (g) { S.co.geo = g; save(); render(); toast('Casa marcada'); } });
+        return;
+      }
       if (!navigator.geolocation) { toast('Tu celular no permite ubicación'); return; }
       toast('Buscando tu ubicación…');
       navigator.geolocation.getCurrentPosition(function (p) { S.co.geo = { lat: +p.coords.latitude.toFixed(5), lng: +p.coords.longitude.toFixed(5) }; save(); render(); toast('Ubicación guardada'); },
@@ -1031,6 +1084,8 @@
       var r = R(S.cart.restId);
       var addr = (S.user.address || '').trim(), phone = String(S.user.phone || '').replace(/\D/g, '');
       if (S.cart.mode === 'dom' && addr.length < 6) { toast('Escribe tu dirección para que te encuentren'); var a = document.getElementById('addr'); if (a) { a.classList.add('err'); a.focus(); } return; }
+      if (ONLINE && S.cart.mode === 'dom' && !S.co.geo) { toast('Marca tu casa en el mapa'); A.geo(); return; }
+      if (ONLINE && S.cart.mode === 'dom' && tooFar(r, S.co.geo)) { toast('Estás fuera de la zona de entrega. Elige Recoger.'); return; }
       if (!(S.user.name || '').trim()) { toast('Escribe tu nombre'); return; }
       if (phone.length < 10) { toast('Escribe tu celular (10 números)'); var pe = document.getElementById('ph'); if (pe) { pe.classList.add('err'); pe.focus(); } return; }
       var sub = cartSubtotal(), fee = cartFee(), total = sub + fee;
@@ -1045,7 +1100,7 @@
       };
       var finish = function () {
         S.orders.unshift(o);
-        S.cart = { restId: null, items: {}, mode: 'dom' }; S.co.note = ''; S.co.cash = 'exact'; S.co.geo = null;
+        S.cart = { restId: null, items: {}, mode: 'dom' }; S.co.note = ''; S.co.cash = 'exact'; if (!ONLINE) S.co.geo = null;
         save(); go('/pedido/' + o.id); toast('¡Pedido enviado a ' + r.short + '!');
       };
       if (!ONLINE) return finish();
@@ -1235,6 +1290,22 @@
     waSend: function (el) { var i = document.getElementById('wamsg'); var v = (i && i.value || '').trim(); if (!v) return; waReply(el.dataset.id, v); },
     // promoter
     promoRest: function (el) { S.promo.restId = el.dataset.v; save(); render(); },
+    mapGps: function () {
+      if (!navigator.geolocation) { toast('Tu celular no permite ubicación'); return; }
+      toast('Buscando tu ubicación…');
+      navigator.geolocation.getCurrentPosition(function (p) { if (ui.map) ui.map.setView([p.coords.latitude, p.coords.longitude], 18); },
+        function () { toast('No pudimos ver tu ubicación. Mueve el mapa con el dedo.'); }, { enableHighAccuracy: true, timeout: 10000 });
+    },
+    mapOk: function () {
+      if (!ui.map || !ui.mapPick) return;
+      var c = ui.map.getCenter(), g = { lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5) }, cb = ui.mapPick.onPick;
+      ui.map.remove(); ui.map = null; ui.mapPick = null; sheet(null); cb(g);
+    },
+    rmLoc: function () {
+      var f = ui.rm;
+      openMap({ title: '¿Dónde está tu restaurante?', sub: 'Mueve el mapa hasta que el pin quede encima de tu local.', start: hasLoc(f) ? f : null,
+        onPick: function (g) { f.lat = g.lat; f.lng = g.lng; render(); toast('Ubicación marcada. Toca Guardar datos.'); } });
+    },
     // online: restaurant account, menu, rider delivery link
     restLoginDo: function () {
       var f = ui.login || {}, ph = String(f.phone || '').replace(/\D/g, '');
@@ -1249,16 +1320,17 @@
     restLogout: function () {
       CLOUD.restLogout().then(function () { S.restId = null; S.myRiders = {}; S.orders = S.orders.filter(function (o) { return o.mine; }); ui.rm = null; save(); sheet(null); go('/'); toast('Sesión cerrada'); sync(true); });
     },
-    rmSet: function (el) { var k = el.dataset.k; ui.rm[k] = (k === 'fee' || k === 'min') ? +el.dataset.v : el.dataset.v; render(); },
+    rmSet: function (el) { var k = el.dataset.k; ui.rm[k] = (k === 'fee' || k === 'min' || k === 'radius') ? +el.dataset.v : el.dataset.v; render(); },
     rmCat: function (el) { var c = ui.rm.cats, i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else c.push(el.dataset.v); render(); },
     rmImg: function (el) { ui.rm.img = el.dataset.v; render(); },
     rmSave: function () {
       var f = ui.rm; if (!f || ui.busy) return;
       if (!String(f.name || '').trim()) { toast('Escribe el nombre'); return; }
       var fields = { name: f.name.trim(), short: f.name.trim().replace(/^(asadero|restaurante|pizzería|pizzeria|cafetería|cafeteria)\s+/i, ''), sub: String(f.sub || '').trim(), address: String(f.address || '').trim(),
-        phone: String(f.phone || '').replace(/\D/g, ''), nequi: String(f.nequi || '').trim(), fee: +f.fee || 0, min: +f.min || 0, eta: f.eta, img: f.img, cats: f.cats.slice() };
+        phone: String(f.phone || '').replace(/\D/g, ''), nequi: String(f.nequi || '').trim(), fee: +f.fee || 0, min: +f.min || 0, eta: f.eta, img: f.img, cats: f.cats.slice(), radius_km: +f.radius || 3 };
+      if (hasLoc(f)) { fields.lat = f.lat; fields.lng = f.lng; }
       ui.busy = true; render();
-      CLOUD.updateRest(fields).then(function () { ui.busy = false; Object.assign(R(S.restId), fields); ui.rm = null; render(); toast('Datos guardados'); sync(); },
+      CLOUD.updateRest(fields).then(function () { ui.busy = false; Object.assign(R(S.restId), fields, { radius: fields.radius_km }); ui.rm = null; render(); toast('Datos guardados'); sync(); },
         function (e) { ui.busy = false; render(); toast(errTxt(e)); });
     },
     dishForm: function () {
@@ -1335,6 +1407,8 @@
     var m = String((e && (e.message || e.error_description)) || e || '');
     if (/closed/.test(m)) return 'El restaurante acaba de cerrar. Intenta más tarde.';
     if (/below_min/.test(m)) return 'No alcanza el pedido mínimo.';
+    if (/too_far/.test(m)) return 'Estás fuera de la zona de entrega. Elige Recoger.';
+    if (/no_geo/.test(m)) return 'Marca tu casa en el mapa.';
     if (/dish_gone/.test(m)) return 'Un plato ya no está en el menú. Revisa tu carrito.';
     if (/already registered|already_exists|duplicate key.*users/i.test(m)) return 'Ese número ya tiene cuenta. Inicia sesión.';
     if (/confirm_email_on/.test(m)) return 'Falta un ajuste: en Supabase apaga "Confirm email".';

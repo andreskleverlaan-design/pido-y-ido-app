@@ -38,7 +38,8 @@
       id: r.id, owner: r.owner, name: r.name, short: r.short || r.name, sub: r.sub || '', img: r.img || '', cats: r.cats || [],
       eta: r.eta, pickup: r.pickup, min: r.min, fee: r.fee, address: r.address, phone: r.phone, nequi: r.nequi || r.phone,
       dishes: Array.isArray(r.dishes) ? r.dishes : [], open: r.open,
-      rating: r.rating_count ? Number(r.rating_sum) / r.rating_count : 0, count: r.rating_count
+      rating: r.rating_count ? Number(r.rating_sum) / r.rating_count : 0, count: r.rating_count,
+      lat: r.lat == null ? null : Number(r.lat), lng: r.lng == null ? null : Number(r.lng), radius: r.radius_km == null ? 3 : Number(r.radius_km)
     };
   }
   function mapOrder(o, mine, pin) {
