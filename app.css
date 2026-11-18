@@ -273,3 +273,30 @@ textarea.input{min-height:76px;line-height:1.4}
 .photo-up.done{border-style:solid;border-color:var(--green);color:var(--green);background:var(--gsoft)}
 .photo-up input{position:absolute;inset:0;opacity:0;cursor:pointer}
 @media (min-width:520px){body{padding:0}}
+
+/* Splash (00a) */
+.splash{position:fixed;inset:0;z-index:500;background:var(--green);display:flex;align-items:center;justify-content:center;transition:opacity .35s}
+.splash.out{opacity:0;pointer-events:none}
+.splash-mid{display:flex;flex-direction:column;align-items:center;gap:22px;animation:pop .5s ease-out}
+.splash-mid span{font-family:var(--head);font-weight:500;font-size:34px;letter-spacing:-.8px;color:#fff}
+.splash-foot{position:absolute;bottom:calc(44px + var(--safe-b));font-size:12px;font-weight:500;letter-spacing:2.4px;color:#9DBDAE}
+@keyframes pop{from{transform:scale(.92);opacity:0}}
+
+/* Welcome / role picker (00b) */
+.welcome{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+.welcome-hero{height:calc(300px + var(--safe-t));position:relative;flex:none;overflow:hidden}
+.welcome-hero .ph{background:linear-gradient(135deg,#7A3A1A,#C9632E)}
+.welcome-fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,30,24,.35) 0%,rgba(18,30,24,.15) 40%,rgba(250,248,245,1) 100%)}
+.welcome-brand{position:absolute;left:20px;top:calc(22px + var(--safe-t));display:flex;align-items:center;gap:10px;font-family:var(--head);font-weight:500;font-size:19px;letter-spacing:-.3px;color:#fff}
+.welcome-title{position:absolute;left:20px;right:20px;bottom:6px;display:flex;flex-direction:column;gap:6px}
+.welcome-title h1{font-family:var(--head);font-weight:600;font-size:28px;line-height:1.15;letter-spacing:-.6px}
+.welcome-roles{padding:18px 20px 0;display:flex;flex-direction:column;gap:10px}
+.role-card{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:16px;background:#fff;box-shadow:inset 0 0 0 1px var(--border2);text-align:left;width:100%}
+.role-card.on{box-shadow:inset 0 0 0 2px var(--green)}
+.role-card .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none;background:var(--track);color:var(--text)}
+.role-card.on .ic{background:var(--green);color:#fff}
+.role-card .rt{display:block;font-size:15px;font-weight:600}
+.role-card .rs{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.welcome-cta{padding:14px 20px calc(22px + var(--safe-b));display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:auto}
+.welcome-login{height:40px;font-size:14px;color:var(--muted)}
+.welcome-login b{color:var(--green);margin-left:4px}

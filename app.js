@@ -74,6 +74,7 @@
     chart: '<path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/>',
     refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/>',
     install: '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01M12 6v7M9 10l3 3 3-3"/>',
+    gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C9.5 3 11 5 12 8c1-3 2.5-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
     fire: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.3.4 1.5 1.7 2.8 3.5 2.8z"/>'
   };
   function ic(name, size, opts) {
@@ -237,31 +238,47 @@
   function itemsTxt(o) { return o.items.map(function (i) { return i.qty + '× ' + i.name; }).join(', '); }
 
   // ---------- Screens: start ----------
-  function scrStart() {
+  function installCard() {
     var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    if (standalone) return '';
     var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    var install = '';
-    if (!standalone) {
-      install = '<div class="card mt16"><div class="row top"><div class="icon-btn green">' + ic('install', 20) + '</div><div class="grow"><div class="b">Instálala como app</div>' +
-        (ui.installEvt ? '<div class="small muted mt4">Queda en tu pantalla de inicio, como cualquier app.</div><button class="btn btn-green btn-sm mt8" data-a="install">Instalar Pido y Ido</button>'
-          : ios ? '<div class="small muted mt4">En Safari toca <b>Compartir</b> (el cuadro con la flecha) y luego <b>Agregar a inicio</b>.</div>'
-            : '<div class="small muted mt4">En Chrome abre el menú <b>⋮</b> y toca <b>Instalar app</b> o <b>Agregar a la pantalla principal</b>.</div>') +
-        '</div></div></div>';
-    }
-    var roles = [
-      ['/inicio', 'bag', '#FFE9DE', '#B9440F', 'Quiero pedir comida', 'Cliente · restaurantes, carrito, pago y seguimiento'],
-      ['/rest', 'store', '#E3EFE8', '#1F4D3A', 'Tengo un restaurante', 'Recibir pedidos y enviarlos con tu domiciliario'],
-      ['/dom', 'bike', '#FFF1E0', '#8A4A00', 'Soy domiciliario', 'Bolsa de domiciliarios y pedidos por WhatsApp'],
-      ['/promo', 'qr', '#EAE6F5', '#4A3C7A', 'Recomiendo y gano', 'Tu enlace y QR de promotor, y tus ganancias']
-    ];
-    return '<div class="start-hero"><div class="row" style="gap:10px">' + logo(48, 'white') + '<div><div style="font-family:var(--head);font-weight:500;font-size:26px;letter-spacing:-.6px;line-height:1.1">Pido y Ido</div><div class="small" style="opacity:.85">Villanueva, Casanare</div></div></div>' +
-      '<h1 class="mt20" style="font-size:26px;line-height:1.15;letter-spacing:-.4px">Pide comida del pueblo y te la llevan a la casa.</h1>' +
-      '<p class="small" style="opacity:.85;margin:8px 0 0">Prototipo de demostración. Todo funciona, pero los datos quedan solo en este celular y no se cobra nada.</p></div>' +
-      '<div class="screen" style="min-height:0;padding-top:20px"><div class="t-h2" style="margin-bottom:12px">¿Cómo quieres entrar?</div>' +
-      roles.map(function (r) {
-        return '<a class="role" href="#' + r[0] + '"><div class="ic" style="background:' + r[2] + ';color:' + r[3] + '">' + ic(r[1], 26) + '</div><div class="grow"><div class="t-h3">' + r[4] + '</div><div class="small muted">' + r[5] + '</div></div>' + ic('right', 20) + '</a>';
-      }).join('') + install +
-      '<button class="btn btn-ghost btn-block mt16" data-a="resetAsk">' + ic('refresh', 18) + ' Reiniciar datos de demo</button></div>';
+    return '<div class="card mt12"><div class="row top"><div class="icon-btn green">' + ic('install', 20) + '</div><div class="grow"><div class="b">Instálala como app</div>' +
+      (ui.installEvt ? '<div class="small muted mt4">Queda en tu pantalla de inicio, como cualquier app.</div><button class="btn btn-green btn-sm mt8" data-a="install">Instalar Pido y Ido</button>'
+        : ios ? '<div class="small muted mt4">En Safari toca <b>Compartir</b> (el cuadro con la flecha) y luego <b>Agregar a inicio</b>.</div>'
+          : '<div class="small muted mt4">En Chrome abre el menú <b>⋮</b> y toca <b>Instalar app</b> o <b>Agregar a la pantalla principal</b>.</div>') +
+      '</div></div></div>';
+  }
+  var ROLES = [
+    { id: 'cliente', icon: 'bag', title: 'Quiero pedir comida', sub: 'Restaurantes de tu barrio', cta: 'Empezar a pedir', home: '/inicio' },
+    { id: 'rest', icon: 'store', title: 'Tengo un restaurante', sub: 'Recibe pedidos y despacha', cta: 'Registrar mi restaurante', home: '/rest', first: '/rest/registro' },
+    { id: 'rider', icon: 'bike', title: 'Soy domiciliario', sub: 'Encuentra restaurantes que te contraten', cta: 'Crear mi perfil', home: '/dom', first: '/dom/perfil' },
+    { id: 'promo', icon: 'gift', title: 'Quiero recomendar y ganar', sub: 'Comparte tu enlace y gana', cta: 'Obtener mi enlace', home: '/promo' }
+  ];
+  function roleById(id) { for (var i = 0; i < ROLES.length; i++) if (ROLES[i].id === id) return ROLES[i]; return ROLES[0]; }
+  function scrStart() {
+    var sel = ui.rolePick || S.role || 'cliente';
+    var cur = roleById(sel);
+    return '<div class="welcome"><div class="welcome-hero">' + photo(IMG.asado, '', 'position:absolute;inset:0;height:100%;width:100%') +
+      '<div class="welcome-fade"></div><div class="welcome-brand">' + logo(36, 'icon') + '<span>Pido y Ido</span></div>' +
+      '<div class="welcome-title"><h1>La comida de Villanueva, a tu puerta</h1><div class="muted" style="font-size:15px">¿Cómo quieres usar la app?</div></div></div>' +
+      '<div class="welcome-roles">' + ROLES.map(function (r) {
+        var on = r.id === sel;
+        return '<button class="role-card' + (on ? ' on' : '') + '" data-a="rolePick" data-v="' + r.id + '"><span class="ic">' + ic(r.icon, 22, { sw: 1.75 }) + '</span><span class="grow"><span class="rt">' + r.title + '</span><span class="rs">' + r.sub + (r.id === 'promo' ? ' ' + S.promo.pct + '%' : '') + '</span></span><span class="ring"></span></button>';
+      }).join('') + '</div>' +
+      '<div class="welcome-cta"><button class="btn btn-primary btn-block" style="height:58px;font-size:17px;font-weight:600" data-a="roleGo">' + cur.cta + '</button>' +
+      '<button class="welcome-login" data-a="login">¿Ya tienes cuenta? <b>Iniciar sesión</b></button>' +
+      '<div class="xs muted center">Prototipo de demostración: los datos quedan solo en este celular.</div></div></div>';
+  }
+  function scrRestRegistro() {
+    var f = ui.reg || (ui.reg = { name: '', phone: '', addr: '' });
+    return '<div class="screen has-cta" style="padding-bottom:calc(170px + var(--safe-b))">' + topbar('Registra tu restaurante', '/', 'Gratis para empezar') +
+      '<div class="muted small" style="margin-top:-6px">En 10 minutos recibes pedidos. Nosotros pasamos tu menú a la app con una foto de la carta.</div>' +
+      '<div class="card mt16"><div class="field"><label class="label" for="rg1">Nombre del restaurante</label><input class="input" id="rg1" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="Asadero El Llanero"></div>' +
+      '<div class="field"><label class="label" for="rg2">WhatsApp del negocio</label><input class="input" id="rg2" data-m="ui.reg.phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="310 000 0000"></div>' +
+      '<div class="field"><label class="label" for="rg3">Dirección</label><input class="input" id="rg3" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro"></div>' +
+      '<label class="photo-up mt12' + (f.menu ? ' done' : '') + '" style="width:100%">' + ic(f.menu ? 'check' : 'camera', 18) + (f.menu ? 'Foto de la carta agregada' : 'Foto de tu carta (opcional)') + '<input type="file" accept="image/*" data-file="menu"></label></div>' +
+      '<div class="note amber mt12">En la demo te mostramos el panel de <b>Asadero El Llanero</b> con pedidos de ejemplo, para que veas cómo funciona.</div></div>' +
+      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="regDo">Ver mi panel</button><a class="btn btn-ghost btn-block" style="height:44px" href="#/rest">Saltar</a></div>';
   }
 
   // ---------- Customer ----------
@@ -500,7 +517,7 @@
       '<a class="menu-row" href="#/rest"><span class="mi">' + ic('store', 20) + '</span><span class="grow">Panel del restaurante</span>' + ic('right', 18) + '</a>' +
       '<a class="menu-row" href="#/"><span class="mi">' + ic('swap', 20) + '</span><span class="grow">Cambiar de rol</span>' + ic('right', 18) + '</a>' +
       '<button class="menu-row" data-a="resetAsk"><span class="mi" style="background:#FDE8E6;color:#A1291B">' + ic('refresh', 20) + '</span><span class="grow">Reiniciar datos de demo</span></button></div>' +
-      '<div class="xs muted center mt16">Pido y Ido · prototipo de demostración</div></div>' + tabs('cliente', 'perfil');
+      installCard() + '<div class="xs muted center mt16">Pido y Ido · prototipo de demostración</div></div>' + tabs('cliente', 'perfil');
   }
 
   // ---------- Restaurant ----------
@@ -774,6 +791,7 @@
       case 'pedido': return scrPedido(p[1]);
       case 'calificar': return scrCalificar(p[1]);
       case 'rest':
+        if (p[1] === 'registro') return scrRestRegistro();
         if (p[1] === 'enviar') return scrEnviar(p[2]);
         if (p[1] === 'domiciliarios') return scrMisRiders();
         if (p[1] === 'bolsa') return scrBolsa(true);
@@ -920,6 +938,18 @@
       sheet('<div class="t-h2">¿Reiniciar la demo?</div><div class="muted mt8">Se borran los pedidos, domiciliarios y cambios que hiciste en este celular, y vuelven los datos de ejemplo.</div><button class="btn btn-primary btn-block mt16" data-a="reset">Sí, reiniciar</button><button class="btn btn-ghost btn-block mt8" data-a="closeSheet">Cancelar</button>');
     },
     reset: function () { S = seed(); ui.rate = null; ui.signup = null; ui.choose = {}; save(); sheet(null); go('/'); toast('Demo reiniciada'); },
+    rolePick: function (el) { ui.rolePick = el.dataset.v; render(); },
+    roleGo: function () {
+      var r = roleById(ui.rolePick || S.role || 'cliente'), firstTime = !(S.seen || {})[r.id];
+      S.role = r.id; S.seen = S.seen || {}; S.seen[r.id] = true; ui.rolePick = null; save();
+      go(firstTime && r.first && !(r.id === 'rider' && S.myProfile) ? r.first : r.home);
+    },
+    login: function () { toast('En la demo no necesitas cuenta. Elige cómo quieres usar la app.'); },
+    regDo: function () {
+      var f = ui.reg || {};
+      if (f.name && f.name.trim()) toast('¡Bienvenido, ' + f.name.trim() + '! Así se ve tu panel.');
+      ui.reg = null; go('/rest?r=llanero');
+    },
     install: function () { if (ui.installEvt) { ui.installEvt.prompt(); ui.installEvt.userChoice.then(function () { ui.installEvt = null; render(); }); } },
     // restaurant
     pickRest: function () {
@@ -1074,7 +1104,7 @@
   });
   document.addEventListener('change', function (ev) {
     var t = ev.target;
-    if (t.dataset.file && t.files && t.files[0]) { ui.signup[t.dataset.file] = true; render(); toast('Foto agregada'); }
+    if (t.dataset.file && t.files && t.files[0]) { (t.dataset.file === 'menu' ? ui.reg : ui.signup)[t.dataset.file] = true; render(); toast('Foto agregada'); }
   });
   document.addEventListener('keydown', function (ev) {
     var t = ev.target;
@@ -1088,5 +1118,15 @@
     if ((p === 'pedido' || p === 'rest') && !document.querySelector('.sheet-bg') && !(document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName))) render();
   }, 20000);
 
+  // ---------- Splash + first route ----------
+  (function boot() {
+    var h = location.hash.replace(/^#/, '');
+    if ((!h || h === '/') && S.role) location.replace('#' + roleById(S.role).home);
+    var sp = document.createElement('div');
+    sp.className = 'splash';
+    sp.innerHTML = '<div class="splash-mid">' + logo(104, 'white') + '<span>Pido y Ido</span></div><span class="splash-foot">VILLANUEVA · CASANARE</span>';
+    document.body.appendChild(sp);
+    setTimeout(function () { sp.classList.add('out'); setTimeout(function () { sp.remove(); }, 400); }, 1500);
+  })();
   render();
 })();
