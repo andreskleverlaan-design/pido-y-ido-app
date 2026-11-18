@@ -1,6 +1,6 @@
 /* Pido y Ido service worker: app works offline after first visit */
-var CACHE = 'pidoyido-v3';
-var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'qrcode.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png'];
+var CACHE = 'pidoyido-v4';
+var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'qrcode.js', 'config.js', 'cloud.js', 'vendor/supabase.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); })); });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== CACHE && k !== 'pidoyido-img'; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));

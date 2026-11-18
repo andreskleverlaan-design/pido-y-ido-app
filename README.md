@@ -3,7 +3,23 @@
 Mobiele web-app (PWA) voor eten bestellen in Villanueva, Casanare. Spaanse interface.
 Werkt op elke telefoon in de browser en kan op het beginscherm worden gezet als app.
 
-**Let op:** dit is een demo. Alle gegevens blijven op het eigen toestel (localStorage), er is geen server en er wordt niets afgerekend.
+De app heeft twee standen:
+- **Demo** (als `config.js` leeg is, of met `?demo` achter het adres): alle gegevens blijven op het eigen toestel, met voorbeeldrestaurants.
+- **Online** (als `config.js` de Supabase-gegevens heeft): een bestelling op de ene telefoon komt echt binnen bij het restaurant op een andere telefoon. Er wordt niets afgerekend in de app (contant / Nequi / Daviplata).
+
+## Online stand (Supabase, gratis plan)
+- `supabase/setup.sql`: alle tabellen, beveiliging en acties. Plak in Supabase > SQL Editor > Run (mag vaker).
+- In Supabase > Authentication > Sign In / Providers: **Allow anonymous sign-ins** aan, en bij Email **Confirm email** uit.
+- `config.js`: `supabaseUrl` (Project URL) en `supabaseKey` (publishable/anon key, die is openbaar bedoeld). Nooit de secret/service_role key gebruiken.
+
+Hoe het werkt:
+- **Klant:** hoeft geen account te maken; de telefoon krijgt automatisch een anoniem account. Ziet alleen de eigen bestellingen en de eigen 4-cijferige code.
+- **Restaurant:** registreert met WhatsApp-nummer + zelfgekozen clave, zet zelf het menu in de app (tab Menú), zet Abierto aan. Nieuwe bestellingen komen binnen met geluid (scherm open laten). Ziet de code van de klant nooit.
+- **Domiciliario:** krijgt het WhatsApp-bericht van het restaurant met een link; bij aflevering vult hij daar de code van de klant in (max. 5 pogingen). Het restaurant kan de code ook zelf invullen.
+- **Prijzen** worden op de server uit het menu berekend, niet uit de telefoon van de klant.
+- **Promotor:** krijgt automatisch een eigen code in de link; Ganancias toont de echte bestellingen via die link (zonder persoonsgegevens). Het percentage is nog een voorbeeld.
+
+Nog niet: automatische WhatsApp-berichten vanaf één Pido y Ido-nummer, eigen foto's uploaden, beheerscherm voor jou (gebruik voorlopig Supabase > Table Editor).
 
 ## Wat werkt
 - **Start:** laadscherm (logo op groen) en keuzescherm "¿Cómo quieres usar Pido y Ido?" met 4 rollen; de gekozen rol wordt onthouden en kan via Perfil worden gewijzigd.
@@ -13,7 +29,7 @@ Werkt op elke telefoon in de browser en kan op het beginscherm worden gezet als 
 - **Promotor:** echte QR-code en link per restaurant (scannen opent dat restaurant met de promotor-code), kopiëren, QR downloaden om te printen, delen via WhatsApp, verdiensten (voorbeeldbedragen + echte bestellingen via de link).
 
 ## Bestanden
-Statische site, geen build nodig: `index.html`, `app.css`, `app.js`, `qrcode.js` (MIT, qrcode-generator 1.4.4), `sw.js` (offline), `manifest.webmanifest`, `icons/`.
+Statische site, geen build nodig: `index.html`, `app.css`, `app.js`, `cloud.js` (koppeling met Supabase), `config.js`, `vendor/supabase.js` (MIT, supabase-js 2.117.3), `qrcode.js` (MIT, qrcode-generator 1.4.4), `sw.js` (offline), `manifest.webmanifest`, `icons/`, `supabase/setup.sql`.
 
 Lokaal testen: `python3 -m http.server` in deze map en open http://localhost:8000.
 
