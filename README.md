@@ -3,6 +3,10 @@
 Mobiele web-app (PWA) voor eten bestellen in Villanueva, Casanare. Spaanse interface.
 Werkt op elke telefoon in de browser en kan op het beginscherm worden gezet als app.
 
+Links:
+- **Live:** https://andreskleverlaan-design.github.io/pido-y-ido-app/live/ (de hoofdlink zonder /live/ werkt ook en is hetzelfde)
+- **Demo:** https://andreskleverlaan-design.github.io/pido-y-ido-app/demo/ (voorbeeldrestaurants, alles blijft op het eigen toestel)
+
 De app heeft twee standen:
 - **Demo** (als `config.js` leeg is, of met `?demo` achter het adres): alle gegevens blijven op het eigen toestel, met voorbeeldrestaurants.
 - **Online** (als `config.js` de Supabase-gegevens heeft): een bestelling op de ene telefoon komt echt binnen bij het restaurant op een andere telefoon. Er wordt niets afgerekend in de app (contant / Nequi / Daviplata).
