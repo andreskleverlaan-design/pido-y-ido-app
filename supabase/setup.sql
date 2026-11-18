@@ -99,7 +99,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 create or replace function public.is_full_user() returns boolean
-language sql stable as $$
+language sql stable set search_path = public as $$
   select auth.uid() is not null and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
 $$;
 
@@ -262,6 +262,8 @@ language sql stable security definer set search_path = public as $$
   order by o.created_at desc limit 200
 $$;
 
+revoke execute on function public.my_rest_ids() from public, anon;
+grant execute on function public.my_rest_ids() to authenticated;
 revoke execute on function public.place_order(jsonb) from public, anon;
 revoke execute on function public.cancel_order(bigint) from public, anon;
 revoke execute on function public.deliver_order(bigint, text) from public, anon;
