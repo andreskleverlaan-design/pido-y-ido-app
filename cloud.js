@@ -74,7 +74,7 @@
     myRest = restUid ? ((check(res[3])[0] || {}).id || null) : null;
     out.myRest = myRest;
 
-    // Premio "cada 5º pedido" (null si todavía no se pegó supabase/005-clientes-fieles.sql).
+    // Premio "cada 5º pedido" (null si todavía no se pegó supabase/006-clientes-fieles.sql).
     try { var rw = await cust.rpc('my_reward'); if (!rw.error && rw.data) out.reward = rw.data; } catch (e) {}
 
     var pins = {};
@@ -90,7 +90,7 @@
       ]);
       check(r2[0]).forEach(function (o) { if (!byId[o.id]) byId[o.id] = mapOrder(o, false); });
       out.myRiders = check(r2[1]).map(function (x) { return x.rider_id; });
-      // Mi WhatsApp y Nequi: ya no son públicos, solo los ve el dueño (005-clientes-fieles.sql).
+      // Mi WhatsApp y Nequi: ya no son públicos, solo los ve el dueño (006-clientes-fieles.sql).
       try {
         var ct = await rest.from('rest_contact').select('phone,nequi').eq('rest_id', myRest).maybeSingle();
         if (!ct.error && ct.data) out.restaurants.forEach(function (r) { if (r.id === myRest) { r.phone = ct.data.phone || r.phone; r.nequi = ct.data.nequi || ct.data.phone || r.nequi; } });

@@ -1,4 +1,4 @@
--- Pido y Ido 005: clientes fieles a la app.
+-- Pido y Ido 006: clientes fieles a la app.
 --   1) Premio: cada 5º pedido por la app tiene $2.000 de descuento (lo paga Pido y Ido, se resta de la comisión del negocio).
 --   2) El número del negocio ya no es público: solo el dueño lo ve. El cliente ve el Nequi solo cuando tiene un pedido aceptado.
 --   3) "Ya pagué" dentro de la app (en vez de mandar el comprobante al WhatsApp del negocio).

@@ -47,8 +47,8 @@ Base de datos: pegar `supabase/004-tiendas.sql` en Supabase > SQL Editor (una ve
 ## Pronto en Pido y Ido (negocios que aún no están)
 Onder de echte zaken toont de klant-app een grijze lijst "Pronto en Pido y Ido" met echte zaken uit Villanueva die nog niet meedoen (uit `bedrijven-villanueva.xlsx`, zonder de rijen waarvan de plaats nog gecheckt moest worden, en zonder disco, ketens en de online bloemist). Alleen naam en soort, geen telefoon of foto's. Je kunt er niet bij bestellen; de klant kan de zaak via WhatsApp uitnodigen (link naar de inschrijving). Zodra een zaak zich met (ongeveer) dezelfde naam inschrijft, verdwijnt hij vanzelf uit de lijst. Lijst aanpassen: `PRONTO` in `app.js`.
 
-## Klanten in de app houden (005)
-Database: plak `supabase/005-clientes-fieles.sql` in Supabase > SQL Editor (eenmalig, mag vaker). Zonder deze stap werkt de app zoals voorheen.
+## Klanten in de app houden (006)
+Database: plak `supabase/006-clientes-fieles.sql` in Supabase > SQL Editor (eenmalig, mag vaker). Zonder deze stap werkt de app zoals voorheen.
 - **Stempelkaart:** elke 5e bestelling via de app kost $2.000 minder (bij bestellingen vanaf $10.000, alleen restaurants met menu). 4 bezorgde bestellingen = 1 stempelkaart vol. Pido y Ido betaalt de korting: het restaurant ziet het bij de bestelling en het gaat van de commissie af. Bedrag aanpassen: `reward_state` in de SQL.
 - **Nummer verborgen:** WhatsApp en Nequi van de zaak staan niet meer in de openbare tabel maar in `rest_contact` (alleen de eigenaar ziet ze). De klant ziet het Nequi-nummer pas als de zaak de bestelling heeft geaccepteerd, en het telefoonnummer alleen als de zaak zelf bezorgt en het onderweg is.
 - **"Ya transferí":** de klant meldt de betaling in de app in plaats van het bewijs naar de WhatsApp van de zaak te sturen.
