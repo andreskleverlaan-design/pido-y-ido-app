@@ -802,14 +802,10 @@
       '<div class="card mt16 town-list">' + rows + '</div>' +
       '<div class="small muted mt12 center">¿Tu pueblo no está? <a class="link" href="#/sugerir">Sugiere un negocio</a> y lo tenemos en cuenta.</div></div>';
   }
-  function townPill() {
-    var live = myTown() === LIVE_TOWN;
-    return '<button class="town-pill mt12" data-a="goPueblo">' + ic('pin', 16, { sw: 2.4 }) + '<span class="b">' + esc(myTown()) + '</span>' + (live ? '' : '<span class="town-soon sm">Pronto</span>') + '<span class="muted">· Cambiar</span>' + ic('down', 14) + '</button>';
-  }
   // Home for a town where Pido y Ido does not take orders yet
   function scrInicioPronto() {
     var t = myTown(), pr = prontoHere(), prShops = pr.filter(isShop), tiendas = prShops.length && ui.home === 'tiendas';
-    var h = '<div class="screen has-tabs"><div class="row">' + logo(40, 'mark') + '<div class="grow"></div></div>' + townPill() +
+    var h = '<div class="screen has-tabs"><div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="goPueblo"><div class="xs muted">Tu pueblo</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + esc(t) + '</span><span class="town-soon sm">Pronto</span>' + ic('down', 16) + '</div></button></div>' +
       '<div class="card mt16 town-soon-card"><div class="t-h2">Pido y Ido llega pronto a ' + esc(t) + '</div><div class="muted mt8" style="line-height:1.45">Todavía no puedes pedir aquí. Mira qué negocios de ' + esc(t) + ' queremos sumar, y pídeles que se unan: entre más vecinos lo pidan, más rápido llegamos.</div>' +
       '<a class="btn btn-outline btn-block mt12" href="#/rest/registro">¿Tienes un negocio en ' + esc(t) + '? Inscríbete gratis</a></div>' +
       (prShops.length && prShops.length < pr.length ? '<div class="seg home-seg mt16"><button class="' + (tiendas ? '' : 'on') + '" data-a="homeTab" data-v="comida">' + ic('utensils', 17) + 'Comida</button><button class="' + (tiendas ? 'on' : '') + '" data-a="homeTab" data-v="tiendas">' + ic('basket', 17) + 'Tiendas</button></div>' : '');
@@ -1177,10 +1173,9 @@
     var openN = base.filter(function (r) { return S.open[r.id]; }).length;
     list.sort(function (a, b) { return (S.open[b.id] ? 1 : 0) - (S.open[a.id] ? 1 : 0); });
     var h = '<div class="screen has-tabs' + (cartCount() ? ' has-cta' : '') + '">' +
-      '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + (S.user.address ? esc(S.user.address.split(',')[0]) + ', ' + LIVE_TOWN : 'Agrega tu dirección') + '</span>' + ic('down', 16) + '</div></button>' +
+      '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + (S.user.address ? esc(S.user.address.split(',')[0]) + ', ' + LIVE_TOWN : LIVE_TOWN + ' · Agrega tu dirección') + '</span>' + ic('down', 16) + '</div></button>' +
       '<a class="icon-btn" href="#/confirmar" aria-label="Carrito" style="position:relative">' + ic('bag', 20) + (cartCount() ? '<span style="position:absolute;top:-2px;right:-2px;background:var(--cta);color:#fff;border-radius:999px;min-width:18px;height:18px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">' + cartCount() + '</span>' : '') + '</a></div>' +
-      townPill() +
-      '<h1 class="t-title mt12" style="font-size:28px">' + (tiendas ? '¿Qué necesitas hoy' : '¿Qué se te antoja hoy') + (S.user.name ? ', ' + esc(first(S.user.name)) : '') + '?</h1>' +
+      '<h1 class="t-title mt16" style="font-size:28px">' + (tiendas ? '¿Qué necesitas hoy' : '¿Qué se te antoja hoy') + (S.user.name ? ', ' + esc(first(S.user.name)) : '') + '?</h1>' +
       '<a class="search mt16" href="#/buscar">' + ic('search', 20) + '<span class="muted">' + (tiendas ? 'Busca droguerías, minimercados…' : 'Busca empanadas, pizza, arepas…') + '</span></a>' +
       (shops.length || prShops.length ? '<div class="seg home-seg mt16"><button class="' + (tiendas ? '' : 'on') + '" data-a="homeTab" data-v="comida">' + ic('utensils', 17) + 'Comida</button><button class="' + (tiendas ? 'on' : '') + '" data-a="homeTab" data-v="tiendas">' + ic('basket', 17) + 'Tiendas</button></div>' : '');
     if (active) {
@@ -2137,7 +2132,9 @@
       ui.rate = null; save(); go('/inicio'); toast('¡Gracias por calificar!');
     },
     editAddress: function () {
-      sheet('<div class="t-h2">¿Dónde te lo llevamos?</div><textarea class="input mt12" id="addrS" rows="3">' + esc(S.user.address) + '</textarea><button class="btn btn-primary btn-block mt12" data-a="saveAddrSheet">Guardar dirección</button>');
+      sheet('<div class="t-h2">¿Dónde te lo llevamos?</div>' +
+        '<button class="town-row mt8" data-a="goPueblo" style="border-bottom:0"><span class="town-ic live">' + ic('pin', 20, { sw: 2.2 }) + '</span><span class="grow"><span class="xs muted" style="display:block">Pueblo</span><span class="b">' + esc(myTown()) + '</span></span><span class="link b">Cambiar</span></button>' +
+        '<label class="label mt8" for="addrS">Dirección en ' + esc(myTown()) + '</label><textarea class="input" id="addrS" rows="3" placeholder="Calle, número y barrio">' + esc(S.user.address) + '</textarea><button class="btn btn-primary btn-block mt12" data-a="saveAddrSheet">Guardar dirección</button>');
     },
     saveAddrSheet: function () { var v = document.getElementById('addrS').value.trim(); if (v) { S.user.address = v; save(); } sheet(null); render(); },
     saveProfile: function () { save(); render(); toast('Datos guardados'); },
@@ -2391,7 +2388,7 @@
     pct: function (el) { S.promo.pct = +el.dataset.v; save(); sheet(null); render(); },
     // shops
     prontoAll: function () { ui.prontoAll = true; render(); },
-    goPueblo: function () { go('/pueblo'); },
+    goPueblo: function () { sheet(null); go('/pueblo'); },
     pickTown: function (el) { setTown(el.dataset.v); ui.home = null; go('/inicio'); },
     townGeo: function () {
       if (!navigator.geolocation) { toast('Tu celular no comparte la ubicación. Elige el pueblo de la lista.'); return; }
