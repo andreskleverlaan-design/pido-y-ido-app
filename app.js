@@ -187,6 +187,78 @@
   function R(id) { for (var i = 0; i < RESTAURANTS.length; i++) if (RESTAURANTS[i].id === id) return RESTAURANTS[i]; return ONLINE ? NO_REST : RESTAURANTS[0]; }
   // restaurants customers can order from (online: only those with a menu)
   function shown() { return RESTAURANTS.filter(function (r) { return !ONLINE || (isShop(r) ? hasLoc(r) : r.dishes.length); }); }
+  // ---------- Not on Pido y Ido yet ----------
+  // Real Villanueva businesses that have NOT joined. Shown greyed out under "Pronto en Pido y Ido" so customers can
+  // ask them to join. Name + type only (no phone, address or photos: they did not sign up). Not orderable.
+  // Source: bedrijven-villanueva.xlsx (20 nov 2026), without rows whose town still had to be checked.
+  // A business disappears from this list by itself once it signs up with (about) the same name.
+  var PRONTO = [
+    ['restaurante', 'Asadero El Gran Ranchón', 'Carne a la llanera', ['Asados']],
+    ['restaurante', 'Asadero Rico Pollo', 'Pollo asado', ['Pollo']],
+    ['restaurante', 'Surtidora de Aves La Séptima', 'Pollo asado', ['Pollo']],
+    ['restaurante', 'Asadero Don Pollo', 'Pollo asado', ['Pollo']],
+    ['restaurante', 'Brasa Rojal', 'Asadero', ['Asados', 'Pollo']],
+    ['restaurante', 'Pizzería VIP', 'Pizza · Comidas rápidas', ['Pizza']],
+    ['restaurante', 'Kyrios Pizza 2', 'Pizza', ['Pizza']],
+    ['restaurante', 'Italiamia Pizza', 'Pizza', ['Pizza']],
+    ['restaurante', 'Hamburguesa Llanera', 'Hamburguesas', ['Hamburguesas']],
+    ['restaurante', 'Restaurante Chino Shanghai', 'Comida china', []],
+    ['restaurante', 'Pinchos Gourmet', 'Pinchos · Comidas rápidas', ['Asados']],
+    ['restaurante', 'Estrato 6', 'Pizza · Cócteles', ['Pizza']],
+    ['restaurante', 'Bragon', 'Restaurante', []],
+    ['restaurante', 'El Rancho de Juanse', 'Restaurante', []],
+    ['restaurante', 'Lechonería La Séptima', 'Lechona', []],
+    ['restaurante', 'Asadero La Llanera', 'Carne a la llanera', ['Asados']],
+    ['restaurante', 'Panadería Dallapan', 'Panadería · Tortas', []],
+    ['restaurante', 'Los Potrillos', 'Restaurante', []],
+    ['restaurante', 'Hotel Marlus Plaza', 'Restaurante del hotel', ['Almuerzos']],
+    ['restaurante', 'Hotel Versalles', 'Restaurante del hotel', ['Almuerzos']],
+    ['restaurante', 'Club Nicky Beach', 'Club · Restaurante', []],
+    ['restaurante', 'El Petaco Bar', 'Bar', []],
+    ['restaurante', 'Celestina Bar', 'Bar', []],
+    ['drogueria', 'Droguería J&C Farmacias', 'Droguería'],
+    ['drogueria', 'Droguería Llanofarma H&A', 'Droguería'],
+    ['drogueria', 'Droguería Llano Farma', 'Droguería'],
+    ['drogueria', 'Droguería Alemana', 'Droguería'],
+    ['drogueria', 'Droguería Farmallanos', 'Droguería'],
+    ['drogueria', 'Droguería Medic-Farma', 'Droguería'],
+    ['drogueria', 'Droguería FarmaUno', 'Droguería'],
+    ['drogueria', 'Droguería Villanueva', 'Droguería'],
+    ['floristeria', 'Floristería Florecita Rokera', 'Flores · Arreglos'],
+    ['minimercado', 'Surti Mayorista', 'Mercado · Por mayor'],
+    ['minimercado', 'Universal Supermercado', 'Supermercado'],
+    ['otro', 'Pañalera Universal', 'Pañales · Bebés'],
+    ['licorera', 'Licorera La Cava', 'Licores'],
+    ['licorera', 'Licorera Mr. Cachirri', 'Licores · Bar']
+  ].map(function (x, i) { return { id: 'p' + i, kind: x[0], name: x[1], sub: x[2], cats: x[3] || [] }; });
+  function normName(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\b(asadero|restaurante|y|el|la|los|las|de|del|drogueria|pizzeria|panaderia|floristeria|licorera|hotel|villanueva)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  // the ones not (yet) in the app as a real business
+  function pronto() {
+    var have = RESTAURANTS.map(function (r) { return normName(r.name); }).filter(Boolean);
+    return PRONTO.filter(function (p) { var n = normName(p.name); return !have.some(function (h) { return h === n || (n.length > 4 && h.indexOf(n) >= 0) || (h.length > 4 && n.indexOf(h) >= 0); }); });
+  }
+  function prontoById(id) { for (var i = 0; i < PRONTO.length; i++) if (PRONTO[i].id === id) return PRONTO[i]; return null; }
+  function joinLink() { return BASE + 'live/#/rest/registro'; }
+  function inviteText(p) {
+    return '¡Hola! Me gustaría pedirles a domicilio por Pido y Ido, la app de domicilios de Villanueva. ¿Se animan a inscribirse? Es gratis y les llegan pedidos de todo el pueblo: ' + joinLink();
+  }
+  function inviteHref(p) { return 'https://wa.me/?text=' + encodeURIComponent(inviteText(p)); }
+  function prontoRow(p) {
+    return '<div class="pr-row"><button class="pr-main" data-a="pronto" data-v="' + p.id + '">' + cover({ kind: p.kind }, 'thumb s44 pr-ph') +
+      '<div class="grow"><div class="b ellipsis">' + esc(p.name) + '</div><div class="small muted ellipsis">' + esc(p.sub) + '</div></div></button>' +
+      '<a class="pr-inv" target="_blank" rel="noopener" href="' + inviteHref(p) + '" aria-label="Invitar a ' + esc(p.name) + ' por WhatsApp">' + ic('send', 15, { sw: 2.2 }) + 'Invitar</a></div>';
+  }
+  function prontoSection(list, tiendas) {
+    if (!list.length) return '';
+    var all = ui.prontoAll || list.length <= 6, vis = all ? list : list.slice(0, 5);
+    return '<div class="pronto mt24"><div class="row between"><div class="t-h2">Pronto en Pido y Ido</div><span class="pr-tag">Aún no están</span></div>' +
+      '<div class="pr-ask mt12"><span class="pr-ask-ic">' + ic('heart', 18, { sw: 2.2 }) + '</span><span><b>¿Te gusta alguno de estos ' + (tiendas ? 'negocios' : 'lugares') + '?</b> Pídele que se una a Pido y Ido. Así también le podrás pedir a domicilio desde aquí.</span></div>' +
+      '<div class="card mt12 pr-list">' + vis.map(prontoRow).join('') + '</div>' +
+      (all ? '' : '<button class="btn btn-outline btn-block mt12" data-a="prontoAll">Ver los ' + list.length + '</button>') + '</div>';
+  }
 
   function seed() {
     var t = now();
@@ -491,7 +563,7 @@
   function scrInicio() {
     var last = S.orders.filter(function (o) { return o.mine && o.status === 'entregado'; })[0];
     var active = S.orders.filter(function (o) { return o.mine && ['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0; })[0];
-    var shops = shown().filter(isShop), tiendas = shops.length && ui.home === 'tiendas';
+    var shops = shown().filter(isShop), pr = pronto(), prShops = pr.filter(isShop), tiendas = (shops.length || prShops.length) && ui.home === 'tiendas';
     var base = shown().filter(function (r) { return isShop(r) === !!tiendas; });
     var list = base.filter(function (r) { return tiendas ? (!ui.kind || r.kind === ui.kind) : (!ui.cat || r.cats.indexOf(ui.cat) >= 0); });
     var openN = base.filter(function (r) { return S.open[r.id]; }).length;
@@ -501,12 +573,12 @@
       '<a class="icon-btn" href="#/confirmar" aria-label="Carrito" style="position:relative">' + ic('bag', 20) + (cartCount() ? '<span style="position:absolute;top:-2px;right:-2px;background:var(--cta);color:#fff;border-radius:999px;min-width:18px;height:18px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">' + cartCount() + '</span>' : '') + '</a></div>' +
       '<h1 class="t-title mt16" style="font-size:28px">' + (tiendas ? '¿Qué necesitas hoy' : '¿Qué se te antoja hoy') + (S.user.name ? ', ' + esc(first(S.user.name)) : '') + '?</h1>' +
       '<a class="search mt16" href="#/buscar">' + ic('search', 20) + '<span class="muted">' + (tiendas ? 'Busca droguerías, minimercados…' : 'Busca empanadas, pizza, arepas…') + '</span></a>' +
-      (shops.length ? '<div class="seg home-seg mt16"><button class="' + (tiendas ? '' : 'on') + '" data-a="homeTab" data-v="comida">' + ic('utensils', 17) + 'Comida</button><button class="' + (tiendas ? 'on' : '') + '" data-a="homeTab" data-v="tiendas">' + ic('basket', 17) + 'Tiendas</button></div>' : '');
+      (shops.length || prShops.length ? '<div class="seg home-seg mt16"><button class="' + (tiendas ? '' : 'on') + '" data-a="homeTab" data-v="comida">' + ic('utensils', 17) + 'Comida</button><button class="' + (tiendas ? 'on' : '') + '" data-a="homeTab" data-v="tiendas">' + ic('basket', 17) + 'Tiendas</button></div>' : '');
     if (active) {
       h += '<a class="card mt16 row" href="#/pedido/' + active.id + '" style="border:2px solid var(--green)"><span class="pulse"></span><div class="grow"><div class="b">Pedido #' + active.id + ' · ' + R(active.restId).short + '</div><div class="small muted">' + statusLine(active) + '</div></div>' + ic('right', 20) + '</a>';
     }
     if (tiendas) {
-      var kinds = KINDS.filter(function (k) { return shops.some(function (r) { return r.kind === k.id; }); });
+      var kinds = KINDS.filter(function (k) { return shops.concat(prShops).some(function (r) { return r.kind === k.id; }); });
       if (kinds.length > 1) h += '<div class="chips scroll mt16">' + kinds.map(function (k) { return '<button class="chip' + (ui.kind === k.id ? ' on' : '') + '" data-a="kindPick" data-v="' + k.id + '">' + ic(k.icon, 16) + k.t + '</button>'; }).join('') + '</div>';
     } else h += '<div class="cats mt16">' + CATS.map(function (c) {
       return '<button class="cat' + (ui.cat === c[0] ? ' on' : '') + '" data-a="cat" data-v="' + c[0] + '">' + photo(c[1]) + '<span>' + c[0] + '</span></button>';
@@ -519,7 +591,8 @@
     var filt = tiendas ? ui.kind && kindOf({ kind: ui.kind }).t : ui.cat;
     h += '<div class="row between mt24"><div class="t-h2">' + (filt || (tiendas ? 'Tiendas cerca' : 'Cerca de ti')) + '</div><div class="small muted">' + (filt ? '<button class="link" data-a="' + (tiendas ? 'kindPick' : 'cat') + '" data-v="">Ver todos</button>' : openN + ' abiertos') + '</div></div><div class="mt12">' +
       (tiendas ? '<div class="note green row" style="gap:10px;margin-bottom:12px">' + ic('list', 18) + '<span>Escribe tu lista o mándale una foto. La tienda te confirma el precio.</span></div>' : '') +
-      (list.length ? list.map(restCard).join('') : '<div class="empty">' + (ui.cat && !tiendas ? 'Todavía no hay restaurantes con ' + ui.cat + '.' : ONLINE && !ui.synced ? 'Cargando restaurantes…' : 'Pronto vas a ver aquí los restaurantes de Villanueva.') + '</div>') + '</div></div>';
+      (list.length ? list.map(restCard).join('') : '<div class="empty">' + (ui.cat && !tiendas ? 'Todavía no hay restaurantes con ' + ui.cat + '.' : ONLINE && !ui.synced ? 'Cargando restaurantes…' : tiendas ? 'Todavía no hay tiendas en Pido y Ido.' : 'Pronto vas a ver aquí los restaurantes de Villanueva.') + '</div>') + '</div>' +
+      prontoSection(pr.filter(function (p) { return tiendas ? isShop(p) && (!ui.kind || p.kind === ui.kind) : !isShop(p) && (!ui.cat || p.cats.indexOf(ui.cat) >= 0); }), tiendas) + '</div>';
     return h + cartBar(true) + tabs('cliente', 'inicio');
   }
   function searchResults() {
@@ -532,6 +605,10 @@
         if ((d.name + ' ' + d.desc).toLowerCase().indexOf(q) >= 0) out.push('<a class="list-row" href="#/r/' + r.id + '">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b">' + d.name + '</div><div class="small muted">' + r.short + ' · ' + fmt(d.price) + '</div></div>' + ic('right', 18) + '</a>');
       });
     });
+    var later = pronto().filter(function (p) { return (p.name + ' ' + p.sub + ' ' + p.cats.join(' ')).toLowerCase().indexOf(q) >= 0; });
+    if (later.length) return (out.length ? '<div class="card mt16" style="padding:4px 14px">' + out.join('') + '</div>' : '<div class="small muted mt16">No encontramos “' + esc(ui.q) + '” en Pido y Ido todavía.</div>') +
+      '<div class="label" style="margin-top:20px">Aún no están en Pido y Ido</div><div class="card mt8 pr-list">' + later.slice(0, 8).map(prontoRow).join('') + '</div>' +
+      '<div class="small muted mt8">¿Te gusta alguno? Invítalo por WhatsApp: inscribirse es gratis.</div>';
     return out.length ? '<div class="card mt16" style="padding:4px 14px">' + out.join('') + '</div>' : '<div class="empty">No encontramos “' + esc(ui.q) + '”.</div>';
   }
   function scrBuscar() {
@@ -1679,6 +1756,15 @@
     },
     pct: function (el) { S.promo.pct = +el.dataset.v; save(); sheet(null); render(); },
     // shops
+    prontoAll: function () { ui.prontoAll = true; render(); },
+    pronto: function (el) {
+      var p = prontoById(el.dataset.v); if (!p) return;
+      sheet('<div class="row" style="gap:14px">' + cover({ kind: p.kind }, 'thumb pr-ph') + '<div class="grow"><div class="t-h2">' + esc(p.name) + '</div><div class="small muted mt4">' + esc(p.sub) + ' · Villanueva</div></div></div>' +
+        '<div class="note soft mt16"><b>Todavía no está en Pido y Ido.</b> Por eso aún no le puedes pedir aquí.</div>' +
+        '<div class="muted mt12" style="font-size:15px;line-height:1.45">Si te gusta, dile que se una. Inscribirse es gratis, y así le llegan pedidos de todo Villanueva por WhatsApp.</div>' +
+        '<a class="btn btn-primary btn-block mt16" target="_blank" rel="noopener" href="' + inviteHref(p) + '">' + ic('send', 18) + ' Invitar por WhatsApp</a>' +
+        '<a class="btn btn-ghost btn-block mt8" href="#/rest/registro">¿Es tu negocio? Inscríbelo gratis</a>');
+    },
     homeTab: function (el) { ui.home = el.dataset.v; ui.kind = null; ui.cat = null; render(); },
     kindPick: function (el) { ui.kind = el.dataset.v && ui.kind !== el.dataset.v ? el.dataset.v : null; render(); },
     regKind: function (el) { ui.reg = ui.reg || { name: '', phone: '', addr: '', pass: '' }; ui.reg.kind = el.dataset.v; render(); },

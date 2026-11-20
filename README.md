@@ -43,3 +43,6 @@ Foto's worden geladen van Pexels/Unsplash (gratis licenties); vervang ze voor de
 Además de restaurantes, se pueden inscribir droguerías, minimercados, licoreras, floristerías, ferreterías y otros negocios.
 Las tiendas no necesitan menú: el cliente escribe su lista o manda una foto, y la tienda pone el precio al aceptar.
 Base de datos: pegar `supabase/004-tiendas.sql` en Supabase > SQL Editor (una vez).
+
+## Pronto en Pido y Ido (negocios que aún no están)
+Onder de echte zaken toont de klant-app een grijze lijst "Pronto en Pido y Ido" met echte zaken uit Villanueva die nog niet meedoen (uit `bedrijven-villanueva.xlsx`, zonder de rijen waarvan de plaats nog gecheckt moest worden, en zonder disco, ketens en de online bloemist). Alleen naam en soort, geen telefoon of foto's. Je kunt er niet bij bestellen; de klant kan de zaak via WhatsApp uitnodigen (link naar de inschrijving). Zodra een zaak zich met (ongeveer) dezelfde naam inschrijft, verdwijnt hij vanzelf uit de lijst. Lijst aanpassen: `PRONTO` in `app.js`.
