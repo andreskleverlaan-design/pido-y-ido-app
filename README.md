@@ -38,3 +38,8 @@ Statische site, geen build nodig: `index.html`, `app.css`, `app.js`, `cloud.js` 
 Lokaal testen: `python3 -m http.server` in deze map en open http://localhost:8000.
 
 Foto's worden geladen van Pexels/Unsplash (gratis licenties); vervang ze voor de lancering door eigen foto's van de restaurants.
+
+## Tiendas (pedido libre)
+Además de restaurantes, se pueden inscribir droguerías, minimercados, licoreras, floristerías, ferreterías y otros negocios.
+Las tiendas no necesitan menú: el cliente escribe su lista o manda una foto, y la tienda pone el precio al aceptar.
+Base de datos: pegar `supabase/004-tiendas.sql` en Supabase > SQL Editor (una vez).
