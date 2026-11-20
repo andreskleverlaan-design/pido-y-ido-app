@@ -446,3 +446,16 @@ textarea.input{min-height:76px;line-height:1.4}
 .stamps i.on{border:0;background:var(--orange);color:#fff}
 .stamps i.gift{border-style:solid;border-color:var(--orange);color:var(--orange)}
 .stamps i.gift.on{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 0 0 4px var(--gtint)}
+a.pr-main{text-decoration:none}
+.pronto .pr-tag,.info-card .pr-tag{display:inline-flex;align-items:center;gap:5px}
+.info-card .pr-tag{font-size:12px;font-weight:600;color:var(--muted);background:var(--input);border-radius:999px;padding:5px 10px}
+.pr-hero .ph{filter:grayscale(.85);opacity:.75}
+.pr-help{padding:16px}
+.pr-step{display:flex;gap:12px;align-items:flex-start}
+.pr-step .n{flex:none;width:28px;height:28px;border-radius:999px;background:var(--gsoft);color:var(--green);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+.pr-owner{border:1.5px dashed var(--dashed);box-shadow:none}
+.pr-owner-ic{flex:none;width:44px;height:44px;border-radius:12px;background:var(--gsoft);color:var(--green);display:flex;align-items:center;justify-content:center}
+.pr-n{color:var(--orange);font-weight:600}
+.pr-demand{text-align:center;padding:18px 16px}
+.pr-big{font-family:Poppins,Inter,sans-serif;font-size:44px;font-weight:700;line-height:1;color:var(--orange)}
+.pr-done{display:inline-flex;align-items:center;gap:6px;background:var(--gsoft);color:var(--green);font-weight:600;font-size:14px;border-radius:999px;padding:8px 14px}
