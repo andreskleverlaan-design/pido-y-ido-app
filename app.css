@@ -433,3 +433,12 @@ textarea.input{min-height:76px;line-height:1.4}
 .pr-main .b{color:var(--muted)}
 .pr-ph{filter:grayscale(1);opacity:.6;flex:none}
 .pr-inv{flex:none;display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 12px;border-radius:999px;border:1.5px solid var(--green);color:var(--green);font-size:13px;font-weight:600;text-decoration:none;background:#fff}
+a.pr-main{text-decoration:none}
+.pronto .pr-tag,.info-card .pr-tag{display:inline-flex;align-items:center;gap:5px}
+.info-card .pr-tag{font-size:12px;font-weight:600;color:var(--muted);background:var(--input);border-radius:999px;padding:5px 10px}
+.pr-hero .ph{filter:grayscale(.85);opacity:.75}
+.pr-help{padding:16px}
+.pr-step{display:flex;gap:12px;align-items:flex-start}
+.pr-step .n{flex:none;width:28px;height:28px;border-radius:999px;background:var(--gsoft);color:var(--green);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+.pr-owner{border:1.5px dashed var(--dashed);box-shadow:none}
+.pr-owner-ic{flex:none;width:44px;height:44px;border-radius:12px;background:var(--gsoft);color:var(--green);display:flex;align-items:center;justify-content:center}

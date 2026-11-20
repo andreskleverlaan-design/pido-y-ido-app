@@ -192,6 +192,7 @@
   // ask them to join. Name + type only (no phone, address or photos: they did not sign up). Not orderable.
   // Source: bedrijven-villanueva.xlsx (20 nov 2026), without rows whose town still had to be checked.
   // A business disappears from this list by itself once it signs up with (about) the same name.
+  function slug(s) { return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, 'y').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
   var PRONTO = [
     ['restaurante', 'Asadero El Gran Ranchón', 'Carne a la llanera', ['Asados']],
     ['restaurante', 'Asadero Rico Pollo', 'Pollo asado', ['Pollo']],
@@ -230,26 +231,61 @@
     ['otro', 'Pañalera Universal', 'Pañales · Bebés'],
     ['licorera', 'Licorera La Cava', 'Licores'],
     ['licorera', 'Licorera Mr. Cachirri', 'Licores · Bar']
-  ].map(function (x, i) { return { id: 'p' + i, kind: x[0], name: x[1], sub: x[2], cats: x[3] || [] }; });
+  ].map(function (x) { return { id: slug(x[1]), kind: x[0], name: x[1], sub: x[2], cats: x[3] || [] }; });
   function normName(s) {
     return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ')
       .replace(/\b(asadero|restaurante|y|el|la|los|las|de|del|drogueria|pizzeria|panaderia|floristeria|licorera|hotel|villanueva)\b/g, ' ').replace(/\s+/g, ' ').trim();
   }
   // the ones not (yet) in the app as a real business
-  function pronto() {
-    var have = RESTAURANTS.map(function (r) { return normName(r.name); }).filter(Boolean);
-    return PRONTO.filter(function (p) { var n = normName(p.name); return !have.some(function (h) { return h === n || (n.length > 4 && h.indexOf(n) >= 0) || (h.length > 4 && n.indexOf(h) >= 0); }); });
-  }
+  function sameBiz(a, b) { var n = normName(a), h = normName(b); return !!n && !!h && (h === n || (n.length > 4 && h.indexOf(n) >= 0) || (h.length > 4 && n.indexOf(h) >= 0)); }
+  // the real business in the app that matches a "pronto" entry (once it joined)
+  function joinedAs(p) { for (var i = 0; i < RESTAURANTS.length; i++) if (sameBiz(p.name, RESTAURANTS[i].name)) return RESTAURANTS[i]; return null; }
+  function pronto() { return PRONTO.filter(function (p) { return !joinedAs(p); }); }
   function prontoById(id) { for (var i = 0; i < PRONTO.length; i++) if (PRONTO[i].id === id) return PRONTO[i]; return null; }
   function joinLink() { return BASE + 'live/#/rest/registro'; }
+  function pageLink(p) { return BASE + 'live/#/negocio/' + p.id; }
   function inviteText(p) {
     return '¡Hola! Me gustaría pedirles a domicilio por Pido y Ido, la app de domicilios de Villanueva. ¿Se animan a inscribirse? Es gratis y les llegan pedidos de todo el pueblo: ' + joinLink();
   }
   function inviteHref(p) { return 'https://wa.me/?text=' + encodeURIComponent(inviteText(p)); }
   function prontoRow(p) {
-    return '<div class="pr-row"><button class="pr-main" data-a="pronto" data-v="' + p.id + '">' + cover({ kind: p.kind }, 'thumb s44 pr-ph') +
-      '<div class="grow"><div class="b ellipsis">' + esc(p.name) + '</div><div class="small muted ellipsis">' + esc(p.sub) + '</div></div></button>' +
+    return '<div class="pr-row"><a class="pr-main" href="#/negocio/' + p.id + '">' + cover({ kind: p.kind }, 'thumb s44 pr-ph') +
+      '<div class="grow"><div class="b ellipsis">' + esc(p.name) + '</div><div class="small muted ellipsis">' + esc(p.sub) + '</div></div></a>' +
       '<a class="pr-inv" target="_blank" rel="noopener" href="' + inviteHref(p) + '" aria-label="Invitar a ' + esc(p.name) + ' por WhatsApp">' + ic('send', 15, { sw: 2.2 }) + 'Invitar</a></div>';
+  }
+  // Own page for a business that has not joined yet: #/negocio/<slug>. Shareable. Not orderable.
+  function scrNegocio(id) {
+    var p = prontoById(id);
+    if (!p) return '<div class="screen">' + topbar('Negocio', '/inicio') + '<div class="empty">No encontramos este negocio.</div></div>';
+    var j = joinedAs(p);
+    if (j && shown().indexOf(j) >= 0) { setTimeout(function () { location.replace('#/r/' + j.id); }, 0); return scrLoading(j.name); }
+    var k = kindOf(p), shop = isShop(p), word = shop ? 'negocio' : 'restaurante';
+    var alt = shown().filter(function (r) { return isShop(r) ? r.kind === p.kind : !shop && (!p.cats.length || r.cats.some(function (c) { return p.cats.indexOf(c) >= 0; })); }).slice(0, 3);
+    var share = 'https://wa.me/?text=' + encodeURIComponent('¿Te gusta ' + p.name + '? Todavía no está en Pido y Ido. Entra aquí y pídele que se una, así le podemos pedir a domicilio: ' + pageLink(p));
+    var h = '<div class="screen flush"><div class="hero pr-hero">' + cover({ kind: p.kind }, '', 'height:200px;width:100%') +
+      '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a>' +
+      '<a class="icon-btn fav" target="_blank" rel="noopener" href="' + share + '" aria-label="Compartir esta página">' + ic('share', 20) + '</a></div>' +
+      '<div class="card raised info-card"><span class="pr-tag">' + ic('clock', 13, { sw: 2.4 }) + 'Aún no está en Pido y Ido</span>' +
+      '<h1 class="t-title mt8" style="font-size:24px">' + esc(p.name) + '</h1><div class="small muted mt4">' + ic(k.icon, 14) + ' ' + esc(p.sub) + ' · Villanueva</div>' +
+      '<div class="note grey mt12">Por ahora no le puedes pedir aquí. Cuando se una, vas a ver su ' + (shop ? 'catálogo' : 'menú') + ' en esta misma página.</div></div>' +
+      '<div class="pad">' +
+      '<div class="pr-ask mt20"><span class="pr-ask-ic">' + ic('heart', 20, { sw: 2.2 }) + '</span><span><b>¿Te gusta este ' + word + '?</b> Pídele que se una a Pido y Ido. Así le puedes pedir a domicilio desde tu celular, y pagas al recibir.</span></div>' +
+      '<div class="t-h2 mt24">¿Cómo puedes ayudar?</div>' +
+      '<div class="card mt12 pr-help">' +
+        '<div class="pr-step"><span class="n">1</span><div class="grow"><div class="b">Invítalo por WhatsApp</div><div class="small muted">Le mandas un mensaje listo con el enlace para inscribirse gratis.</div></div></div>' +
+        '<a class="btn btn-primary btn-block mt8" target="_blank" rel="noopener" href="' + inviteHref(p) + '">' + ic('send', 18) + ' Invitar por WhatsApp</a>' +
+        '<div class="pr-step mt16"><span class="n">2</span><div class="grow"><div class="b">Díselo cuando vayas</div><div class="small muted">“¿Ya están en Pido y Ido? Me gustaría pedirles a domicilio.”</div></div></div>' +
+        '<div class="pr-step mt16"><span class="n">3</span><div class="grow"><div class="b">Comparte esta página</div><div class="small muted">Entre más vecinos lo pidan, más rápido se une.</div></div></div>' +
+        '<a class="btn btn-outline btn-block mt8" target="_blank" rel="noopener" href="' + share + '">' + ic('share', 18) + ' Compartir con vecinos</a>' +
+      '</div>' +
+      (alt.length ? '<div class="t-h2 mt24">Mientras tanto, pide en</div><div class="card mt12" style="padding:4px 14px">' + alt.map(function (r) {
+        return '<a class="list-row" href="#/r/' + r.id + '">' + cover(r, 'thumb') + '<div class="grow"><div class="b">' + esc(r.name) + '</div><div class="small muted">' + esc(r.sub || kindOf(r).t) + ' · ' + r.eta + '</div></div>' + ic('right', 18) + '</a>';
+      }).join('') + '</div>' : '') +
+      '<div class="card mt24 pr-owner"><div class="row" style="gap:12px"><span class="pr-owner-ic">' + ic('store', 22) + '</span><div class="grow"><div class="b">¿Eres el dueño de ' + esc(p.name) + '?</div><div class="small muted mt4">Inscríbete gratis en 10 minutos y recibe pedidos de todo Villanueva por WhatsApp. Sin contrato.</div></div></div>' +
+      '<button class="btn btn-soft btn-block mt12" data-a="claim" data-v="' + p.id + '">Inscribir mi ' + word + ' gratis</button></div>' +
+      '<div class="xs muted center mt16" style="padding-bottom:24px">Este ' + word + ' no tiene relación con Pido y Ido. Mostramos solo su nombre para que los vecinos lo puedan invitar.</div>' +
+      '</div></div>';
+    return h;
   }
   function prontoSection(list, tiendas) {
     if (!list.length) return '';
@@ -1330,6 +1366,7 @@
       case 'pedidos': return scrPedidos();
       case 'perfil': return scrPerfil();
       case 'r': return scrMenu(p[1], rt.query);
+      case 'negocio': return scrNegocio(p[1]);
       case 'confirmar': return scrConfirmar();
       case 'pedido': return scrPedido(p[1]);
       case 'calificar': return scrCalificar(p[1]);
@@ -1757,13 +1794,10 @@
     pct: function (el) { S.promo.pct = +el.dataset.v; save(); sheet(null); render(); },
     // shops
     prontoAll: function () { ui.prontoAll = true; render(); },
-    pronto: function (el) {
+    claim: function (el) {
       var p = prontoById(el.dataset.v); if (!p) return;
-      sheet('<div class="row" style="gap:14px">' + cover({ kind: p.kind }, 'thumb pr-ph') + '<div class="grow"><div class="t-h2">' + esc(p.name) + '</div><div class="small muted mt4">' + esc(p.sub) + ' · Villanueva</div></div></div>' +
-        '<div class="note soft mt16"><b>Todavía no está en Pido y Ido.</b> Por eso aún no le puedes pedir aquí.</div>' +
-        '<div class="muted mt12" style="font-size:15px;line-height:1.45">Si te gusta, dile que se una. Inscribirse es gratis, y así le llegan pedidos de todo Villanueva por WhatsApp.</div>' +
-        '<a class="btn btn-primary btn-block mt16" target="_blank" rel="noopener" href="' + inviteHref(p) + '">' + ic('send', 18) + ' Invitar por WhatsApp</a>' +
-        '<a class="btn btn-ghost btn-block mt8" href="#/rest/registro">¿Es tu negocio? Inscríbelo gratis</a>');
+      ui.reg = { kind: p.kind, name: p.name, phone: '', addr: '', pass: '' };
+      go('/rest/registro');
     },
     homeTab: function (el) { ui.home = el.dataset.v; ui.kind = null; ui.cat = null; render(); },
     kindPick: function (el) { ui.kind = el.dataset.v && ui.kind !== el.dataset.v ? el.dataset.v : null; render(); },
