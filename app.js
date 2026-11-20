@@ -674,7 +674,7 @@
   // the ones not (yet) in the app as a real business
   function sameBiz(a, b) { var n = normName(a), h = normName(b); return !!n && !!h && (h === n || (n.length > 4 && h.indexOf(n) >= 0) || (h.length > 4 && n.indexOf(h) >= 0)); }
   // the real business in the app that matches a "pronto" entry (once it joined)
-  function joinedAs(p) { if (p.town !== 'Villanueva') return null; for (var i = 0; i < RESTAURANTS.length; i++) if (sameBiz(p.name, RESTAURANTS[i].name)) return RESTAURANTS[i]; return null; }
+  function joinedAs(p) { for (var i = 0; i < RESTAURANTS.length; i++) if (townOf(RESTAURANTS[i]) === p.town && sameBiz(p.name, RESTAURANTS[i].name)) return RESTAURANTS[i]; return null; }
   function pronto() { return allPronto().filter(function (p) { return !joinedAs(p); }); }
   function prontoHere() { var t = myTown(); return pronto().filter(function (p) { return p.town === t; }); }
   // ---------- "X personas lo piden" ----------
@@ -779,19 +779,29 @@
     return h;
   }
   // ---------- Towns ----------
-  // Pido y Ido takes orders in LIVE_TOWN; the other towns show "Pronto" businesses only (invite + suggest).
+  // A town is "Activo" as soon as it has one business customers can order from (menu, or shop on the map);
+  // until then it shows "Pronto" businesses only (invite + suggest). Businesses without a town are in Villanueva.
   var LIVE_TOWN = 'Villanueva';
+  function townOf(r) { return (r && r.town) || LIVE_TOWN; }
+  function isLive(t) { return shown().some(function (r) { return townOf(r) === t; }); }
+  function shownHere() { var t = myTown(); return shown().filter(function (r) { return townOf(r) === t; }); }
   var TOWN_GEO = { 'Villanueva': [4.6075, -72.9289], 'Acacías': [3.987, -73.758], 'Aguazul': [5.172, -72.547], 'Arauca': [7.084, -70.759], 'Chiquinquirá': [5.617, -73.818],
     'Granada': [3.546, -73.707], 'Paz de Ariporo': [5.88, -71.892], 'Puerto López': [4.084, -72.957], 'Saravena': [6.953, -71.873], 'Tame': [6.461, -71.73], 'Tauramena': [5.017, -72.748] };
   var TOWN_DEP = { 'Villanueva': 'Casanare', 'Acacías': 'Meta', 'Aguazul': 'Casanare', 'Arauca': 'Arauca', 'Chiquinquirá': 'Boyacá', 'Granada': 'Meta', 'Paz de Ariporo': 'Casanare', 'Puerto López': 'Meta', 'Saravena': 'Arauca', 'Tame': 'Arauca', 'Tauramena': 'Casanare' };
   function hasTown() { myTown(); return !!ui.ptown; }
   function setTown(t) { ui.ptown = t; ui.prontoAll = false; ui.cat = null; ui.kind = null; try { localStorage.setItem('pyi-town', t); } catch (e) {} }
-  function allTowns() { var t = [LIVE_TOWN]; townsOf(pronto()).forEach(function (x) { if (t.indexOf(x) < 0) t.push(x); }); return t; }
+  function allTowns() {
+    var t = [];
+    shown().forEach(function (r) { if (t.indexOf(townOf(r)) < 0) t.push(townOf(r)); });
+    if (t.indexOf(LIVE_TOWN) < 0) t.push(LIVE_TOWN);
+    townsOf(pronto()).forEach(function (x) { if (t.indexOf(x) < 0) t.push(x); });
+    return t;
+  }
   function townCount(t) { return pronto().filter(function (p) { return p.town === t; }).length; }
   function scrPueblo(first) {
     var cur = hasTown() ? myTown() : '';
     var rows = allTowns().map(function (t) {
-      var live = t === LIVE_TOWN, n = townCount(t);
+      var live = isLive(t), n = townCount(t);
       return '<button class="town-row' + (t === cur ? ' on' : '') + '" data-a="pickTown" data-v="' + esc(t) + '"><span class="town-ic' + (live ? ' live' : '') + '">' + ic('pin', 20, { sw: 2.2 }) + '</span>' +
         '<span class="grow"><span class="b" style="display:block">' + esc(t) + '</span><span class="small muted">' + esc(TOWN_DEP[t] || '') + ' · ' + (live ? 'Ya puedes pedir a domicilio' : n + ' negocios por invitar') + '</span></span>' +
         (live ? '<span class="town-live">Activo</span>' : '<span class="town-soon">Pronto</span>') + '</button>';
@@ -1114,9 +1124,10 @@
   var SETUP_STEPS = ['Cuenta', 'Menú', 'Ubicación', 'Abrir'], SHOP_STEPS = ['Cuenta', 'Tu tienda', 'Ubicación', 'Abrir'];
   function scrRestRegistroLive() {
     var f = ui.reg || (ui.reg = { kind: 'restaurante', name: '', phone: '', addr: '', pass: '' });
+    if (!f.town) f.town = hasTown() ? myTown() : LIVE_TOWN;
     var logged = !!CLOUD.restUid(), err = ui.regErr || {}, k = kindOf(f), shop = isShop(f);
     var perks = [['bell', 'Los pedidos te llegan al celular, con sonido'], ['bike', 'Despachas con tus propios domiciliarios'], shop ? ['list', 'Sin menú: el cliente escribe su lista y tú pones el precio'] : ['clock', 'Listo en 10 minutos, sin papeleo']];
-    return '<div class="screen flush has-cta auth" style="padding-bottom:calc(150px + var(--safe-b))">' + authHero('Gratis para empezar', logged ? 'Completa tu negocio' : 'Vende a domicilio en Villanueva', '/', 'Negocios') +
+    return '<div class="screen flush has-cta auth" style="padding-bottom:calc(150px + var(--safe-b))">' + authHero('Gratis para empezar', logged ? 'Completa tu negocio' : 'Vende a domicilio en ' + esc(f.town), '/', 'Negocios') +
       '<div class="auth-body">' + steps(shop ? SHOP_STEPS : SETUP_STEPS, 0) +
       '<div class="label mt16">¿Qué tipo de negocio tienes?</div><div class="kinds">' + KINDS.map(function (x) {
         return '<button class="kind' + (x.id === k.id ? ' on' : '') + '" data-a="regKind" data-v="' + x.id + '" aria-pressed="' + (x.id === k.id) + '"><span class="ki kt-' + x.id + '">' + ic(x.icon, 20, { sw: 1.8 }) + '</span><span>' + x.t + '</span></button>';
@@ -1125,6 +1136,7 @@
       '<div class="card mt16">' +
       fieldIc('rg1', 'Nombre del negocio', k.icon, '<input class="input' + (err.name ? ' err' : '') + '" id="rg1" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="' + esc(k.ex) + '" autocomplete="organization">') +
       (logged ? '' : fieldIc('rg2', 'WhatsApp del negocio', 'msg', '<input class="input' + (err.phone ? ' err' : '') + '" id="rg2" data-m="ui.reg.phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="310 000 0000" autocomplete="tel-national">', 'Con este número entras a tu panel.', '+57')) +
+      fieldIc('rgT', 'Pueblo', 'map', '<input class="input' + (err.town ? ' err' : '') + '" id="rgT" data-m="ui.reg.town" value="' + esc(f.town) + '" list="rgTowns" autocomplete="off"><datalist id="rgTowns">' + allTowns().map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist>') +
       fieldIc('rg3', 'Dirección', 'pin', '<input class="input' + (err.addr ? ' err' : '') + '" id="rg3" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro" autocomplete="street-address">') +
       (logged ? '' : fieldIc('rg4', 'Crea una clave', 'lock', '<input class="input' + (err.pass ? ' err' : '') + '" id="rg4" data-m="ui.reg.pass" type="password" autocomplete="new-password" value="' + esc(f.pass) + '" placeholder="Mínimo 6 letras o números">')) +
       (ui.regMsg ? '<div class="err-msg">' + esc(ui.regMsg) + '</div>' : '') + '</div>' +
@@ -1164,16 +1176,16 @@
   }
   function scrInicio() {
     if (!hasTown()) return scrPueblo(true);
-    if (myTown() !== LIVE_TOWN) return scrInicioPronto();
+    if (!(ONLINE && !ui.synced) && !isLive(myTown())) return scrInicioPronto();
     var last = S.orders.filter(function (o) { return o.mine && o.status === 'entregado'; })[0];
     var active = S.orders.filter(function (o) { return o.mine && ['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0; })[0];
-    var shops = shown().filter(isShop), pr = prontoHere(), prShops = pr.filter(isShop), tiendas = (shops.length || prShops.length) && ui.home === 'tiendas';
-    var base = shown().filter(function (r) { return isShop(r) === !!tiendas; });
+    var here = shownHere(), shops = here.filter(isShop), pr = prontoHere(), prShops = pr.filter(isShop), tiendas = (shops.length || prShops.length) && ui.home === 'tiendas';
+    var base = here.filter(function (r) { return isShop(r) === !!tiendas; });
     var list = base.filter(function (r) { return tiendas ? (!ui.kind || r.kind === ui.kind) : (!ui.cat || r.cats.indexOf(ui.cat) >= 0); });
     var openN = base.filter(function (r) { return S.open[r.id]; }).length;
     list.sort(function (a, b) { return (S.open[b.id] ? 1 : 0) - (S.open[a.id] ? 1 : 0); });
     var h = '<div class="screen has-tabs' + (cartCount() ? ' has-cta' : '') + '">' +
-      '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + (S.user.address ? esc(S.user.address.split(',')[0]) + ', ' + LIVE_TOWN : LIVE_TOWN + ' · Agrega tu dirección') + '</span>' + ic('down', 16) + '</div></button>' +
+      '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + (S.user.address ? esc(S.user.address.split(',')[0]) + ', ' + esc(myTown()) : esc(myTown()) + ' · Agrega tu dirección') + '</span>' + ic('down', 16) + '</div></button>' +
       '<a class="icon-btn" href="#/confirmar" aria-label="Carrito" style="position:relative">' + ic('bag', 20) + (cartCount() ? '<span style="position:absolute;top:-2px;right:-2px;background:var(--cta);color:#fff;border-radius:999px;min-width:18px;height:18px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">' + cartCount() + '</span>' : '') + '</a></div>' +
       '<h1 class="t-title mt16" style="font-size:28px">' + (tiendas ? '¿Qué necesitas hoy' : '¿Qué se te antoja hoy') + (S.user.name ? ', ' + esc(first(S.user.name)) : '') + '?</h1>' +
       '<a class="search mt16" href="#/buscar">' + ic('search', 20) + '<span class="muted">' + (tiendas ? 'Busca droguerías, minimercados…' : 'Busca empanadas, pizza, arepas…') + '</span></a>' +
@@ -1204,7 +1216,7 @@
     var q = ui.q.trim().toLowerCase();
     if (!q) return '<div class="small muted mt16">Prueba: carne, pizza, empanadas, jugo…</div>' + '<div class="chips mt12">' + ['Carne', 'Pizza', 'Empanadas', 'Hamburguesa', 'Jugo'].map(function (s) { return '<button class="chip" data-a="qset" data-v="' + s + '">' + s + '</button>'; }).join('') + '</div>';
     var out = [];
-    shown().forEach(function (r) {
+    shownHere().forEach(function (r) {
       if (r.name.toLowerCase().indexOf(q) >= 0 || r.sub.toLowerCase().indexOf(q) >= 0 || (isShop(r) && kindOf(r).t.toLowerCase().indexOf(q) >= 0)) out.push('<a class="list-row" href="#/r/' + r.id + '">' + cover(r, 'thumb') + '<div class="grow"><div class="b">' + r.name + '</div><div class="small muted">' + kindOf(r).t + ' · ' + r.eta + '</div></div>' + ic('right', 18) + '</a>');
       r.dishes.forEach(function (d) {
         if ((d.name + ' ' + d.desc).toLowerCase().indexOf(q) >= 0) out.push('<a class="list-row" href="#/r/' + r.id + '">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b">' + d.name + '</div><div class="small muted">' + r.short + ' · ' + fmt(d.price) + '</div></div>' + ic('right', 18) + '</a>');
@@ -2411,7 +2423,7 @@
       ui.sugErr = '';
       if (name === name.toLowerCase()) name = name.replace(/(^|\s)(\S)/g, function (m, a, c) { return a + c.toUpperCase(); });
       town = town.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
-      for (var i = 0; i < RESTAURANTS.length; i++) if (town.toLowerCase() === 'villanueva' && shown().indexOf(RESTAURANTS[i]) >= 0 && sameBiz(name, RESTAURANTS[i].name)) { toast('¡Ya está en Pido y Ido! Le puedes pedir aquí.'); go('/r/' + RESTAURANTS[i].id); return; }
+      for (var i = 0; i < RESTAURANTS.length; i++) if (townOf(RESTAURANTS[i]).toLowerCase() === town.toLowerCase() && shown().indexOf(RESTAURANTS[i]) >= 0 && sameBiz(name, RESTAURANTS[i].name)) { toast('¡Ya está en Pido y Ido! Le puedes pedir aquí.'); go('/r/' + RESTAURANTS[i].id); return; }
       var known = allPronto().filter(function (p) { return p.town.toLowerCase() === town.toLowerCase() && sameBiz(name, p.name); })[0];
       if (known) { vote(known.id); ui.sug = null; toast('Ya estaba en la lista. Sumamos tu voto.'); go('/negocio/' + known.id); return; }
       var id = (slug(name) + (town.toLowerCase() !== 'villanueva' ? '-' + slug(town) : '')).slice(0, 80).replace(/-$/, '');
@@ -2432,7 +2444,7 @@
     vote: function (el) { vote(el.dataset.v); render(); toast('¡Gracias! Ahora invítalo por WhatsApp.'); },
     claim: function (el) {
       var p = prontoById(el.dataset.v); if (!p) return;
-      ui.reg = { kind: p.kind, name: p.name, phone: '', addr: '', pass: '' };
+      ui.reg = { kind: p.kind, name: p.name, phone: '', addr: '', pass: '', town: p.town };
       go('/rest/registro');
     },
     homeTab: function (el) { ui.home = el.dataset.v; ui.kind = null; ui.cat = null; render(); },
@@ -2502,14 +2514,17 @@
     if (!String(f.name || '').trim()) err.name = 1;
     if (!logged && ph.length !== 10) err.phone = 1;
     if (String(f.addr || '').trim().length < 5) err.addr = 1;
+    if (String(f.town || '').trim().length < 3) err.town = 1;
     if (!logged && String(f.pass || '').length < 6) err.pass = 1;
     ui.regErr = err;
-    ui.regMsg = err.name ? 'Escribe el nombre del negocio.' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : '';
+    ui.regMsg = err.name ? 'Escribe el nombre del negocio.' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.town ? '¿En qué pueblo queda tu negocio?' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : '';
     if (ui.regMsg || ui.busy) { render(); return; }
     var name = f.name.trim();
     var slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) + '-' + Math.random().toString(36).slice(2, 6);
     var shop = isShop(f);
     var data = { id: slug, name: name, short: shortName(name), sub: '', img: shop ? '' : IMG.asado, cats: [], address: f.addr.trim(), phone: ph, nequi: ph ? phoneFmt(ph) : '', dishes: [], open: false };
+    var tw = String(f.town || '').replace(/\s+/g, ' ').trim(), known = allTowns().filter(function (t) { return t.toLowerCase() === tw.toLowerCase(); })[0];
+    data.town = known || tw.replace(/(^|\s)(\S)/g, function (m, a, c) { return a + c.toUpperCase(); });
     if (shop) data.kind = f.kind;
     ui.busy = true; render();
     (logged ? CLOUD.createRest(data) : CLOUD.restSignup(ph, f.pass, data)).then(function () { return sync(true); }).then(function () {
