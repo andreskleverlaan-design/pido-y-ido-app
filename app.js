@@ -102,6 +102,13 @@
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
     lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     camplus: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><path d="M12 10v6M9 13h6"/>',
+    utensils: '<path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7"/>',
+    pill: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/>',
+    basket: '<path d="m15 11-1 9M19 11l-4-7M2 11h20"/><path d="m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4M4.5 15.5h15M5 11l4-7M9 11l1 9"/>',
+    wine: '<path d="M8 22h8M7 10h10M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5z"/>',
+    flower: '<circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/>',
+    wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
+    list: '<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
         fire: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.3.4 1.5 1.7 2.8 3.5 2.8z"/>'
   };
   function ic(name, size, opts) {
@@ -119,6 +126,28 @@
   function photo(src, cls, style, w) {
     if (!w) w = /thumb/.test(cls || '') ? 200 : (style && /width:100%|inset:0/.test(style)) ? 900 : 400;
     return '<div class="ph ' + (cls || '') + '"' + (style ? ' style="' + style + '"' : '') + '><span class="ph-ico">' + ic('fire', 26) + '</span>' + (src ? '<img src="' + esc(imgSrc(src, w)) + '" alt="" loading="lazy" decoding="async" onload="this.classList.add(\'in\')" onerror="this.classList.add(\'broken\')">' : '') + '</div>';
+  }
+
+  // ---------- Kinds of business ----------
+  // Restaurants sell from a menu. Every other kind gets a free order: the customer types a list or sends a photo,
+  // and the shop sets the price when it accepts.
+  var KINDS = [
+    { id: 'restaurante', t: 'Restaurante', icon: 'utensils', ex: 'Asadero El Llanero', sub: 'Carne a la llanera · Pollo asado' },
+    { id: 'drogueria', t: 'Droguería', icon: 'pill', ex: 'Droguería La Salud', sub: 'Medicamentos · Aseo personal · Bebés', ph: 'Ej.:\nAcetaminofén 500 mg x 10\nSuero oral x 2\nPañales etapa 3', hint: '¿Tienes fórmula médica? Mándale la foto. La droguería decide si te lo puede vender.' },
+    { id: 'minimercado', t: 'Minimercado', icon: 'basket', ex: 'Minimercado El Ahorro', sub: 'Mercado · Aseo · Bebidas', ph: 'Ej.:\nArroz Diana 1 kg\n6 huevos\nLeche Alquería x 2\nPan tajado' },
+    { id: 'licorera', t: 'Licorera', icon: 'wine', ex: 'Licorera La 10', sub: 'Cerveza · Aguardiente · Hielo', ph: 'Ej.:\n6 cervezas Águila\nAguardiente Llanero media\n1 bolsa de hielo', hint: 'Solo para mayores de 18 años. Te pueden pedir la cédula al entregar.' },
+    { id: 'floristeria', t: 'Floristería', icon: 'flower', ex: 'Floristería Las Rosas', sub: 'Ramos · Arreglos · Detalles', ph: 'Ej.:\nRamo de 12 rosas rojas\nTarjeta: "Feliz cumpleaños, mamá"\nPara las 4 p. m.' },
+    { id: 'ferreteria', t: 'Ferretería', icon: 'wrench', ex: 'Ferretería El Tornillo', sub: 'Herramientas · Eléctricos · Plomería', ph: 'Ej.:\nTubo PVC 1/2" x 3 m\n2 codos de 1/2"\nCinta teflón', hint: 'Si no sabes el nombre, mándale una foto de la pieza.' },
+    { id: 'otro', t: 'Otro negocio', icon: 'store', ex: 'Papelería La Esquina', sub: 'Qué vendes, en corto', ph: 'Escribe lo que necesitas, uno por línea.' }
+  ];
+  function kindOf(r) { var k = (r && r.kind) || 'restaurante'; for (var i = 0; i < KINDS.length; i++) if (KINDS[i].id === k) return KINDS[i]; return KINDS[KINDS.length - 1]; }
+  function isShop(r) { return !!r && !!r.kind && r.kind !== 'restaurante'; }
+  function bizWord(r) { return isShop(r) ? 'la tienda' : 'el restaurante'; }
+  // Cover for a business: its photo, or (shops without a photo yet) a branded tile with the kind's icon.
+  function cover(r, cls, style, w) {
+    if (r && r.img) return photo(r.img, cls, style, w);
+    var k = kindOf(r), big = /thumb/.test(cls || '') ? 20 : 44;
+    return '<div class="ph kt kt-' + k.id + ' ' + (cls || '') + '"' + (style ? ' style="' + style + '"' : '') + '><span class="kt-ico">' + ic(k.icon, big, { sw: 1.6 }) + '</span></div>';
   }
 
   // ---------- Seed data ----------
@@ -149,13 +178,15 @@
         { id: 'chorizo', name: 'Chorizo con arepa', desc: 'Chorizo santarrosano y arepa asada', price: 8000, img: IMG.arepa },
         { id: 'emp', name: 'Empanadas x3', desc: 'De pipián o de carne', price: 7500, img: IMG.emp },
         { id: 'jugo', name: 'Jugo de maracuyá', desc: 'En agua o en leche', price: 5000, img: IMG.jugo }
-      ] }
+      ] },
+    { id: 'salud', kind: 'drogueria', name: 'Droguería La Salud', short: 'La Salud', img: '', rating: 4.9, count: 23, eta: '20–30 min', pickup: '10 min', min: 0, fee: 2000,
+      cats: [], sub: 'Medicamentos · Aseo personal · Bebés', address: 'Calle 9 # 7-15, El Centro', phone: '3100000004', nequi: '310 000 0004', dishes: [] }
   ];
   var CATS = [['Empanadas', IMG.emp], ['Asados', IMG.carne], ['Pollo', IMG.pollo], ['Arepas', IMG.arepa], ['Almuerzos', IMG.almuerzo], ['Hamburguesas', IMG.burger], ['Pizza', IMG.pizza], ['Jugos', IMG.jugo]];
   var NO_REST = { id: '', name: 'Restaurante', short: 'Restaurante', img: '', rating: 0, count: 0, eta: '30–40 min', pickup: '15 min', min: 0, fee: 0, cats: [], sub: '', address: '', phone: '', nequi: '', dishes: [] };
   function R(id) { for (var i = 0; i < RESTAURANTS.length; i++) if (RESTAURANTS[i].id === id) return RESTAURANTS[i]; return ONLINE ? NO_REST : RESTAURANTS[0]; }
   // restaurants customers can order from (online: only those with a menu)
-  function shown() { return RESTAURANTS.filter(function (r) { return !ONLINE || r.dishes.length; }); }
+  function shown() { return RESTAURANTS.filter(function (r) { return !ONLINE || (isShop(r) ? hasLoc(r) : r.dishes.length); }); }
 
   function seed() {
     var t = now();
@@ -163,11 +194,11 @@
     return {
       v: 2,
       user: { name: 'Luz Marina', phone: '3100000000', address: 'Barrio El Centro, dos casas después de la iglesia, puerta azul' },
-      open: { llanero: true, plaza: true, rosa: true },
+      open: { llanero: true, plaza: true, rosa: true, salud: true },
       ratings: {},
       cart: { restId: null, items: {}, mode: 'dom' },
       co: { pay: 'ef', cash: 'exact', note: '', geo: null },
-      nextId: 145,
+      nextId: 146,
       restId: 'llanero',
       riders: {
         jairo: { id: 'jairo', name: 'Don Jairo', phone: '3120000000', vehicle: 'Moto', barrio: 'El Centro', color: 'moto roja' },
@@ -183,6 +214,8 @@
       ref: null,
       chats: {},
       orders: [
+        mk({ id: '0145', restId: 'salud', mine: false, customer: { name: 'Marleny Ruiz', phone: '3120000001', address: 'Barrio San Agustín, casa esquinera verde' },
+          items: [], wish: 'Acetaminofén 500 mg x 10\nSuero oral x 2\nCuritas', fee: 2000, mode: 'dom', note: '', pay: 'ef', cashGiven: 50000, pin: '3381', status: 'recibido', createdAt: t - 2 * 60000 }),
         mk({ id: '0144', restId: 'llanero', mine: false, customer: { name: 'Carlos Gómez', phone: '3110000000', address: 'Los Libertadores, frente a la tienda' },
           items: [{ id: 'pollo', name: 'Medio pollo asado', price: 22000, qty: 2 }, { id: 'emp', name: 'Empanadas llaneras x3', price: 9000, qty: 1 }],
           fee: 0, mode: 'dom', note: 'Una sin ají, por favor', pay: 'ef', cashGiven: 60000, pin: '5173', status: 'recibido', createdAt: t - 60000 }),
@@ -213,6 +246,7 @@
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   S = load();
+  if (!ONLINE && S.open && S.open.salud === undefined) S.open.salud = true;
   if (ONLINE && S.restCache && S.restCache.length) Array.prototype.splice.apply(RESTAURANTS, [0, RESTAURANTS.length].concat(S.restCache));
   else if (ONLINE) RESTAURANTS.length = 0;
   var ui = { cat: null, q: '', rtab: 'nuevos', bf: {}, rate: null, signup: null, choose: {}, lastRoute: '', installEvt: null };
@@ -242,12 +276,15 @@
     if (compact) return '<span class="rstat busy" title="Vuelve ~' + hora(back) + '">' + ic('bike', 14) + '<span><b>En ruta</b><br>' + (m > 0 ? '~' + m + ' min' : 'ya casi') + '</span></span>';
     return '<span class="rstat busy">' + ic('bike', 14) + '<span><b>En ruta' + (m > 0 ? ' · ' + m + ' min' : '') + '</b><br>' + (m > 0 ? 'libre ~' + hora(back) : 'debería volver ya') + '</span></span>';
   }
+  // Shops: the "cart" is a free order (typed list and/or photo) instead of dishes.
+  function cartShop() { return !!S.cart.restId && isShop(R(S.cart.restId)); }
+  function wishHas() { return cartShop() && (String(S.cart.wish || '').trim().length >= 2 || !!S.cart.wishImg); }
   function cartLines() {
-    if (!S.cart.restId) return [];
+    if (!S.cart.restId || cartShop()) return [];
     var r = R(S.cart.restId);
     return r.dishes.filter(function (d) { return S.cart.items[d.id] > 0; }).map(function (d) { return { id: d.id, name: d.name, price: d.price, qty: S.cart.items[d.id], img: d.img }; });
   }
-  function cartCount() { return cartLines().reduce(function (a, l) { return a + l.qty; }, 0); }
+  function cartCount() { if (cartShop()) return wishHas() ? 1 : 0; return cartLines().reduce(function (a, l) { return a + l.qty; }, 0); }
   function cartSubtotal() { return cartLines().reduce(function (a, l) { return a + l.qty * l.price; }, 0); }
   function cartFee() { return S.cart.restId && S.cart.mode === 'dom' ? R(S.cart.restId).fee : 0; }
   // ---------- Map: pin + delivery zone ----------
@@ -312,7 +349,7 @@
   function tabs(kind, active) {
     var T = {
       cliente: [['inicio', 'home', 'Inicio', '/inicio'], ['buscar', 'search', 'Buscar', '/buscar'], ['pedidos', 'receipt', 'Pedidos', '/pedidos'], ['perfil', 'user', 'Perfil', '/perfil']],
-      rest: [['pedidos', 'receipt', 'Pedidos', '/rest']].concat(ONLINE ? [['menu', 'store', 'Menú', '/rest/menu']] : [], [['riders', 'bike', 'Domiciliarios', '/rest/domiciliarios'], ['bolsa', 'users', 'Bolsa', '/rest/bolsa'], ['salir', 'swap', 'Cambiar rol', '/']]),
+      rest: [['pedidos', 'receipt', 'Pedidos', '/rest']].concat(ONLINE ? [['menu', 'store', isShop(R(S.restId)) ? 'Mi tienda' : 'Menú', '/rest/menu']] : [], [['riders', 'bike', 'Domiciliarios', '/rest/domiciliarios'], ['bolsa', 'users', 'Bolsa', '/rest/bolsa'], ['salir', 'swap', 'Cambiar rol', '/']]),
       dom: [['msgs', 'msg', 'Mensajes', '/dom'], ['perfil', 'user', 'Mi perfil', '/dom/perfil'], ['salir', 'swap', 'Cambiar rol', '/']],
       promo: [['enlace', 'qr', 'Mi enlace', '/promo'], ['ganancias', 'chart', 'Ganancias', '/promo/ganancias'], ['salir', 'swap', 'Cambiar rol', '/']]
     }[kind];
@@ -331,11 +368,13 @@
     var txt = o.status === 'listo' ? (o.mode === 'rec' ? 'Listo para recoger' : 'Listo') : STATUS_TXT[o.status];
     return '<span class="badge ' + cls + '">' + txt + '</span>';
   }
+  function unpriced(o) { return !!o.wish && o.status === 'recibido'; }
   function payTxt(o) {
+    if (unpriced(o)) return o.pay === 'ef' ? 'Efectivo' + (o.cashGiven ? ' · paga con billete de ' + fmt(o.cashGiven) : '') : (o.pay === 'nequi' ? 'Nequi' : 'Daviplata') + ' · transferencia';
     if (o.pay === 'ef') return 'Efectivo ' + fmt(o.total) + (o.cashGiven > o.total ? ' · paga con ' + fmt(o.cashGiven) + ' · vueltas ' + fmt(o.cashGiven - o.total) : ' · exacto');
     return (o.pay === 'nequi' ? 'Nequi ' : 'Daviplata ') + fmt(o.total) + ' · transferencia';
   }
-  function itemsTxt(o) { return o.items.map(function (i) { return i.qty + '× ' + i.name; }).join(', '); }
+  function itemsTxt(o) { if (o.wish) return o.wish === '(Ver la foto)' ? 'Lista en foto' : String(o.wish).replace(/\s*\n+\s*/g, ', ') + (o.wishImg ? ' + foto' : ''); return o.items.map(function (i) { return i.qty + '× ' + i.name; }).join(', '); }
 
   // ---------- Screens: start ----------
   function installCard() {
@@ -350,7 +389,7 @@
   }
   var ROLES = [
     { id: 'cliente', icon: 'bag', title: 'Quiero pedir comida', sub: 'Restaurantes de tu barrio', cta: 'Empezar a pedir', home: '/inicio' },
-    { id: 'rest', icon: 'store', title: 'Tengo un restaurante', sub: 'Recibe pedidos y despacha', cta: 'Registrar mi restaurante', home: '/rest', first: '/rest/registro' },
+    { id: 'rest', icon: 'store', title: 'Tengo un negocio', sub: 'Restaurante, droguería, tienda…', cta: 'Registrar mi negocio', home: '/rest', first: '/rest/registro' },
     { id: 'rider', icon: 'bike', title: 'Soy domiciliario', sub: 'Encuentra restaurantes que te contraten', cta: 'Crear mi perfil', home: '/dom', first: '/dom/perfil' },
     { id: 'promo', icon: 'gift', title: 'Quiero recomendar y ganar', sub: 'Comparte tu enlace y gana', cta: 'Obtener mi enlace', home: '/promo' }
   ];
@@ -366,7 +405,7 @@
         return '<button class="role-card' + (on ? ' on' : '') + '" data-a="rolePick" data-v="' + r.id + '"><span class="ic">' + ic(r.icon, 22, { sw: 1.75 }) + '</span><span class="grow"><span class="rt">' + r.title + '</span><span class="rs">' + r.sub + (r.id === 'promo' ? ' ' + S.promo.pct + '%' : '') + '</span></span><span class="ring"></span></button>';
       }).join('') + '</div>' +
       '<div class="welcome-cta"><button class="btn btn-primary btn-block" style="height:58px;font-size:17px;font-weight:600" data-a="roleGo">' + cur.cta + '</button>' +
-      (ONLINE ? '<a class="welcome-login" href="#/rest/login">¿Tienes restaurante? <b>Iniciar sesión</b></a>'
+      (ONLINE ? '<a class="welcome-login" href="#/rest/login">¿Tienes negocio? <b>Iniciar sesión</b></a>'
         : '<button class="welcome-login" data-a="login">¿Ya tienes cuenta? <b>Iniciar sesión</b></button>' +
       '<div class="xs muted center">Prototipo de demostración: los datos quedan solo en este celular.</div>') + '</div></div>';
   }
@@ -384,10 +423,10 @@
   }
 
   // ---------- Restaurant account (online): branded header, steps, inputs with icons ----------
-  function authHero(kicker, title, back) {
+  function authHero(kicker, title, back, tag) {
     return '<div class="auth-hero">' + photo(IMG.asado, '', 'position:absolute;inset:0;height:100%;width:100%') + '<div class="auth-fade"></div>' +
       '<div class="auth-top">' + (back ? '<a class="icon-btn glass" href="#' + back + '" aria-label="Volver">' + ic('back', 22) + '</a>' : '') +
-      '<span class="auth-brand">' + logo(30, 'icon') + 'Pido y Ido <span class="auth-tag">Restaurantes</span></span></div>' +
+      '<span class="auth-brand">' + logo(30, 'icon') + 'Pido y Ido <span class="auth-tag">' + (tag || 'Restaurantes') + '</span></span></div>' +
       '<div class="auth-title"><div class="auth-kicker">' + kicker + '</div><h1>' + title + '</h1></div></div>';
   }
   function steps(list, at) {
@@ -398,31 +437,34 @@
   function fieldIc(id, label, icon, input, hint, prefix) {
     return '<div class="field"><label class="label" for="' + id + '">' + label + '</label><div class="input-ic">' + ic(icon, 18) + (prefix ? '<span class="pre">' + prefix + '</span>' : '') + input + '</div>' + (hint ? '<div class="xs muted mt4">' + hint + '</div>' : '') + '</div>';
   }
-  var SETUP_STEPS = ['Cuenta', 'Menú', 'Ubicación', 'Abrir'];
+  var SETUP_STEPS = ['Cuenta', 'Menú', 'Ubicación', 'Abrir'], SHOP_STEPS = ['Cuenta', 'Tu tienda', 'Ubicación', 'Abrir'];
   function scrRestRegistroLive() {
-    var f = ui.reg || (ui.reg = { name: '', phone: '', addr: '', pass: '' });
-    var logged = !!CLOUD.restUid(), err = ui.regErr || {};
-    var perks = [['bell', 'Los pedidos te llegan al celular, con sonido'], ['bike', 'Despachas con tus propios domiciliarios'], ['clock', 'Listo en 10 minutos, sin papeleo']];
-    return '<div class="screen flush has-cta auth" style="padding-bottom:calc(150px + var(--safe-b))">' + authHero('Gratis para empezar', logged ? 'Completa tu restaurante' : 'Vende a domicilio en Villanueva', '/') +
-      '<div class="auth-body">' + steps(SETUP_STEPS, 0) +
+    var f = ui.reg || (ui.reg = { kind: 'restaurante', name: '', phone: '', addr: '', pass: '' });
+    var logged = !!CLOUD.restUid(), err = ui.regErr || {}, k = kindOf(f), shop = isShop(f);
+    var perks = [['bell', 'Los pedidos te llegan al celular, con sonido'], ['bike', 'Despachas con tus propios domiciliarios'], shop ? ['list', 'Sin menú: el cliente escribe su lista y tú pones el precio'] : ['clock', 'Listo en 10 minutos, sin papeleo']];
+    return '<div class="screen flush has-cta auth" style="padding-bottom:calc(150px + var(--safe-b))">' + authHero('Gratis para empezar', logged ? 'Completa tu negocio' : 'Vende a domicilio en Villanueva', '/', 'Negocios') +
+      '<div class="auth-body">' + steps(shop ? SHOP_STEPS : SETUP_STEPS, 0) +
+      '<div class="label mt16">¿Qué tipo de negocio tienes?</div><div class="kinds">' + KINDS.map(function (x) {
+        return '<button class="kind' + (x.id === k.id ? ' on' : '') + '" data-a="regKind" data-v="' + x.id + '" aria-pressed="' + (x.id === k.id) + '"><span class="ki kt-' + x.id + '">' + ic(x.icon, 20, { sw: 1.8 }) + '</span><span>' + x.t + '</span></button>';
+      }).join('') + '</div>' +
       (logged ? '' : '<div class="perks mt16">' + perks.map(function (p) { return '<div class="perk"><span class="pi">' + ic(p[0], 18) + '</span>' + p[1] + '</div>'; }).join('') + '</div>') +
       '<div class="card mt16">' +
-      fieldIc('rg1', 'Nombre del restaurante', 'store', '<input class="input' + (err.name ? ' err' : '') + '" id="rg1" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="Asadero El Llanero" autocomplete="organization">') +
+      fieldIc('rg1', 'Nombre del negocio', k.icon, '<input class="input' + (err.name ? ' err' : '') + '" id="rg1" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="' + esc(k.ex) + '" autocomplete="organization">') +
       (logged ? '' : fieldIc('rg2', 'WhatsApp del negocio', 'msg', '<input class="input' + (err.phone ? ' err' : '') + '" id="rg2" data-m="ui.reg.phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="310 000 0000" autocomplete="tel-national">', 'Con este número entras a tu panel.', '+57')) +
       fieldIc('rg3', 'Dirección', 'pin', '<input class="input' + (err.addr ? ' err' : '') + '" id="rg3" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro" autocomplete="street-address">') +
       (logged ? '' : fieldIc('rg4', 'Crea una clave', 'lock', '<input class="input' + (err.pass ? ' err' : '') + '" id="rg4" data-m="ui.reg.pass" type="password" autocomplete="new-password" value="' + esc(f.pass) + '" placeholder="Mínimo 6 letras o números">')) +
       (ui.regMsg ? '<div class="err-msg">' + esc(ui.regMsg) + '</div>' : '') + '</div>' +
       (logged ? '' : '<div class="small muted center mt16">¿Ya tienes cuenta? <a class="link" href="#/rest/login">Inicia sesión</a></div>') + '</div></div>' +
-      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="regDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Un momento…' : logged ? 'Crear mi restaurante' : 'Crear mi cuenta') + (ui.busy ? '' : ic('right', 20)) + '</button></div>';
+      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="regDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Un momento…' : logged ? 'Crear mi negocio' : 'Crear mi cuenta') + (ui.busy ? '' : ic('right', 20)) + '</button></div>';
   }
   function scrRestLogin() {
     var f = ui.login || (ui.login = { phone: '', pass: '' });
-    return '<div class="screen flush has-cta auth">' + authHero('Panel del restaurante', 'Hola de nuevo', '/') +
+    return '<div class="screen flush has-cta auth">' + authHero('Panel de tu negocio', 'Hola de nuevo', '/', 'Negocios') +
       '<div class="auth-body"><div class="card">' +
       fieldIc('lg1', 'WhatsApp del negocio', 'msg', '<input class="input" id="lg1" data-m="ui.login.phone" inputmode="tel" autocomplete="username" value="' + esc(f.phone) + '" placeholder="310 000 0000">', '', '+57') +
       fieldIc('lg2', 'Clave', 'lock', '<input class="input" id="lg2" data-m="ui.login.pass" type="password" autocomplete="current-password" data-enter="restLoginDo" value="' + esc(f.pass) + '" placeholder="Tu clave">') +
       (ui.loginMsg ? '<div class="err-msg">' + esc(ui.loginMsg) + '</div>' : '') + '</div>' +
-      '<div class="card flat mt16 row"><span class="pi">' + ic('store', 18) + '</span><div class="grow small">¿Aún no estás en Pido y Ido?<br><a class="link" href="#/rest/registro">Registra tu restaurante gratis</a></div></div>' +
+      '<div class="card flat mt16 row"><span class="pi">' + ic('store', 18) + '</span><div class="grow small">¿Aún no estás en Pido y Ido?<br><a class="link" href="#/rest/registro">Registra tu negocio gratis</a></div></div>' +
       '<div class="xs muted center mt16">¿Olvidaste tu clave? Escríbele a Pido y Ido y te ayudamos.</div></div></div>' +
       '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="restLoginDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Entrando…' : 'Entrar') + '</button></div>';
   }
@@ -433,41 +475,51 @@
   // ---------- Customer ----------
   function restCard(r) {
     var open = S.open[r.id];
-    return '<a class="rest-card' + (open ? '' : ' closed') + '" href="#/r/' + r.id + '"><div style="position:relative">' + photo(r.img, '', 'height:168px;width:100%') +
+    return '<a class="rest-card' + (open ? '' : ' closed') + '" href="#/r/' + r.id + '"><div style="position:relative">' + cover(r, '', 'height:168px;width:100%') +
+      (isShop(r) ? '<span class="over kind-over">' + ic(kindOf(r).icon, 14, { sw: 2.2 }) + kindOf(r).t + '</span>' : '') +
       (r.fee === 0 ? '<span class="over" style="left:12px;top:12px;background:var(--green);color:#fff">Domicilio gratis</span>' : '') +
       '<span class="over" style="right:12px;bottom:12px;background:#fff">' + r.eta + '</span>' +
       (open ? '' : '<div class="closed-veil"><span>Cerrado ahora</span></div>') +
       '</div><div style="padding:12px 14px"><div class="row between"><div class="t-h3 ellipsis">' + r.name + '</div><div class="small b" style="flex:none"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + '</div></div>' +
-      '<div class="small muted mt4">' + r.sub + ' · Mín. ' + fmt(r.min) + (r.fee ? ' · Domicilio ' + fmt(r.fee) : '') + '</div></div></a>';
+      '<div class="small muted mt4">' + esc(r.sub || kindOf(r).t) + (r.min && !isShop(r) ? ' · Mín. ' + fmt(r.min) : '') + (r.fee ? ' · Domicilio ' + fmt(r.fee) : '') + '</div></div></a>';
   }
   function cartBar(above) {
     var n = cartCount(); if (!n) return '';
+    if (cartShop()) return '<div class="cta-wrap' + (above ? ' above-tabs' : '') + '"><a class="cart-bar" href="#/confirmar"><span class="c">' + ic('list', 16, { sw: 2.4 }) + '</span><span class="grow">Continuar · ' + esc(R(S.cart.restId).short) + '</span>' + ic('right', 20) + '</a></div>';
     return '<div class="cta-wrap' + (above ? ' above-tabs' : '') + '"><a class="cart-bar" href="#/confirmar"><span class="c">' + n + '</span><span class="grow">Ver carrito · ' + R(S.cart.restId).short + '</span><span>' + fmt(cartSubtotal()) + '</span></a></div>';
   }
   function scrInicio() {
     var last = S.orders.filter(function (o) { return o.mine && o.status === 'entregado'; })[0];
     var active = S.orders.filter(function (o) { return o.mine && ['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0; })[0];
-    var list = shown().filter(function (r) { return !ui.cat || r.cats.indexOf(ui.cat) >= 0; });
-    var openN = shown().filter(function (r) { return S.open[r.id]; }).length;
+    var shops = shown().filter(isShop), tiendas = shops.length && ui.home === 'tiendas';
+    var base = shown().filter(function (r) { return isShop(r) === !!tiendas; });
+    var list = base.filter(function (r) { return tiendas ? (!ui.kind || r.kind === ui.kind) : (!ui.cat || r.cats.indexOf(ui.cat) >= 0); });
+    var openN = base.filter(function (r) { return S.open[r.id]; }).length;
     list.sort(function (a, b) { return (S.open[b.id] ? 1 : 0) - (S.open[a.id] ? 1 : 0); });
     var h = '<div class="screen has-tabs' + (cartCount() ? ' has-cta' : '') + '">' +
       '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + (S.user.address ? esc(S.user.address.split(',')[0]) + ', Villanueva' : 'Agrega tu dirección') + '</span>' + ic('down', 16) + '</div></button>' +
       '<a class="icon-btn" href="#/confirmar" aria-label="Carrito" style="position:relative">' + ic('bag', 20) + (cartCount() ? '<span style="position:absolute;top:-2px;right:-2px;background:var(--cta);color:#fff;border-radius:999px;min-width:18px;height:18px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">' + cartCount() + '</span>' : '') + '</a></div>' +
-      '<h1 class="t-title mt16" style="font-size:28px">¿Qué se te antoja hoy' + (S.user.name ? ', ' + esc(first(S.user.name)) : '') + '?</h1>' +
-      '<a class="search mt16" href="#/buscar">' + ic('search', 20) + '<span class="muted">Busca empanadas, pizza, arepas…</span></a>';
+      '<h1 class="t-title mt16" style="font-size:28px">' + (tiendas ? '¿Qué necesitas hoy' : '¿Qué se te antoja hoy') + (S.user.name ? ', ' + esc(first(S.user.name)) : '') + '?</h1>' +
+      '<a class="search mt16" href="#/buscar">' + ic('search', 20) + '<span class="muted">' + (tiendas ? 'Busca droguerías, minimercados…' : 'Busca empanadas, pizza, arepas…') + '</span></a>' +
+      (shops.length ? '<div class="seg home-seg mt16"><button class="' + (tiendas ? '' : 'on') + '" data-a="homeTab" data-v="comida">' + ic('utensils', 17) + 'Comida</button><button class="' + (tiendas ? 'on' : '') + '" data-a="homeTab" data-v="tiendas">' + ic('basket', 17) + 'Tiendas</button></div>' : '');
     if (active) {
       h += '<a class="card mt16 row" href="#/pedido/' + active.id + '" style="border:2px solid var(--green)"><span class="pulse"></span><div class="grow"><div class="b">Pedido #' + active.id + ' · ' + R(active.restId).short + '</div><div class="small muted">' + statusLine(active) + '</div></div>' + ic('right', 20) + '</a>';
     }
-    h += '<div class="cats mt16">' + CATS.map(function (c) {
+    if (tiendas) {
+      var kinds = KINDS.filter(function (k) { return shops.some(function (r) { return r.kind === k.id; }); });
+      if (kinds.length > 1) h += '<div class="chips scroll mt16">' + kinds.map(function (k) { return '<button class="chip' + (ui.kind === k.id ? ' on' : '') + '" data-a="kindPick" data-v="' + k.id + '">' + ic(k.icon, 16) + k.t + '</button>'; }).join('') + '</div>';
+    } else h += '<div class="cats mt16">' + CATS.map(function (c) {
       return '<button class="cat' + (ui.cat === c[0] ? ' on' : '') + '" data-a="cat" data-v="' + c[0] + '">' + photo(c[1]) + '<span>' + c[0] + '</span></button>';
     }).join('') + '</div>';
-    if (last && !ui.cat && R(last.restId).id) {
+    if (last && !ui.cat && !tiendas && R(last.restId).id && !isShop(R(last.restId))) {
       h += '<div class="t-h2 mt20">Pedir de nuevo</div><div class="card mt12 row">' + photo(last.items[0] && R(last.restId).dishes.filter(function (d) { return d.id === last.items[0].id; })[0] ? R(last.restId).dishes.filter(function (d) { return d.id === last.items[0].id; })[0].img : R(last.restId).img, 'thumb') +
         '<div class="grow"><div class="b ellipsis">' + R(last.restId).name + '</div><div class="small muted ellipsis">' + last.items.map(function (i) { return i.name; }).join(' + ') + ' · ' + fmt(last.total) + '</div></div>' +
         '<button class="btn btn-soft btn-sm" data-a="reorder" data-id="' + last.id + '">Repetir</button></div>';
     }
-    h += '<div class="row between mt24"><div class="t-h2">' + (ui.cat ? ui.cat : 'Cerca de ti') + '</div><div class="small muted">' + (ui.cat ? '<button class="link" data-a="cat" data-v="">Ver todos</button>' : openN + ' abiertos') + '</div></div><div class="mt12">' +
-      (list.length ? list.map(restCard).join('') : '<div class="empty">' + (ui.cat ? 'Todavía no hay restaurantes con ' + ui.cat + '.' : ONLINE && !ui.synced ? 'Cargando restaurantes…' : 'Pronto vas a ver aquí los restaurantes de Villanueva.') + '</div>') + '</div></div>';
+    var filt = tiendas ? ui.kind && kindOf({ kind: ui.kind }).t : ui.cat;
+    h += '<div class="row between mt24"><div class="t-h2">' + (filt || (tiendas ? 'Tiendas cerca' : 'Cerca de ti')) + '</div><div class="small muted">' + (filt ? '<button class="link" data-a="' + (tiendas ? 'kindPick' : 'cat') + '" data-v="">Ver todos</button>' : openN + ' abiertos') + '</div></div><div class="mt12">' +
+      (tiendas ? '<div class="note green row" style="gap:10px;margin-bottom:12px">' + ic('list', 18) + '<span>Escribe tu lista o mándale una foto. La tienda te confirma el precio.</span></div>' : '') +
+      (list.length ? list.map(restCard).join('') : '<div class="empty">' + (ui.cat && !tiendas ? 'Todavía no hay restaurantes con ' + ui.cat + '.' : ONLINE && !ui.synced ? 'Cargando restaurantes…' : 'Pronto vas a ver aquí los restaurantes de Villanueva.') + '</div>') + '</div></div>';
     return h + cartBar(true) + tabs('cliente', 'inicio');
   }
   function searchResults() {
@@ -475,7 +527,7 @@
     if (!q) return '<div class="small muted mt16">Prueba: carne, pizza, empanadas, jugo…</div>' + '<div class="chips mt12">' + ['Carne', 'Pizza', 'Empanadas', 'Hamburguesa', 'Jugo'].map(function (s) { return '<button class="chip" data-a="qset" data-v="' + s + '">' + s + '</button>'; }).join('') + '</div>';
     var out = [];
     shown().forEach(function (r) {
-      if (r.name.toLowerCase().indexOf(q) >= 0 || r.sub.toLowerCase().indexOf(q) >= 0) out.push('<a class="list-row" href="#/r/' + r.id + '">' + photo(r.img, 'thumb') + '<div class="grow"><div class="b">' + r.name + '</div><div class="small muted">Restaurante · ' + r.eta + '</div></div>' + ic('right', 18) + '</a>');
+      if (r.name.toLowerCase().indexOf(q) >= 0 || r.sub.toLowerCase().indexOf(q) >= 0 || (isShop(r) && kindOf(r).t.toLowerCase().indexOf(q) >= 0)) out.push('<a class="list-row" href="#/r/' + r.id + '">' + cover(r, 'thumb') + '<div class="grow"><div class="b">' + r.name + '</div><div class="small muted">' + kindOf(r).t + ' · ' + r.eta + '</div></div>' + ic('right', 18) + '</a>');
       r.dishes.forEach(function (d) {
         if ((d.name + ' ' + d.desc).toLowerCase().indexOf(q) >= 0) out.push('<a class="list-row" href="#/r/' + r.id + '">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b">' + d.name + '</div><div class="small muted">' + r.short + ' · ' + fmt(d.price) + '</div></div>' + ic('right', 18) + '</a>');
       });
@@ -489,6 +541,7 @@
     var r = R(id);
     if (ONLINE && !r.id) return ui.synced ? '<div class="screen">' + topbar('Restaurante', '/inicio') + '<div class="empty">No encontramos este restaurante.</div></div>' : scrLoading('Restaurante');
     if (query && query.p) { S.ref = { slug: query.p, restId: id, at: now() }; save(); }
+    if (isShop(r)) return scrShop(r);
     var open = S.open[r.id];
     var mode = S.cart.restId === r.id ? S.cart.mode : 'dom';
     var h = '<div class="screen flush' + (cartCount() ? ' has-cta' : '') + '"><div class="hero">' + photo(r.img, '', 'height:232px;width:100%') +
@@ -510,17 +563,76 @@
     h += '</div><div class="small muted mt16 center">' + esc(r.address) + '</div></div></div>';
     return h + cartBar(false);
   }
+  // Shop page: no menu, the customer writes a list and/or adds a photo. The shop sets the price when it accepts.
+  function wishUrl(path, asRest) {
+    if (!path) return '';
+    if (/^data:/.test(path)) return path;
+    if (ui.wishPrev && ui.wishPrev.path === path) return ui.wishPrev.url;
+    if (!ONLINE || !CLOUD.listUrl) return '';
+    var c = (ui.signed = ui.signed || {})[path];
+    if (c && c.exp > now()) return c.url;
+    if (!c || !c.busy) {
+      ui.signed[path] = { busy: true, exp: 0 };
+      CLOUD.listUrl(path, asRest).then(function (u) { ui.signed[path] = { url: u, exp: now() + 50 * 60000 }; safeRender(); },
+        function () { ui.signed[path] = { url: '', exp: now() + 60000 }; });
+    }
+    return '';
+  }
+  function wishPic(o, asRest) {
+    var u = wishUrl(o.wishImg, asRest), link = u && !/^data:/.test(u);
+    return '<a class="wish-pic"' + (link ? ' href="' + esc(u) + '" target="_blank" rel="noopener"' : '') + ' aria-label="Foto de la lista">' + (u ? '<img src="' + esc(u) + '" alt="">' : ic('camera', 22)) + '</a>';
+  }
+  function scrShop(r) {
+    var open = S.open[r.id], k = kindOf(r), mine = S.cart.restId === r.id;
+    var mode = mine ? S.cart.mode : 'dom';
+    var other = S.cart.restId && !mine && cartCount() ? R(S.cart.restId) : null;
+    var wish = mine ? (S.cart.wish || '') : '', img = mine ? S.cart.wishImg : '';
+    var prev = img ? wishUrl(img, false) : '';
+    var h = '<div class="screen flush has-cta"><div class="hero">' + cover(r, '', 'height:232px;width:100%') +
+      '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a><button class="icon-btn fav" data-a="fav" aria-label="Favorito">' + ic('heart', 20) + '</button></div>' +
+      '<div class="card raised info-card"><span class="badge green">' + ic(k.icon, 13, { sw: 2.4 }) + ' ' + k.t + '</span><h1 class="t-title mt8" style="font-size:24px">' + esc(r.name) + '</h1><div class="small muted mt4"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + ' · ' + r.eta + (r.sub ? ' · ' + esc(r.sub) : '') + '</div>' +
+      '<div class="seg mt12"><button class="' + (mode === 'dom' ? 'on' : '') + '" data-a="mode" data-v="dom" data-r="' + r.id + '">Domicilio · ' + (r.fee ? fmt(r.fee) : 'gratis') + '</button><button class="' + (mode === 'rec' ? 'on' : '') + '" data-a="mode" data-v="rec" data-r="' + r.id + '">Recoger · ' + r.pickup + '</button></div>' +
+      (open ? '' : '<div class="note amber mt12"><b>Cerrado ahora.</b> No recibe pedidos en este momento.</div>') +
+      (S.ref && S.ref.restId === r.id ? '<div class="note green mt12">Llegaste con el enlace de un vecino que recomienda esta tienda.</div>' : '') +
+      '</div><div class="pad"><div class="card mt20"><div class="row" style="gap:12px"><span class="pi">' + ic('list', 18) + '</span><div class="grow"><div class="t-h3">¿Qué necesitas?</div><div class="small muted">Escribe tu pedido, una cosa por línea.</div></div></div>' +
+      (other ? '<div class="note amber mt12">Tienes un carrito de <b>' + esc(other.short) + '</b>. Si escribes aquí, ese carrito se vacía.</div>' : '') +
+      '<textarea class="input wish-in mt12" id="wish" rows="6" data-wish="' + r.id + '" placeholder="' + esc(k.ph || '') + '">' + esc(wish) + '</textarea>' +
+      (img ? '<div class="wish-att mt12">' + (prev ? '<img src="' + esc(prev) + '" alt="">' : '<span class="pi">' + ic('check', 18) + '</span>') + '<div class="grow"><div class="b">Foto adjunta</div><div class="xs muted">' + esc(r.short) + ' la ve con tu pedido.</div></div><button class="icon-btn" style="width:40px;height:40px;box-shadow:none;background:var(--track)" data-a="wishImgDel" aria-label="Quitar foto">' + ic('x', 18) + '</button></div>'
+        : '<label class="photo-up mt12" style="width:100%">' + ic(ui.upBusy ? 'refresh' : 'camera', 18) + (ui.upBusy ? 'Subiendo foto…' : k.id === 'drogueria' ? 'Foto de tu lista o fórmula' : 'Agregar una foto (opcional)') + '<input type="file" accept="image/*" data-file="wish" data-r="' + r.id + '"></label>') +
+      (k.hint ? '<div class="note soft mt12">' + k.hint + '</div>' : '') + '</div>' +
+      '<div class="how mt16">' + [['list', 'Escribes tu lista'], ['check', esc(r.short) + ' te confirma el precio'], ['wallet', 'Pagas al recibir']].map(function (x, i) {
+        return '<div class="how-step"><span class="how-n">' + ic(x[0], 16, { sw: 2.2 }) + '</span><span class="small">' + x[1] + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="small muted mt16 center">' + esc(r.address) + '</div></div><div id="cbar">' + cartBar(false) + '</div></div>';
+    return h;
+  }
+  function ensureWishCart(rid) { if (S.cart.restId !== rid) S.cart = { restId: rid, items: {}, mode: S.cart.restId === rid ? S.cart.mode : 'dom', wish: '', wishImg: '' }; }
+  function uploadWish(file, rid) {
+    if (ui.upBusy) return;
+    ui.upBusy = true; render();
+    shrinkPhoto(file, 'list').then(function (x) {
+      if (!ONLINE) return { path: x.dataUrl, url: x.dataUrl };
+      if (!CLOUD.uploadList) throw new Error('no_upload');
+      return CLOUD.uploadList(x.blob).then(function (path) { return { path: path, url: x.dataUrl }; });
+    }).then(function (res) {
+      ui.upBusy = false; ensureWishCart(rid); S.cart.wishImg = res.path; ui.wishPrev = res; save(); render(); toast('Foto agregada');
+    }, function (e) {
+      ui.upBusy = false; render();
+      toast(/bucket|not found|no_upload|row-level|policy/i.test(String(e && e.message)) ? 'Mandar fotos se activa muy pronto. Por ahora escribe tu lista.' : 'No se pudo subir la foto. Revisa tu internet.');
+    });
+  }
   function cashOptions(total) {
+    if (cartShop()) return [['exact', 'Exacto'], ['20000', fmt(20000)], ['50000', fmt(50000)], ['100000', fmt(100000)]];
     var bills = [10000, 20000, 50000, 100000, 200000].filter(function (b) { return b > total; }).slice(0, 2);
     return [['exact', 'Exacto']].concat(bills.map(function (b) { return [String(b), fmt(b)]; }));
   }
   function scrConfirmar() {
-    var lines = cartLines();
-    if (!lines.length) {
+    var lines = cartLines(), shop = cartShop();
+    if (!lines.length && !wishHas()) {
       return '<div class="screen">' + topbar('Tu carrito', '/inicio') + '<div class="empty"><div class="ic">' + ic('bag', 28) + '</div><div class="b" style="color:var(--text)">Tu carrito está vacío</div><div class="small mt4">Elige un restaurante y agrega algo rico.</div><a class="btn btn-primary mt16" href="#/inicio">Ver restaurantes</a></div></div>';
     }
     var r = R(S.cart.restId), sub = cartSubtotal(), fee = cartFee(), total = sub + fee, co = S.co;
-    var short = r.min - sub;
+    var short = shop ? 0 : r.min - sub;
     var cashVal = co.cash === 'exact' ? total : +co.cash;
     if (co.cash !== 'exact' && cashVal <= total) { co.cash = 'exact'; cashVal = total; }
     var far = S.cart.mode === 'dom' && tooFar(r, co.geo);
@@ -532,24 +644,34 @@
         (far ? '<div class="note amber mt8">Estás a ' + kmTxt(km(r, co.geo)) + ' y ' + esc(r.short) + ' entrega hasta ' + kmTxt(r.radius || 3) + '. Puedes elegir <b>Recoger</b>.</div>' : '') +
         '<div class="row mt12" style="gap:10px"><div class="grow"><label class="label" for="nm">Tu nombre</label><input class="input" id="nm" data-m="user.name" value="' + esc(S.user.name) + '" autocomplete="name"></div>' +
         '<div class="grow"><label class="label" for="ph">Celular</label><input class="input" id="ph" data-m="user.phone" inputmode="tel" value="' + esc(S.user.phone) + '" autocomplete="tel"></div></div>' +
-        '<label class="label mt12" for="note">Nota para la cocina</label><input class="input" id="note" data-m="co.note" value="' + esc(co.note) + '" placeholder="Ej.: carne término medio, sin ají"></div>';
+        '<label class="label mt12" for="note">' + (shop ? 'Nota para la tienda' : 'Nota para la cocina') + '</label><input class="input" id="note" data-m="co.note" value="' + esc(co.note) + '" placeholder="' + (shop ? 'Ej.: si no hay, me llaman' : 'Ej.: carne término medio, sin ají') + '"></div>';
     } else {
-      h += '<div class="card"><div class="row b" style="gap:8px"><span class="orange">' + ic('store', 18) + '</span>Recoges en el restaurante</div><div class="small muted mt4">' + r.address + ' · listo en ' + r.pickup + '</div>' +
+      h += '<div class="card"><div class="row b" style="gap:8px"><span class="orange">' + ic('store', 18) + '</span>Recoges en ' + (shop ? 'la tienda' : 'el restaurante') + '</div><div class="small muted mt4">' + r.address + ' · listo en ' + r.pickup + '</div>' +
         '<div class="row mt12" style="gap:10px"><div class="grow"><label class="label" for="nm">Tu nombre</label><input class="input" id="nm" data-m="user.name" value="' + esc(S.user.name) + '"></div>' +
         '<div class="grow"><label class="label" for="ph">Celular</label><input class="input" id="ph" data-m="user.phone" inputmode="tel" value="' + esc(S.user.phone) + '"></div></div>' +
-        '<label class="label mt12" for="note">Nota para la cocina</label><input class="input" id="note" data-m="co.note" value="' + esc(co.note) + '" placeholder="Ej.: sin cebolla"></div>';
+        '<label class="label mt12" for="note">' + (shop ? 'Nota para la tienda' : 'Nota para la cocina') + '</label><input class="input" id="note" data-m="co.note" value="' + esc(co.note) + '" placeholder="' + (shop ? 'Ej.: paso a las 5 p. m.' : 'Ej.: sin cebolla') + '"></div>';
     }
     h += '<div class="card mt12"><div class="t-h3" style="margin-bottom:12px">¿Cómo pagas?</div>' +
       [['ef', 'Efectivo', 'Pagas al recibir'], ['nequi', 'Nequi', 'Transfieres y envías el comprobante'], ['davi', 'Daviplata', 'Transfieres y envías el comprobante']].map(function (p) {
         var on = co.pay === p[0];
-        var subt = p[0] === 'ef' && on ? (cashVal > total ? 'Pagas con ' + fmt(cashVal) + ' · vueltas ' + fmt(cashVal - total) : 'Pagas exacto') : p[2];
+        var subt = p[0] === 'ef' && on ? (shop ? (co.cash === 'exact' ? 'Pagas exacto' : 'Pagas con billete de ' + fmt(cashVal)) : cashVal > total ? 'Pagas con ' + fmt(cashVal) + ' · vueltas ' + fmt(cashVal - total) : 'Pagas exacto') : p[2];
         return '<button class="radio-row' + (on ? ' on' : '') + '" data-a="pay" data-v="' + p[0] + '"><span class="ring"></span><span class="grow"><span class="b" style="display:block">' + p[1] + '</span><span class="small muted">' + subt + '</span></span></button>';
       }).join('');
     if (co.pay === 'ef') {
-      h += '<div class="label mt16">¿Con cuánto pagas?</div><div class="chips">' + cashOptions(total).map(function (c) { return '<button class="chip' + (co.cash === c[0] ? ' on' : '') + '" data-a="cash" data-v="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div>' +
-        (cashVal > total ? '<div class="note green mt12 row between b"><span>Tus vueltas</span><span>' + fmt(cashVal - total) + '</span></div>' : '');
+      h += '<div class="label mt16">' + (shop ? '¿Con qué billete pagas?' : '¿Con cuánto pagas?') + '</div><div class="chips">' + cashOptions(total).map(function (c) { return '<button class="chip' + (co.cash === c[0] ? ' on' : '') + '" data-a="cash" data-v="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div>' +
+        (cashVal > total && !shop ? '<div class="note green mt12 row between b"><span>Tus vueltas</span><span>' + fmt(cashVal - total) + '</span></div>' : '');
     } else {
-      h += '<div class="note grey mt12">Después de hacer el pedido te mostramos el número de ' + (co.pay === 'nequi' ? 'Nequi' : 'Daviplata') + ' del restaurante.</div>';
+      h += '<div class="note grey mt12">' + (shop ? 'Cuando la tienda confirme el precio' : 'Después de hacer el pedido') + ' te mostramos el número de ' + (co.pay === 'nequi' ? 'Nequi' : 'Daviplata') + ' ' + (shop ? 'de la tienda' : 'del restaurante') + '.</div>';
+    }
+    if (shop) {
+      h += '</div><div class="card mt12"><div class="row between"><span class="t-h3">Tu pedido</span><a class="link small" href="#/r/' + r.id + '">Cambiar</a></div>' +
+        (String(S.cart.wish || '').trim() ? '<div class="wish-txt mt8">' + esc(S.cart.wish.trim()) + '</div>' : '') +
+        (S.cart.wishImg ? '<div class="small green b mt8 row" style="gap:6px">' + ic('check', 14, { sw: 3 }) + 'Foto adjunta</div>' : '') +
+        '<div class="divider dashed"></div><div class="row between small" style="padding:3px 0"><span>Productos</span><span class="b">La tienda confirma el precio</span></div>' +
+        '<div class="row between small" style="padding:3px 0"><span class="' + (fee ? '' : 'green b') + '">' + (S.cart.mode === 'dom' ? 'Domicilio' : 'Recoges tú') + '</span><span class="' + (fee ? '' : 'green b') + '">' + (fee ? fmt(fee) : 'Gratis') + '</span></div>' +
+        '<div class="note green mt12">Te avisamos aquí el precio total. Si no estás de acuerdo, puedes cancelar antes de que salga.</div>' +
+        '<button class="btn btn-ghost btn-block mt8" data-a="clearCart">Borrar mi pedido</button>';
+      return h + '</div><div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="placeOrder"' + (!S.open[r.id] || ui.busy || far ? ' disabled' : '') + '>' + (ui.busy ? 'Enviando pedido…' : S.open[r.id] ? 'Enviar pedido a ' + esc(r.short) : 'Tienda cerrada') + '</button></div>';
     }
     h += '</div><div class="card mt12">' + lines.map(function (l) { return '<div class="row between small" style="padding:3px 0"><span>' + l.qty + ' × ' + l.name + '</span><span>' + fmt(l.qty * l.price) + '</span></div>'; }).join('') +
       '<div class="row between small" style="padding:3px 0"><span class="' + (fee ? '' : 'green b') + '">' + (S.cart.mode === 'dom' ? 'Domicilio' : 'Recoges tú') + '</span><span class="' + (fee ? '' : 'green b') + '">' + (fee ? fmt(fee) : 'Gratis') + '</span></div>' +
@@ -566,11 +688,12 @@
     if (o.status === 'listo') return o.mode === 'rec' ? 'Listo para recoger' : 'Listo, buscando quién lo lleva';
     if (o.status === 'en_camino') return 'Va en camino';
     if (o.status === 'entregado') return 'Entregado ' + ago(o.deliveredAt);
-    if (o.status === 'rechazado') return 'El restaurante no pudo aceptarlo';
+    if (o.status === 'rechazado') return 'No pudieron aceptarlo';
+    if (unpriced(o)) return 'Esperando que ' + r.short + ' confirme el precio';
     return STATUS_TXT[o.status];
   }
   function etaInfo(o) {
-    if (o.status === 'recibido') return ['Esperando', 'Que el restaurante acepte tu pedido'];
+    if (o.status === 'recibido') return ['Esperando', o.wish ? 'Que la tienda confirme el precio' : 'Que el restaurante acepte tu pedido'];
     if (o.status === 'preparando') { var left = Math.max(5, Math.round((o.etaMin || 30) - (now() - o.acceptedAt) / 60000)); return [left + ' min', o.mode === 'rec' ? 'Para que esté listo' : 'Aprox. para que llegue']; }
     if (o.status === 'listo') return o.mode === 'rec' ? ['¡Listo!', 'Ya puedes ir a recogerlo'] : ['10–15 min', 'Ya está listo, sale en un momento'];
     if (o.status === 'en_camino') { var m = Math.max(2, 12 - Math.round((now() - (o.sentAt || now())) / 60000)); return [Math.max(1, m - 4) + '–' + m + ' min', 'Tu pedido va en camino']; }
@@ -586,10 +709,11 @@
     var h = '<div class="screen flush has-tabs"><div class="status-head"><div class="row between"><div class="small" style="opacity:.85">Pedido #' + o.id + ' · ' + r.name + '</div><a href="#/pedidos" class="small b" style="opacity:.9">Mis pedidos</a></div>';
     if (o.status === 'rechazado') {
       h += '<h1 class="mt12" style="font-size:28px">No pudieron aceptar tu pedido</h1><div class="small mt8" style="opacity:.85">' + esc(o.rejectReason || 'El restaurante está muy lleno ahora.') + ' No se cobró nada.</div></div>' +
-        '<div class="pad" style="margin-top:-40px"><div class="card raised"><a class="btn btn-primary btn-block" href="#/inicio">Pedir en otro restaurante</a></div></div></div>' + tabs('cliente', 'pedidos');
+        '<div class="pad" style="margin-top:-40px"><div class="card raised"><a class="btn btn-primary btn-block" href="#/inicio">' + (isShop(r) ? 'Ver otras tiendas' : 'Pedir en otro restaurante') + '</a></div></div></div>' + tabs('cliente', 'pedidos');
       return h;
     }
     h += '<div class="small mt12" style="opacity:.85">' + (o.status === 'en_camino' || o.status === 'preparando' ? 'Llega en' : '') + '</div><div class="eta">' + e[0] + '</div><div style="opacity:.9">' + e[1] + '</div></div>';
+    var priced = o.wish && ['preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0;
     h += '<div class="pad" style="margin-top:-44px"><div class="card raised"><div class="progress">' + steps.map(function (s, i) {
       var cls = i < idx || o.status === 'entregado' ? 'done' : i === idx ? 'active' : '';
       return '<div><div class="bar ' + cls + '"><i style="width:' + (cls === 'done' ? '100%' : cls === 'active' ? '50%' : '0') + '"></i></div><div class="lbl' + (i === idx ? ' on' : '') + '">' + s + '</div></div>';
@@ -607,14 +731,19 @@
       h += '<div class="pin-box mt12"><div class="b" style="color:var(--soft-t)">' + (o.mode === 'rec' ? 'Dale este código al recoger' : 'Dale este código a ' + (rd ? esc(callName(rd.name)) : 'quien te entregue') + ' al recibir') + '</div>' +
         '<div class="pin">' + String(o.pin || '····').split('').map(function (d) { return '<span>' + d + '</span>'; }).join('') + '</div><div class="small" style="color:var(--soft-t)">Así sabemos que el pedido llegó a la persona correcta.</div></div>';
     }
-    if (o.pay !== 'ef' && o.status !== 'entregado') {
+    if (priced) {
+      h += '<div class="card mt12" style="box-shadow:inset 0 0 0 2px var(--green)"><div class="row" style="gap:10px"><span class="pi">' + ic('check', 18, { sw: 2.6 }) + '</span><div class="grow"><div class="b">' + esc(r.short) + ' confirmó el precio</div><div class="small muted">Productos ' + fmt(o.subtotal) + (o.fee ? ' + domicilio ' + fmt(o.fee) : '') + '</div></div><div class="num" style="font-size:20px">' + fmt(o.total) + '</div></div>' +
+        (o.status === 'preparando' ? '<button class="btn btn-ghost btn-block mt8" data-a="cancelOrder" data-id="' + o.id + '">No estoy de acuerdo · cancelar</button>' : '') + '</div>';
+    }
+    if (o.pay !== 'ef' && o.status !== 'entregado' && !unpriced(o)) {
       h += '<div class="card mt12"><div class="b">Paga con ' + (o.pay === 'nequi' ? 'Nequi' : 'Daviplata') + '</div><div class="small muted mt4">Transfiere <b style="color:var(--text)">' + fmt(o.total) + '</b> al ' + r.nequi + ' (' + r.name + ') y envía el comprobante.</div>' +
         '<a class="btn btn-green btn-sm btn-block mt12" target="_blank" rel="noopener" href="' + waLink(r.phone, 'Hola, envío el comprobante del pedido #' + o.id + ' por ' + fmt(o.total) + '.') + '">' + ic('msg', 18) + ' Enviar comprobante por WhatsApp</a></div>';
     }
-    h += '<div class="card mt12 small">' + (o.pay === 'ef' ? '<div class="row between" style="padding:3px 0"><span class="muted">Pagas en efectivo</span><span class="b">' + fmt(o.total) + '</span></div>' +
+    h += '<div class="card mt12 small">' + (unpriced(o) ? '<div class="row between" style="padding:3px 0"><span class="muted">Total</span><span class="b">Por confirmar</span></div>' : o.pay === 'ef' ? '<div class="row between" style="padding:3px 0"><span class="muted">Pagas en efectivo</span><span class="b">' + fmt(o.total) + '</span></div>' +
       (o.cashGiven > o.total ? '<div class="row between" style="padding:3px 0"><span class="muted">Ten listo</span><span class="b">' + fmt(o.cashGiven) + ' · vueltas ' + fmt(o.cashGiven - o.total) + '</span></div>' : '') : '<div class="row between" style="padding:3px 0"><span class="muted">Total</span><span class="b">' + fmt(o.total) + '</span></div>') +
       '<div class="row between" style="padding:3px 0"><span class="muted">' + (o.mode === 'rec' ? 'Recoges en' : 'Entrega') + '</span><span class="b" style="text-align:right;max-width:65%">' + esc(o.mode === 'rec' ? r.address : o.customer.address) + '</span></div>' +
-      '<div class="row between" style="padding:3px 0"><span class="muted">Pediste</span><span style="text-align:right;max-width:65%">' + esc(itemsTxt(o)) + '</span></div></div>';
+      '<div class="row between" style="padding:3px 0"><span class="muted">Pediste</span><span style="text-align:right;max-width:65%' + (o.wish ? ';white-space:pre-line' : '') + '">' + esc(o.wish ? (o.wish === '(Ver la foto)' ? 'Lista en foto' : o.wish) : itemsTxt(o)) + '</span></div>' +
+      (o.wishImg ? '<div class="row" style="justify-content:flex-end;padding-top:6px">' + wishPic(o, false) + '</div>' : '') + '</div>';
     if (o.status === 'entregado') {
       h += o.rating ? '<div class="card mt12 center"><div class="small muted">Tu calificación</div><div style="color:var(--orange);font-size:24px;letter-spacing:2px">' + '★★★★★'.slice(0, o.rating) + '<span style="color:#E9E3DB">' + '★★★★★'.slice(o.rating) + '</span></div></div>'
         : '<a class="btn btn-primary btn-block mt12" href="#/calificar/' + o.id + '">Calificar pedido</a>';
@@ -626,7 +755,7 @@
         ? '<a class="btn btn-outline btn-block mt8" href="#/wa/' + o.id + '">Abrir el WhatsApp del domiciliario</a>'
         : '<a class="btn btn-outline btn-block mt8" href="#/rest?r=' + o.restId + '">Abrir el panel del restaurante</a>';
       if (!ONLINE) h += '<div class="demo-bar mt16"><b>Modo demo</b>En la vida real el restaurante y el domiciliario hacen el siguiente paso desde su propio celular. Aquí lo puedes hacer tú:' + next + '</div>';
-      else if (o.status === 'recibido') h += '<div class="note grey mt16 center">Le avisamos a ' + esc(r.short) + '. Esta pantalla se actualiza sola.</div>';
+      else if (o.status === 'recibido') h += '<div class="note grey mt16 center">Le avisamos a ' + esc(r.short) + '.' + (o.wish ? ' Aquí ves el precio cuando lo confirme.' : '') + ' Esta pantalla se actualiza sola.</div>';
       if (o.status === 'recibido') h += '<button class="btn btn-ghost btn-block mt8" data-a="cancelOrder" data-id="' + o.id + '">Cancelar pedido</button>';
     }
     h += '</div></div>' + tabs('cliente', 'pedidos');
@@ -637,17 +766,17 @@
     var r = R(o.restId);
     if (!ui.rate || ui.rate.id !== id) ui.rate = { id: id, stars: 0, tags: {} };
     var d = r.dishes.filter(function (x) { return o.items[0] && x.id === o.items[0].id; })[0];
-    var tags = ['Llegó caliente', 'Buena porción', 'Rápido', 'Bien empacado'];
+    var shopR = isShop(r), tags = shopR ? ['Todo completo', 'Rápido', 'Buen precio', 'Buena atención'] : ['Llegó caliente', 'Buena porción', 'Rápido', 'Bien empacado'];
     return '<div class="screen has-cta center"><div class="big-check">' + ic('check', 44, { sw: 2.6 }) + '</div>' +
-      '<h1 class="t-title mt16">¡Buen provecho, ' + esc(first(o.customer.name)) + '!</h1><div class="muted mt8">Tu pedido de ' + r.name + ' llegó a las ' + hora(o.deliveredAt || now()) + '.</div>' +
-      '<div class="card mt20">' + photo(d ? d.img : r.img, '', 'height:150px;border-radius:12px') + '<div class="t-h3 mt16">¿Qué tal estuvo la comida?</div>' +
+      '<h1 class="t-title mt16">' + (shopR ? '¡Listo' : '¡Buen provecho') + ', ' + esc(first(o.customer.name)) + '!</h1><div class="muted mt8">Tu pedido de ' + r.name + ' llegó a las ' + hora(o.deliveredAt || now()) + '.</div>' +
+      '<div class="card mt20">' + (d ? photo(d.img, '', 'height:150px;border-radius:12px') : cover(r, '', 'height:150px;border-radius:12px')) + '<div class="t-h3 mt16">' + (shopR ? '¿Qué tal te atendieron?' : '¿Qué tal estuvo la comida?') + '</div>' +
       '<div class="stars mt8">' + [1, 2, 3, 4, 5].map(function (n) { return '<button data-a="star" data-v="' + n + '" aria-label="' + n + ' estrellas" style="color:' + (n <= ui.rate.stars ? '#FF6B2C' : '#E9E3DB') + '">' + ic('star', 34, { fill: true, sw: 1 }) + '</button>'; }).join('') + '</div>' +
       '<div class="chips mt16" style="justify-content:center">' + tags.map(function (t) { return '<button class="chip g sm' + (ui.rate.tags[t] ? ' on' : '') + '" data-a="tag" data-v="' + t + '">' + t + '</button>'; }).join('') + '</div></div>' +
       '</div><div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="sendRating" data-id="' + id + '"' + (ui.rate.stars ? '' : ' disabled') + '>Enviar calificación</button><a class="btn btn-ghost btn-block" href="#/inicio" style="height:44px">Ahora no</a></div>';
   }
   function orderRow(o, href) {
     var r = R(o.restId);
-    return '<a class="list-row" href="' + href + '">' + photo(r.img, 'thumb') + '<div class="grow"><div class="row between"><span class="b">#' + o.id + ' · ' + r.short + '</span>' + statusBadge(o) + '</div><div class="small muted ellipsis mt4">' + esc(itemsTxt(o)) + ' · ' + fmt(o.total) + '</div><div class="xs muted">' + ago(o.createdAt) + '</div></div></a>';
+    return '<a class="list-row" href="' + href + '">' + cover(r, 'thumb') + '<div class="grow"><div class="row between"><span class="b">#' + o.id + ' · ' + r.short + '</span>' + statusBadge(o) + '</div><div class="small muted ellipsis mt4">' + esc(itemsTxt(o)) + ' · ' + fmt(o.total) + '</div><div class="xs muted">' + ago(o.createdAt) + '</div></div></a>';
   }
   function scrPedidos() {
     var mine = S.orders.filter(function (o) { return o.mine; });
@@ -678,13 +807,19 @@
   // ---------- Restaurant ----------
   function restHeader(r) {
     var open = S.open[r.id];
-    return '<div class="row">' + photo(r.img, 'thumb s44') + '<button class="grow" style="text-align:left" data-a="pickRest"><div class="xs muted">Panel del restaurante</div><div class="b row" style="gap:4px"><span class="ellipsis">' + r.name + '</span>' + ic('down', 16) + '</div></button>' +
+    return '<div class="row">' + cover(r, 'thumb s44') + '<button class="grow" style="text-align:left" data-a="pickRest"><div class="xs muted">' + (isShop(r) ? 'Panel de tu ' + kindOf(r).t.toLowerCase() : 'Panel del restaurante') + '</div><div class="b row" style="gap:4px"><span class="ellipsis">' + r.name + '</span>' + ic('down', 16) + '</div></button>' +
       '<button class="toggle" data-a="toggleOpen" style="background:' + (open ? 'var(--gtint)' : 'var(--track)') + ';color:' + (open ? 'var(--green)' : 'var(--muted)') + '">' + (open ? 'Abierto' : 'Cerrado') +
       '<span class="tr" style="background:' + (open ? 'var(--green)' : '#C9C1B7') + ';--k:' + (open ? '19px' : '3px') + '"></span></button></div>';
   }
   // Online: "get ready" card until the restaurant has a menu, a photo, a map pin and is open.
   function setupItems(r) {
     var own = r.img && !PHOTOS.some(function (p) { return p[1] === r.img; });
+    if (isShop(r)) return [
+      { ok: true, t: 'Cuenta creada', s: '' },
+      { ok: !!String(r.sub || '').trim(), t: 'Cuenta qué vendes', s: 'Ej.: ' + kindOf(r).sub, href: '#/rest/menu' },
+      { ok: hasLoc(r), t: 'Marca tu tienda en el mapa', s: 'Y hasta dónde entregas', href: '#/rest/menu' },
+      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' }
+    ];
     return [
       { ok: true, t: 'Cuenta creada', s: '' },
       { ok: r.dishes.length >= 3, t: 'Agrega tu menú', s: r.dishes.length ? r.dishes.length + ' de 3 platos o más' : 'Con precio y foto', href: '#/rest/menu' },
@@ -697,7 +832,7 @@
   function setupCard(r) {
     var it = setupItems(r), n = it.filter(function (x) { return x.ok; }).length;
     if (n === it.length) return '';
-    return '<div class="card setup mt12"><div class="row between"><div><div class="t-h3">Prepara tu restaurante</div><div class="small muted mt4">' + n + ' de ' + it.length + ' pasos listos</div></div><span class="ring-pct" style="--p:' + Math.round(n / it.length * 100) + '"><span>' + Math.round(n / it.length * 100) + '%</span></span></div>' +
+    return '<div class="card setup mt12"><div class="row between"><div><div class="t-h3">Prepara ' + (isShop(r) ? 'tu tienda' : 'tu restaurante') + '</div><div class="small muted mt4">' + n + ' de ' + it.length + ' pasos listos</div></div><span class="ring-pct" style="--p:' + Math.round(n / it.length * 100) + '"><span>' + Math.round(n / it.length * 100) + '%</span></span></div>' +
       '<div class="setup-list mt12">' + it.map(function (x) {
         var inner = '<span class="sc' + (x.ok ? ' ok' : '') + '">' + (x.ok ? ic('check', 14, { sw: 3 }) : '') + '</span><span class="grow"><span class="b' + (x.ok ? ' done' : '') + '">' + x.t + '</span>' + (!x.ok && x.s ? '<span class="xs muted" style="display:block">' + x.s + '</span>' : '') + '</span>' + (x.ok ? '' : ic('right', 18));
         if (x.ok) return '<div class="setup-row">' + inner + '</div>';
@@ -739,13 +874,16 @@
     return h + '</div></div>' + tabs('rest', 'pedidos');
   }
   function restOrderCard(o) {
-    var items = o.items.map(function (i) { return '<div class="row between" style="padding:2px 0"><span><b>' + i.qty + '×</b> ' + esc(i.name) + '</span><span>' + fmt(i.qty * i.price) + '</span></div>'; }).join('');
+    var items = o.wish ? '<div class="wish-box">' + (o.wishImg ? wishPic(o, true) : '') + '<div class="grow"><div class="xs muted b" style="text-transform:uppercase;letter-spacing:.4px">Lista del cliente</div><div class="wish-txt mt4">' + esc(o.wish === '(Ver la foto)' ? 'Ver la foto' : o.wish) + '</div></div></div>'
+      : o.items.map(function (i) { return '<div class="row between" style="padding:2px 0"><span><b>' + i.qty + '×</b> ' + esc(i.name) + '</span><span>' + fmt(i.qty * i.price) + '</span></div>'; }).join('');
     var cust = '<div class="small mt8"><b>' + esc(o.customer.name) + '</b> · ' + (o.mode === 'rec' ? 'Recoge en el local' : esc(o.customer.address)) + (o.mode === 'dom' && o.geo ? ' · <a class="link" target="_blank" rel="noopener" href="' + mapsLink(o.geo) + '">Ver en el mapa</a>' : '') + '</div><div class="small mt4"><b>' + payTxt(o).split(' · ')[0] + '</b>' + (payTxt(o).indexOf(' · ') > 0 ? ' · ' + payTxt(o).split(' · ').slice(1).join(' · ') : '') + '</div>';
     var note = o.note ? '<div class="note grey mt8">Nota: ' + esc(o.note) + '</div>' : '';
     if (o.status === 'recibido') {
       return '<div class="order-card"><div class="oh"><span class="row" style="gap:8px"><span class="pulse"></span>Pedido nuevo · ' + ago(o.createdAt) + '</span><span>#' + o.id + '</span></div><div class="ob">' + items + note + '<div class="divider"></div>' + cust +
-        '<div class="label mt12">Tiempo de preparación' + (o.mode === 'dom' ? ' y entrega' : '') + '</div><div class="chips">' + [20, 30, 45].map(function (m) { var on = (ui.choose['eta' + o.id] || 30) === m; return '<button class="chip sm' + (on ? ' on' : '') + '" data-a="etaPick" data-id="' + o.id + '" data-v="' + m + '">' + m + ' min</button>'; }).join('') + '</div>' +
-        '<div class="row mt12" style="gap:10px"><button class="btn btn-outline" style="flex:1" data-a="reject" data-id="' + o.id + '">Rechazar</button><button class="btn btn-primary" style="flex:1.6" data-a="accept" data-id="' + o.id + '">Aceptar · ' + (ui.choose['eta' + o.id] || 30) + ' min</button></div></div></div>';
+        (o.wish ? '<div class="label mt12" for="wp' + o.id + '">Valor de los productos</div><div class="input-ic">' + ic('wallet', 18) + '<span class="pre money">$</span><input class="input" id="wp' + o.id + '" inputmode="numeric" autocomplete="off" data-price="' + o.id + '" value="' + esc(ui.choose['p' + o.id] || '') + '" placeholder="Ej.: 23000"></div>' +
+          '<div class="xs muted mt4">' + (o.fee && o.mode === 'dom' ? 'Se suma el domicilio de ' + fmt(o.fee) + '. ' : '') + 'El cliente ve el precio en su app y puede cancelar si no está de acuerdo.</div>' : '') +
+        '<div class="label mt12">' + (o.wish ? 'Tiempo para alistarlo' : 'Tiempo de preparación') + (o.mode === 'dom' ? ' y entrega' : '') + '</div><div class="chips">' + [20, 30, 45].map(function (m) { var on = (ui.choose['eta' + o.id] || 30) === m; return '<button class="chip sm' + (on ? ' on' : '') + '" data-a="etaPick" data-id="' + o.id + '" data-v="' + m + '">' + m + ' min</button>'; }).join('') + '</div>' +
+        '<div class="row mt12" style="gap:10px"><button class="btn btn-outline" style="flex:1" data-a="reject" data-id="' + o.id + '">Rechazar</button><button class="btn btn-primary" style="flex:1.6" data-a="accept" data-id="' + o.id + '">' + (o.wish ? 'Aceptar con este precio' : 'Aceptar · ' + (ui.choose['eta' + o.id] || 30) + ' min') + '</button></div></div></div>';
     }
     var head = '<div class="row between"><span class="b">#' + o.id + ' · ' + esc(first(o.customer.name)) + '</span>' + statusBadge(o) + '</div><div class="small muted mt4">' + esc(itemsTxt(o)) + ' · ' + fmt(o.total) + '</div>';
     if (o.status === 'preparando') {
@@ -778,7 +916,7 @@
     rowsH += '<button class="radio-row' + (sel === 'yo' ? ' on' : '') + '" data-a="choose" data-id="' + id + '" data-v="yo"><span class="avatar sm" style="background:var(--track);color:var(--text)">' + ic('store', 18) + '</span><span class="grow"><span class="b" style="display:block">Lo llevo yo</span><span class="small muted">Alguien del restaurante</span></span><span class="ring"></span></button>';
     var rd = sel === 'yo' ? null : S.riders[sel];
     return '<div class="screen has-cta">' + topbar('¿Quién lo lleva?', '/rest', 'Pedido #' + o.id + ' listo') +
-      '<div class="card row">' + photo(r.img, 'thumb s44') + '<div class="grow"><div class="b">' + esc(o.customer.name) + ' · ' + fmt(o.total) + ' ' + (o.pay === 'ef' ? 'efectivo' : o.pay) + '</div><div class="small muted ellipsis">' + esc(o.customer.address) + '</div></div></div>' +
+      '<div class="card row">' + cover(r, 'thumb s44') + '<div class="grow"><div class="b">' + esc(o.customer.name) + ' · ' + fmt(o.total) + ' ' + (o.pay === 'ef' ? 'efectivo' : o.pay) + '</div><div class="small muted ellipsis">' + esc(o.customer.address) + '</div></div></div>' +
       '<div class="row between mt20"><div class="t-h2">Mis domiciliarios</div><a class="link" href="#/rest/bolsa">Buscar más</a></div><div class="mt8">' + rowsH + '</div>' +
       '<button class="dashed-btn mt12" data-a="addRiderForm">' + ic('plus', 18) + ' Guardar un domiciliario</button>' +
       '<div class="note grey mt16 center">Le enviamos el pedido por WhatsApp. El pago lo acuerdan ustedes.</div></div>' +
@@ -903,21 +1041,27 @@
   // ---------- Restaurant: menu + data (online) ----------
   var PHOTOS = [['Asado', IMG.asado], ['Carne', IMG.carne], ['Parrilla', IMG.parrilla], ['Pollo', IMG.pollo], ['Empanadas', IMG.emp], ['Arepas', IMG.arepa], ['Almuerzo', IMG.almuerzo], ['Pescado', IMG.pescado], ['Hamburguesa', IMG.burger], ['Pizza', IMG.pizza], ['Pizza 2', IMG.pizza2], ['Pincho', IMG.pincho], ['Jugo', IMG.jugo]];
   // Gallery of stock photos + "upload your own" tile. kind = 'rest' (cover) | 'dish'
-  function photoPick(cur, action, kind) {
+  function photoPick(cur, action, kind, noStock) {
     var own = cur && !PHOTOS.some(function (p) { return p[1] === cur; });
     var tile = 'padding:0;border-radius:14px;overflow:hidden;width:64px;height:64px;flex:none;';
     return '<div class="pick-row mt8">' +
       '<label class="pick-up" style="' + tile + '">' + ic(ui.upBusy ? 'refresh' : 'camera', 20) + '<span>' + (ui.upBusy ? 'Subiendo' : 'Tu foto') + '</span><input type="file" accept="image/*" data-file="' + (kind === 'dish' ? 'dishImg' : 'restImg') + '"></label>' +
       (own ? '<button aria-label="Tu foto" class="pick on" style="' + tile + '">' + photo(cur, '', 'width:100%;height:100%', 200) + '</button>' : '') +
-      PHOTOS.map(function (p) {
+      (noStock ? '' : PHOTOS.map(function (p) {
         return '<button data-a="' + action + '" data-v="' + esc(p[1]) + '" aria-label="' + p[0] + '" class="pick' + (cur === p[1] ? ' on' : '') + '" style="' + tile + '">' + photo(p[1], '', 'width:100%;height:100%', 200) + '</button>';
-      }).join('') + '</div>';
+      }).join('')) + '</div>';
   }
   // Shrink + crop a phone photo before upload (cover 3:2, dish square), JPEG.
   function shrinkPhoto(file, kind) {
     return new Promise(function (ok, bad) {
       var url = URL.createObjectURL(file), im = new Image();
       im.onload = function () {
+        if (kind === 'list') {
+          var m = Math.min(1, 1400 / Math.max(im.width, im.height)), c0 = document.createElement('canvas');
+          c0.width = Math.round(im.width * m); c0.height = Math.round(im.height * m);
+          c0.getContext('2d').drawImage(im, 0, 0, c0.width, c0.height); URL.revokeObjectURL(url);
+          return c0.toBlob(function (b) { b ? ok({ blob: b, dataUrl: c0.toDataURL('image/jpeg', 0.7) }) : bad(new Error('img')); }, 'image/jpeg', 0.8);
+        }
         var W = kind === 'dish' ? 640 : 1200, H = kind === 'dish' ? 640 : 800;
         var sc = Math.max(W / im.width, H / im.height), sw = W / sc, sh = H / sc;
         if (sc > 1) { W = Math.round(W / sc); H = Math.round(H / sc); sc = 1; sw = W; sh = H; }
@@ -950,41 +1094,45 @@
     if (kind === 'dish') { var w = document.getElementById('dishPh'); if (w) w.innerHTML = photoPick(ui.dish.img, 'dishImg', 'dish'); }
     else render();
   }
-  var RM_KEYS = ['name', 'sub', 'address', 'phone', 'nequi', 'fee', 'min', 'eta', 'img', 'cats', 'lat', 'lng', 'radius'];
-  function rmDirty(r, f) { return RM_KEYS.some(function (k) { return JSON.stringify(f[k] == null ? '' : f[k]) !== JSON.stringify((k === 'radius' ? (r.radius || 3) : r[k]) == null ? '' : (k === 'radius' ? (r.radius || 3) : r[k])); }); }
+  var RM_KEYS = ['name', 'sub', 'address', 'phone', 'nequi', 'fee', 'min', 'eta', 'img', 'cats', 'lat', 'lng', 'radius', 'kind'];
+  function rmVal(r, k) { var v = k === 'radius' ? (r.radius || 3) : k === 'kind' ? (r.kind || 'restaurante') : r[k]; return JSON.stringify(v == null ? '' : v); }
+  function rmDirty(r, f) { return RM_KEYS.some(function (k) { return rmVal(f, k) !== rmVal(r, k); }); }
   function scrRestMenu() {
     var r = R(S.restId);
-    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, img: r.img, cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3 });
+    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, kind: r.kind || 'restaurante', name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, img: r.img, cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3 });
+    var shop = isShop(f), k = kindOf(f), word = shop ? 'tienda' : 'restaurante';
     var chip = function (key, val, label) { return '<button class="chip sm' + (String(f[key]) === String(val) ? ' on' : '') + '" data-a="rmSet" data-k="' + key + '" data-v="' + esc(val) + '">' + label + '</button>'; };
     var dirty = rmDirty(r, f);
     var h = '<div class="screen has-tabs' + (dirty ? ' has-cta' : '') + '">' + restHeader(r) +
       // cover photo, as customers see it
-      '<div class="cover mt16">' + photo(f.img, '', 'position:absolute;inset:0;width:100%;height:100%', 900) + '<div class="cover-fade"></div>' +
+      '<div class="cover mt16">' + cover(f, '', 'position:absolute;inset:0;width:100%;height:100%', 900) + '<div class="cover-fade"></div>' +
       '<div class="cover-txt"><div class="xs" style="opacity:.85">Así te ven los clientes</div><div class="t-h2" style="color:#fff">' + esc(f.name || r.name) + '</div></div></div>' +
-      '<div class="label mt12">Foto de portada</div>' + photoPick(f.img, 'rmImg', 'rest') +
+      '<div class="label mt12">Foto de portada' + (shop ? ' <span class="muted" style="font-weight:500">(opcional: tu local o tus productos)</span>' : '') + '</div>' + photoPick(f.img, 'rmImg', 'rest', shop) +
+      (shop ? '<h2 class="t-h2 mt24">Cómo te piden</h2><div class="card mt12"><div class="row top" style="gap:12px"><span class="pi">' + ic('list', 18) + '</span><div class="grow small">Tus clientes <b>escriben su lista</b> o te mandan <b>una foto</b>' + (k.id === 'drogueria' ? ' (por ejemplo de la fórmula)' : '') + '. Tú pones el precio al aceptar y el cliente lo ve en su app. No necesitas subir productos.</div></div></div>' : '') +
       // dishes
-      '<div class="row between mt24"><h2 class="t-h2">Tu menú</h2><span class="small muted">' + r.dishes.length + ' platos</span></div>' +
+      (shop ? '' : '<div class="row between mt24"><h2 class="t-h2">Tu menú</h2><span class="small muted">' + r.dishes.length + ' platos</span></div>' +
       '<div class="card mt12" style="padding:4px 14px">' +
       (r.dishes.length ? r.dishes.map(function (d) {
         return '<div class="list-row">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b ellipsis">' + esc(d.name) + '</div><div class="small muted ellipsis">' + (d.desc ? esc(d.desc) : 'Sin descripción') + '</div><div class="b mt4" style="font-size:14px">' + fmt(d.price) + '</div></div>' +
           '<button class="icon-btn" style="width:40px;height:40px;box-shadow:none;background:var(--track)" data-a="dishDel" data-v="' + esc(d.id) + '" aria-label="Quitar">' + ic('x', 18) + '</button></div>';
       }).join('') : '<div class="empty" style="padding:22px 8px"><div class="ic">' + ic('fire', 24) + '</div>Aún no hay platos. Agrega el primero: con foto y precio se vende más.</div>') + '</div>' +
-      '<button class="dashed-btn mt12" data-a="dishForm">' + ic('plus', 18) + ' Agregar un plato</button>' +
+      '<button class="dashed-btn mt12" data-a="dishForm">' + ic('plus', 18) + ' Agregar un plato</button>') +
       // delivery
       '<h2 class="t-h2 mt24">Entrega</h2><div class="card mt12">' +
-      '<div class="label">Ubicación del restaurante</div><button class="dashed-btn' + (hasLoc(f) ? ' done' : ' need') + '" data-a="rmLoc">' + ic(hasLoc(f) ? 'check' : 'map', 18) + (hasLoc(f) ? 'Marcado en el mapa · cambiar' : 'Marcar mi restaurante en el mapa') + '</button>' +
+      '<div class="label">Ubicación ' + (shop ? 'de la tienda' : 'del restaurante') + '</div><button class="dashed-btn' + (hasLoc(f) ? ' done' : ' need') + '" data-a="rmLoc">' + ic(hasLoc(f) ? 'check' : 'map', 18) + (hasLoc(f) ? 'Marcado en el mapa · cambiar' : 'Marcar mi ' + word + ' en el mapa') + '</button>' +
       '<div class="label mt16">¿Hasta dónde entregas?</div><div class="chips">' + [2, 3, 5, 8].map(function (v) { return chip('radius', v, v + ' km'); }).join('') + '</div>' +
       '<div class="label mt16">Domicilio</div><div class="chips">' + [0, 2000, 3000, 4000, 5000].map(function (v) { return chip('fee', v, v ? fmt(v) : 'Gratis'); }).join('') + '</div>' +
-      '<div class="label mt16">Pedido mínimo</div><div class="chips">' + [0, 10000, 15000, 20000].map(function (v) { return chip('min', v, v ? fmt(v) : 'Sin mínimo'); }).join('') + '</div>' +
+      (shop ? '' : '<div class="label mt16">Pedido mínimo</div><div class="chips">' + [0, 10000, 15000, 20000].map(function (v) { return chip('min', v, v ? fmt(v) : 'Sin mínimo'); }).join('') + '</div>') +
       '<div class="label mt16">Tiempo de entrega</div><div class="chips">' + ['20–30 min', '30–40 min', '40–60 min'].map(function (v) { return chip('eta', v, v); }).join('') + '</div></div>' +
       // details
-      '<h2 class="t-h2 mt24">Datos del restaurante</h2><div class="card mt12">' +
+      '<h2 class="t-h2 mt24">Datos ' + (shop ? 'de la tienda' : 'del restaurante') + '</h2><div class="card mt12">' +
+      '<div class="label">Tipo de negocio</div><div class="chips" style="margin-bottom:14px">' + KINDS.map(function (x) { return '<button class="chip sm' + (x.id === k.id ? ' on' : '') + '" data-a="rmSet" data-k="kind" data-v="' + x.id + '">' + ic(x.icon, 14) + x.t + '</button>'; }).join('') + '</div>' +
       '<div class="field"><label class="label" for="rm1">Nombre</label><input class="input" id="rm1" data-m="ui.rm.name" data-dirty="1" value="' + esc(f.name) + '"></div>' +
-      '<div class="field"><label class="label" for="rm2">Qué vendes (corto)</label><input class="input" id="rm2" data-m="ui.rm.sub" data-dirty="1" value="' + esc(f.sub) + '" placeholder="Carne a la llanera · Pollo asado"></div>' +
+      '<div class="field"><label class="label" for="rm2">Qué vendes (corto)</label><input class="input" id="rm2" data-m="ui.rm.sub" data-dirty="1" value="' + esc(f.sub) + '" placeholder="' + esc(k.sub) + '"></div>' +
       '<div class="field"><label class="label" for="rm3">Dirección</label><input class="input" id="rm3" data-m="ui.rm.address" data-dirty="1" value="' + esc(f.address) + '"></div>' +
       '<div class="row" style="gap:10px"><div class="grow field"><label class="label" for="rm4">WhatsApp</label><input class="input" id="rm4" data-m="ui.rm.phone" data-dirty="1" inputmode="tel" value="' + esc(f.phone) + '"></div>' +
       '<div class="grow field"><label class="label" for="rm5">Nequi / Daviplata</label><input class="input" id="rm5" data-m="ui.rm.nequi" data-dirty="1" inputmode="tel" value="' + esc(f.nequi) + '"></div></div>' +
-      '<div class="label mt8">Categorías</div><div class="chips">' + CATS.map(function (c) { return '<button class="chip sm' + (f.cats.indexOf(c[0]) >= 0 ? ' on' : '') + '" data-a="rmCat" data-v="' + c[0] + '">' + c[0] + '</button>'; }).join('') + '</div>' +
+      (shop ? '' : '<div class="label mt8">Categorías</div><div class="chips">' + CATS.map(function (c) { return '<button class="chip sm' + (f.cats.indexOf(c[0]) >= 0 ? ' on' : '') + '" data-a="rmCat" data-v="' + c[0] + '">' + c[0] + '</button>'; }).join('') + '</div>') +
       '<button class="btn btn-green btn-block mt16" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Guardando…' : 'Guardar datos') + '</button></div>' +
       '<button class="btn btn-ghost btn-block mt12" data-a="restLogout">Cerrar sesión</button></div>' +
       '<div class="cta-wrap above-tabs save-bar' + (dirty ? ' show' : '') + '" id="saveBar"><button class="btn btn-green btn-block" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + ic('check', 18) + (ui.busy ? 'Guardando…' : 'Guardar cambios') + '</button></div>' + tabs('rest', 'menu');
@@ -1035,7 +1183,7 @@
       '<div class="muted mt8">Ganas <b style="color:var(--text)">' + S.promo.pct + '%</b> <button class="badge amber" data-a="pctEdit" style="vertical-align:1px">ejemplo · cambiar</button> de cada pedido entregado que llegue con tu enlace.</div>' +
       '<div class="row mt16" style="gap:10px;overflow-x:auto">' + shown().map(function (x) {
         var on = x.id === pr.id;
-        return '<button class="card flat row grow" style="padding:10px;gap:8px;' + (on ? 'border:2px solid var(--orange)' : '') + '" data-a="promoRest" data-v="' + x.id + '">' + photo(x.img, 'thumb', 'width:36px;height:36px;border-radius:999px') + '<span class="small b ellipsis" style="text-align:left">' + x.short + '</span></button>';
+        return '<button class="card flat row grow" style="padding:10px;gap:8px;' + (on ? 'border:2px solid var(--orange)' : '') + '" data-a="promoRest" data-v="' + x.id + '">' + cover(x, 'thumb', 'width:36px;height:36px;border-radius:999px') + '<span class="small b ellipsis" style="text-align:left">' + x.short + '</span></button>';
       }).join('') + '</div>' +
       '<div class="qr-card mt16"><div class="qr-wrap"><canvas id="qr" width="210" height="210"></canvas><div class="qr-logo">' + logo(40, 'icon') + '</div></div><div class="t-h3 mt12">' + pr.name + '</div>' +
       '<div class="linkbox"><span>' + esc(pretty) + '</span><button class="btn btn-soft btn-sm" style="height:38px" data-a="copyLink">' + ic('copy', 16) + ' Copiar</button></div>' +
@@ -1225,7 +1373,9 @@
         function () { toast('No pudimos ver tu ubicación. Igual llega con la dirección escrita.'); }, { enableHighAccuracy: true, timeout: 10000 });
     },
     placeOrder: function () {
-      var lines = cartLines(); if (!lines.length) return;
+      var lines = cartLines(), shop = cartShop();
+      if (shop && !wishHas()) { toast('Escribe lo que necesitas'); go('/r/' + S.cart.restId); return; }
+      if (!lines.length && !shop) return;
       var r = R(S.cart.restId);
       var addr = (S.user.address || '').trim(), phone = String(S.user.phone || '').replace(/\D/g, '');
       if (S.cart.mode === 'dom' && addr.length < 6) { toast('Escribe tu dirección para que te encuentren'); var a = document.getElementById('addr'); if (a) { a.classList.add('err'); a.focus(); } return; }
@@ -1239,10 +1389,11 @@
         customer: { name: S.user.name.trim(), phone: phone, address: S.cart.mode === 'dom' ? addr : 'Recoge en el local' },
         items: lines.map(function (l) { return { id: l.id, name: l.name, price: l.price, qty: l.qty }; }),
         subtotal: sub, fee: fee, total: total, mode: S.cart.mode, note: S.co.note, pay: S.co.pay,
-        cashGiven: S.co.pay === 'ef' ? (S.co.cash === 'exact' ? total : +S.co.cash) : 0,
+        cashGiven: S.co.pay === 'ef' ? (S.co.cash === 'exact' ? (shop ? 0 : total) : +S.co.cash) : 0,
         pin: randPin(), status: 'recibido', createdAt: now(), geo: S.co.geo,
         ref: S.ref && S.ref.restId === r.id ? { slug: S.ref.slug } : null
       };
+      if (shop) { o.wish = String(S.cart.wish || '').trim().slice(0, 1000) || '(Ver la foto)'; o.wishImg = S.cart.wishImg || ''; }
       var finish = function () {
         S.orders.unshift(o);
         S.cart = { restId: null, items: {}, mode: 'dom' }; S.co.note = ''; S.co.cash = 'exact'; if (!ONLINE) S.co.geo = null;
@@ -1252,13 +1403,14 @@
       if (ui.busy) return;
       ui.busy = true; render();
       CLOUD.placeOrder({ rest_id: r.id, items: o.items.map(function (i) { return { id: i.id, qty: i.qty }; }), mode: o.mode, note: o.note, pay: o.pay, cash_given: o.cashGiven,
-        customer: o.customer, geo: o.geo, ref_slug: o.ref ? o.ref.slug : null })
+        customer: o.customer, geo: o.geo, ref_slug: o.ref ? o.ref.slug : null, wish: shop ? o.wish : undefined, wish_img: shop ? o.wishImg : undefined })
         .then(function (res) { ui.busy = false; o.dbId = res.id; o.id = String(res.id).padStart(4, '0'); o.pin = res.pin; finish(); sync(); },
           function (e) { ui.busy = false; render(); toast(errTxt(e)); sync(); });
     },
-    cancelOrder: function (el) { var o = order(el.dataset.id); if (o && o.status === 'recibido') { o.status = 'cancelado'; save(); go('/pedidos'); toast('Pedido cancelado'); if (ONLINE) push(CLOUD.cancelOrder(o.dbId)); } },
+    cancelOrder: function (el) { var o = order(el.dataset.id); if (o && (o.status === 'recibido' || (o.wish && o.status === 'preparando'))) { o.status = 'cancelado'; save(); go('/pedidos'); toast('Pedido cancelado'); if (ONLINE) push(CLOUD.cancelOrder(o.dbId)); } },
     reorder: function (el) {
       var o = order(el.dataset.id); if (!o) return;
+      if (o.wish) { S.cart = { restId: o.restId, items: {}, mode: o.mode || 'dom', wish: o.wish === '(Ver la foto)' ? '' : o.wish, wishImg: '' }; save(); go('/r/' + o.restId); return; }
       S.cart = { restId: o.restId, items: {}, mode: o.mode || 'dom' };
       o.items.forEach(function (i) { S.cart.items[i.id] = i.qty; });
       save(); go('/confirmar');
@@ -1300,16 +1452,17 @@
     pickRest: function () {
       if (ONLINE) {
         sheet('<div class="t-h2">' + esc(R(S.restId).name) + '</div><div class="small muted mt4">Entraste con el WhatsApp ' + phoneFmt(R(S.restId).phone) + '.</div>' +
-          '<a class="btn btn-outline btn-block mt16" href="#/rest/menu">Editar menú y datos</a><button class="btn btn-ghost btn-block mt8" data-a="restLogout">Cerrar sesión</button>');
+          '<a class="btn btn-outline btn-block mt16" href="#/rest/menu">' + (isShop(R(S.restId)) ? 'Editar mi tienda' : 'Editar menú y datos') + '</a><button class="btn btn-ghost btn-block mt8" data-a="restLogout">Cerrar sesión</button>');
         return;
       }
-      sheet('<div class="t-h2">¿Qué restaurante eres?</div><div class="small muted mt4">En la demo puedes ver el panel de cualquiera.</div><div class="mt12">' + RESTAURANTS.map(function (r) {
-        return '<button class="radio-row' + (S.restId === r.id ? ' on' : '') + '" data-a="setRest" data-v="' + r.id + '">' + photo(r.img, 'thumb s44') + '<span class="grow b">' + r.name + '</span><span class="ring"></span></button>';
+      sheet('<div class="t-h2">¿Qué negocio eres?</div><div class="small muted mt4">En la demo puedes ver el panel de cualquiera.</div><div class="mt12">' + RESTAURANTS.map(function (r) {
+        return '<button class="radio-row' + (S.restId === r.id ? ' on' : '') + '" data-a="setRest" data-v="' + r.id + '">' + cover(r, 'thumb s44') + '<span class="grow b">' + r.name + '</span><span class="ring"></span></button>';
       }).join('') + '</div>');
     },
     setRest: function (el) { S.restId = el.dataset.v; save(); sheet(null); render(); },
     toggleOpen: function () {
-      if (ONLINE && !S.open[S.restId] && !R(S.restId).dishes.length) { toast('Primero agrega tu menú'); go('/rest/menu'); return; }
+      if (ONLINE && !S.open[S.restId] && isShop(R(S.restId)) && !hasLoc(R(S.restId))) { toast('Primero marca tu tienda en el mapa'); go('/rest/menu'); return; }
+      if (ONLINE && !S.open[S.restId] && !isShop(R(S.restId)) && !R(S.restId).dishes.length) { toast('Primero agrega tu menú'); go('/rest/menu'); return; }
       S.open[S.restId] = !S.open[S.restId]; R(S.restId).open = S.open[S.restId]; save(); render(); toast(S.open[S.restId] ? 'Abierto: ya recibes pedidos' : 'Cerrado: no recibes pedidos');
       if (ONLINE) push(CLOUD.updateRest({ open: S.open[S.restId] }));
     },
@@ -1317,13 +1470,14 @@
     etaPick: function (el) { ui.choose['eta' + el.dataset.id] = +el.dataset.v; render(); },
     accept: function (el) {
       var o = order(el.dataset.id); if (!o) return;
+      if (o.wish) return acceptPriced(o);
       o.status = 'preparando'; o.etaMin = ui.choose['eta' + o.id] || 30; o.acceptedAt = now(); save();
       if (ONLINE) push(CLOUD.updateOrder(o.dbId, { status: 'preparando', eta_min: o.etaMin, accepted_at: new Date().toISOString() }));
       ui.rtab = 'preparando'; render(); toast('Aceptado. ' + first(o.customer.name) + ' ya lo ve en su pedido');
     },
     reject: function (el) {
-      var id = el.dataset.id;
-      sheet('<div class="t-h2">¿Por qué no puedes aceptarlo?</div><div class="mt12">' + ['Estamos muy llenos ahora', 'Se acabó un producto', 'No llegamos a esa dirección', 'Ya vamos a cerrar'].map(function (x) {
+      var id = el.dataset.id, ro = order(id);
+      sheet('<div class="t-h2">¿Por qué no puedes aceptarlo?</div><div class="mt12">' + (ro && ro.wish ? ['No tenemos esos productos', 'Estamos muy llenos ahora', 'No llegamos a esa dirección', 'Ya vamos a cerrar'] : ['Estamos muy llenos ahora', 'Se acabó un producto', 'No llegamos a esa dirección', 'Ya vamos a cerrar']).map(function (x) {
         return '<button class="radio-row" data-a="rejectDo" data-id="' + id + '" data-v="' + x + '"><span class="ring"></span><span class="grow">' + x + '</span></button>';
       }).join('') + '</div><button class="btn btn-ghost btn-block mt8" data-a="closeSheet">Volver</button>');
     },
@@ -1471,12 +1625,13 @@
     rmSave: function () {
       var f = ui.rm; if (!f || ui.busy) return;
       if (!String(f.name || '').trim()) { toast('Escribe el nombre'); return; }
-      var fields = { name: f.name.trim(), short: f.name.trim().replace(/^(asadero|restaurante|pizzería|pizzeria|cafetería|cafeteria)\s+/i, ''), sub: String(f.sub || '').trim(), address: String(f.address || '').trim(),
+      var fields = { name: f.name.trim(), short: shortName(f.name), sub: String(f.sub || '').trim(), address: String(f.address || '').trim(),
         phone: String(f.phone || '').replace(/\D/g, ''), nequi: String(f.nequi || '').trim(), fee: +f.fee || 0, min: +f.min || 0, eta: f.eta, img: f.img, cats: f.cats.slice(), radius_km: +f.radius || 3 };
       if (hasLoc(f)) { fields.lat = f.lat; fields.lng = f.lng; }
+      if ((f.kind || 'restaurante') !== (R(S.restId).kind || 'restaurante')) fields.kind = f.kind;
       ui.busy = true; render();
       CLOUD.updateRest(fields).then(function () { ui.busy = false; Object.assign(R(S.restId), fields, { radius: fields.radius_km }); ui.rm = null; render(); toast('Datos guardados'); sync(); },
-        function (e) { ui.busy = false; render(); toast(errTxt(e)); });
+        function (e) { ui.busy = false; render(); toast(/kind/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (004-tiendas.sql).' : errTxt(e)); });
     },
     dishForm: function () {
       ui.dish = { img: IMG.asado };
@@ -1522,8 +1677,31 @@
     pctEdit: function () {
       sheet('<div class="t-h2">Comisión del promotor</div><div class="small muted mt4">Aún no está decidida. Cámbiala para ver cómo se ve.</div><div class="chips mt12">' + [3, 5, 8, 10].map(function (p) { return '<button class="chip' + (S.promo.pct === p ? ' on' : '') + '" data-a="pct" data-v="' + p + '">' + p + '%</button>'; }).join('') + '</div>');
     },
-    pct: function (el) { S.promo.pct = +el.dataset.v; save(); sheet(null); render(); }
+    pct: function (el) { S.promo.pct = +el.dataset.v; save(); sheet(null); render(); },
+    // shops
+    homeTab: function (el) { ui.home = el.dataset.v; ui.kind = null; ui.cat = null; render(); },
+    kindPick: function (el) { ui.kind = el.dataset.v && ui.kind !== el.dataset.v ? el.dataset.v : null; render(); },
+    regKind: function (el) { ui.reg = ui.reg || { name: '', phone: '', addr: '', pass: '' }; ui.reg.kind = el.dataset.v; render(); },
+    wishImgDel: function () { S.cart.wishImg = ''; ui.wishPrev = null; save(); render(); }
   };
+  // Shop sets the price of a free order and accepts it.
+  function acceptPriced(o) {
+    var amount = +String(ui.choose['p' + o.id] || '').replace(/\D/g, ''), eta = ui.choose['eta' + o.id] || 30;
+    if (!amount || amount < 500) { toast('Escribe el valor de los productos (ej.: 23000)'); var x = document.getElementById('wp' + o.id); if (x) { x.classList.add('err'); x.focus(); } return; }
+    var apply = function () {
+      o.subtotal = amount; o.total = amount + (o.fee || 0); o.status = 'preparando'; o.etaMin = eta; o.acceptedAt = now();
+      if (o.pay === 'ef' && o.cashGiven < o.total) o.cashGiven = o.total;
+      delete ui.choose['p' + o.id]; ui.rtab = 'preparando'; save(); render(); toast('Aceptado por ' + fmt(o.total) + '. ' + first(o.customer.name) + ' ya ve el precio');
+    };
+    if (!ONLINE) return apply();
+    if (ui.busy) return;
+    ui.busy = true;
+    CLOUD.priceOrder(o.dbId, amount, eta).then(function (res) {
+      ui.busy = false;
+      if (res === 'ok') { apply(); sync(); return; }
+      toast(res === 'cerrado' ? 'Este pedido ya no está esperando (¿lo cancelaron?).' : res === 'monto' ? 'Revisa el valor.' : 'No se pudo aceptar.'); sync(true);
+    }, function (e) { ui.busy = false; toast(/price_order|function/i.test(String(e && e.message)) ? 'Falta un paso en la base de datos (004-tiendas.sql).' : errTxt(e)); });
+  }
   function deliver(o) {
     o.status = 'entregado'; o.deliveredAt = now();
   }
@@ -1562,6 +1740,7 @@
     return 'No se pudo guardar (' + m.slice(0, 80) + ')';
   }
   function push(p) { if (p && p.then) p.then(function () { sync(); }, function (e) { console.warn(e); toast(errTxt(e)); sync(true); }); }
+  function shortName(n) { return String(n || '').trim().replace(/^(asadero|restaurante|pizzería|pizzeria|cafetería|cafeteria|droguería|drogueria|farmacia|minimercado|supermercado|tienda|licorera|floristería|floristeria|ferretería|ferreteria)\s+/i, ''); }
   function regLive() {
     var f = ui.reg || {}, logged = !!CLOUD.restUid(), err = {}, ph = String(f.phone || '').replace(/\D/g, '');
     if (!String(f.name || '').trim()) err.name = 1;
@@ -1569,16 +1748,18 @@
     if (String(f.addr || '').trim().length < 5) err.addr = 1;
     if (!logged && String(f.pass || '').length < 6) err.pass = 1;
     ui.regErr = err;
-    ui.regMsg = err.name ? 'Escribe el nombre del restaurante.' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : '';
+    ui.regMsg = err.name ? 'Escribe el nombre del negocio.' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : '';
     if (ui.regMsg || ui.busy) { render(); return; }
     var name = f.name.trim();
     var slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) + '-' + Math.random().toString(36).slice(2, 6);
-    var data = { id: slug, name: name, short: name.replace(/^(asadero|restaurante|pizzería|pizzeria|cafetería|cafeteria)\s+/i, ''), sub: '', img: IMG.asado, cats: [], address: f.addr.trim(), phone: ph, nequi: ph ? phoneFmt(ph) : '', dishes: [], open: false };
+    var shop = isShop(f);
+    var data = { id: slug, name: name, short: shortName(name), sub: '', img: shop ? '' : IMG.asado, cats: [], address: f.addr.trim(), phone: ph, nequi: ph ? phoneFmt(ph) : '', dishes: [], open: false };
+    if (shop) data.kind = f.kind;
     ui.busy = true; render();
     (logged ? CLOUD.createRest(data) : CLOUD.restSignup(ph, f.pass, data)).then(function () { return sync(true); }).then(function () {
       ui.busy = false; ui.reg = null; ui.regErr = null; S.role = 'rest'; S.seen = S.seen || {}; S.seen.rest = true; save();
-      go('/rest/menu'); toast('¡Bienvenido! Ahora agrega tu menú.');
-    }, function (e) { ui.busy = false; ui.regMsg = errTxt(e); render(); });
+      go('/rest/menu'); toast(shop ? '¡Bienvenido! Ahora marca tu tienda en el mapa.' : '¡Bienvenido! Ahora agrega tu menú.');
+    }, function (e) { ui.busy = false; ui.regMsg = /kind/.test(String(e && e.message)) ? 'Las tiendas se activan muy pronto. Escríbele a Pido y Ido.' : errTxt(e); render(); });
   }
   var syncing = null, lastSig = '', seenNew = null;
   function beep() {
@@ -1644,11 +1825,19 @@
     var t = ev.target;
     if (t.dataset.m) { setPath(t.dataset.m, t.value); t.classList.remove('err'); }
     if (t.dataset.pin) { t.value = t.value.replace(/\D/g, '').slice(0, 4); var bx = t.parentNode.querySelectorAll('.pin-boxes i'); for (var k = 0; k < bx.length; k++) { bx[k].textContent = t.value[k] || ''; bx[k].className = k === t.value.length ? 'cur' : ''; } }
+    if (t.dataset.price) { ui.choose['p' + t.dataset.price] = t.value.replace(/\D/g, ''); t.classList.remove('err'); }
+    if (t.dataset.wish) {
+      var wr = t.dataset.wish;
+      if (S.cart.restId !== wr) { ensureWishCart(wr); var nt = t.parentNode.querySelector('.note.amber'); if (nt) nt.remove(); }
+      S.cart.wish = t.value; save();
+      var cb = document.getElementById('cbar'); if (cb) cb.innerHTML = cartBar(false);
+    }
     if (t.dataset.dirty) { var sb = document.getElementById('saveBar'); if (sb) sb.classList.add('show'); }
     if (t.dataset.live === 'q') { ui.q = t.value; var res = document.getElementById('results'); if (res) res.innerHTML = searchResults(); }
   });
   document.addEventListener('change', function (ev) {
     var t = ev.target;
+    if (t.dataset.file === 'wish' && t.files && t.files[0]) { uploadWish(t.files[0], t.dataset.r); t.value = ''; return; }
     if ((t.dataset.file === 'restImg' || t.dataset.file === 'dishImg') && t.files && t.files[0]) { uploadOwnPhoto(t.files[0], t.dataset.file === 'dishImg' ? 'dish' : 'rest'); t.value = ''; return; }
     if (t.dataset.file && t.files && t.files[0]) { (t.dataset.file === 'menu' ? ui.reg : ui.signup)[t.dataset.file] = true; render(); toast('Foto agregada'); }
   });
