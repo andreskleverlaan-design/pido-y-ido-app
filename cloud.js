@@ -181,6 +181,9 @@
     }
     throw new Error('promo_slug');
   }
+  // "Pronto en Pido y Ido": one request per person (anonymous customer account) per business
+  async function voteBiz(slug) { await ensureCust(); return check(await cust.rpc('vote_pronto', { p_slug: slug })); }
+  async function bizCounts() { await ensureCust(); return check(await cust.rpc('pronto_counts')) || []; }
   async function promoOrders() { await ensureCust(); return check(await cust.rpc('promo_orders')); }
 
   // ---------- live updates ----------
@@ -204,7 +207,7 @@
     deliver: deliver, orderForRider: orderForRider,
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
-    saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders,
+    saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, voteBiz: voteBiz, bizCounts: bizCounts,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
   };
 })();
