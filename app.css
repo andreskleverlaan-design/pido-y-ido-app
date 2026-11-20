@@ -433,6 +433,19 @@ textarea.input{min-height:76px;line-height:1.4}
 .pr-main .b{color:var(--muted)}
 .pr-ph{filter:grayscale(1);opacity:.6;flex:none}
 .pr-inv{flex:none;display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 12px;border-radius:999px;border:1.5px solid var(--green);color:var(--green);font-size:13px;font-weight:600;text-decoration:none;background:#fff}
+
+/* Checkbox look for radio-row (WhatsApp avisos) */
+.radio-row.check .ring{border-radius:7px}
+.radio-row.check.on .ring{background:var(--green);color:#fff}
+.radio-row.check.on .ring::after{display:none}
+
+/* Premio: tarjeta de sellos (cada 5º pedido) */
+.stamp-card{background:linear-gradient(135deg,#FFF1EA 0%,#fff 70%);box-shadow:inset 0 0 0 1.5px #FFD9C6}
+.stamps{display:flex;gap:8px}
+.stamps i{font-style:normal;width:36px;height:36px;border-radius:999px;border:2px dashed var(--dashed);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--muted);background:#fff;flex:none}
+.stamps i.on{border:0;background:var(--orange);color:#fff}
+.stamps i.gift{border-style:solid;border-color:var(--orange);color:var(--orange)}
+.stamps i.gift.on{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 0 0 4px var(--gtint)}
 a.pr-main{text-decoration:none}
 .pronto .pr-tag,.info-card .pr-tag{display:inline-flex;align-items:center;gap:5px}
 .info-card .pr-tag{font-size:12px;font-weight:600;color:var(--muted);background:var(--input);border-radius:999px;padding:5px 10px}
