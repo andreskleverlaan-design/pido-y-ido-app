@@ -231,7 +231,14 @@
     ['otro', 'Pañalera Universal', 'Pañales · Bebés'],
     ['licorera', 'Licorera La Cava', 'Licores'],
     ['licorera', 'Licorera Mr. Cachirri', 'Licores · Bar']
-  ].map(function (x) { return { id: slug(x[1]), kind: x[0], name: x[1], sub: x[2], cats: x[3] || [] }; });
+  ].map(function (x) { return { id: slug(x[1]) + (x[4] && x[4] !== 'Villanueva' ? '-' + slug(x[4]) : ''), kind: x[0], name: x[1], sub: x[2], cats: x[3] || [], town: x[4] || 'Villanueva' }; });
+  // Businesses customers suggested (online: approved ones from Supabase; demo: the ones you suggested on this phone)
+  var EXTRA = [], SK = 'pyi-sug';
+  function extraFrom(r) { return { id: r.slug, kind: r.kind, name: r.name, sub: kindOf(r).t, cats: [], town: r.town || 'Villanueva', extra: true }; }
+  if (!ONLINE) try { EXTRA = (JSON.parse(localStorage.getItem(SK) || '[]') || []).map(extraFrom); } catch (e) { EXTRA = []; }
+  function allPronto() { var have = {}; PRONTO.forEach(function (p) { have[p.id] = 1; }); return PRONTO.concat(EXTRA.filter(function (p) { return !have[p.id]; })); }
+  function myTown() { if (ui.ptown == null) { try { ui.ptown = localStorage.getItem('pyi-town') || ''; } catch (e) { ui.ptown = ''; } } return ui.ptown || 'Villanueva'; }
+  function townsOf(list) { var t = []; list.forEach(function (p) { if (t.indexOf(p.town) < 0) t.push(p.town); }); return t; }
   function normName(s) {
     return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ')
       .replace(/\b(asadero|restaurante|y|el|la|los|las|de|del|drogueria|pizzeria|panaderia|floristeria|licorera|hotel|villanueva)\b/g, ' ').replace(/\s+/g, ' ').trim();
@@ -239,8 +246,9 @@
   // the ones not (yet) in the app as a real business
   function sameBiz(a, b) { var n = normName(a), h = normName(b); return !!n && !!h && (h === n || (n.length > 4 && h.indexOf(n) >= 0) || (h.length > 4 && n.indexOf(h) >= 0)); }
   // the real business in the app that matches a "pronto" entry (once it joined)
-  function joinedAs(p) { for (var i = 0; i < RESTAURANTS.length; i++) if (sameBiz(p.name, RESTAURANTS[i].name)) return RESTAURANTS[i]; return null; }
-  function pronto() { return PRONTO.filter(function (p) { return !joinedAs(p); }); }
+  function joinedAs(p) { if (p.town !== 'Villanueva') return null; for (var i = 0; i < RESTAURANTS.length; i++) if (sameBiz(p.name, RESTAURANTS[i].name)) return RESTAURANTS[i]; return null; }
+  function pronto() { return allPronto().filter(function (p) { return !joinedAs(p); }); }
+  function prontoHere() { var t = myTown(); return pronto().filter(function (p) { return p.town === t; }); }
   // ---------- "X personas lo piden" ----------
   // One request per person per business. Online: counted in Supabase (pronto_votes, one per anonymous account).
   // Demo: a made-up starting number per business plus your own click, all on this phone.
@@ -248,10 +256,11 @@
   try { myV = JSON.parse(localStorage.getItem(VK) || '{}') || {}; } catch (e) { myV = {}; }
   var votes = { n: {}, at: 0, busy: false, ok: !ONLINE };
   function demoBase(p) { var h = 0; for (var i = 0; i < p.id.length; i++) h = (h * 31 + p.id.charCodeAt(i)) % 997; return 3 + h % 38; }
-  function voteN(p) { return ONLINE ? (votes.n[p.id] || 0) : demoBase(p) + (myV[p.id] ? 1 : 0); }
+  function voteN(p) { return ONLINE ? (votes.n[p.id] || 0) : (p.extra ? 0 : demoBase(p)) + (myV[p.id] ? 1 : 0); }
   function loadVotes() {
     if (!ONLINE || votes.busy || now() - votes.at < 60000) return;
     votes.busy = true; votes.at = now();
+    CLOUD.bizExtra().then(function (rows) { EXTRA = rows.map(extraFrom); safeRender(); }, function () {});
     CLOUD.bizCounts().then(function (rows) {
       votes.busy = false; votes.ok = true; votes.n = {};
       rows.forEach(function (r) { votes.n[r.slug] = r.n; if (r.mine) myV[r.slug] = 1; });
@@ -267,20 +276,39 @@
     }
   }
   function personas(n) { return n === 1 ? '1 persona' : n + ' personas'; }
-  function prontoById(id) { for (var i = 0; i < PRONTO.length; i++) if (PRONTO[i].id === id) return PRONTO[i]; return null; }
+  function prontoById(id) { var a = allPronto(); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
   function joinLink() { return BASE + 'live/#/rest/registro'; }
   function pageLink(p) { return BASE + 'live/#/negocio/' + p.id; }
   function inviteText(p) {
     var n = voteN(p) + (myV[p.id] ? 0 : 1);
-    return '¡Hola! Me gustaría pedirles a domicilio por Pido y Ido, la app de domicilios de Villanueva.' +
+    return '¡Hola! Me gustaría pedirles a domicilio por Pido y Ido, la app de domicilios de ' + p.town + '.' +
       (votes.ok && n > 1 ? ' Ya somos ' + n + ' personas que lo pedimos, miren: ' + pageLink(p) + ' .' : '') +
       ' ¿Se animan a inscribirse? Es gratis y les llegan pedidos de todo el pueblo: ' + joinLink();
   }
   function inviteHref(p) { return 'https://wa.me/?text=' + encodeURIComponent(inviteText(p)); }
   function prontoRow(p) {
     return '<div class="pr-row"><a class="pr-main" href="#/negocio/' + p.id + '">' + cover({ kind: p.kind }, 'thumb s44 pr-ph') +
-      '<div class="grow"><div class="b ellipsis">' + esc(p.name) + '</div><div class="small muted ellipsis">' + esc(p.sub) + (votes.ok && voteN(p) ? ' · <span class="pr-n">' + voteN(p) + ' lo piden</span>' : '') + '</div></div></a>' +
+      '<div class="grow"><div class="b ellipsis">' + esc(p.name) + '</div><div class="small muted ellipsis">' + esc(p.sub) + (p.town !== myTown() ? ' · ' + esc(p.town) : '') + (votes.ok && voteN(p) ? ' · <span class="pr-n">' + voteN(p) + ' lo piden</span>' : '') + '</div></div></a>' +
       '<a class="pr-inv" data-vote="' + p.id + '" target="_blank" rel="noopener" href="' + inviteHref(p) + '" aria-label="Invitar a ' + esc(p.name) + ' por WhatsApp">' + ic('send', 15, { sw: 2.2 }) + 'Invitar</a></div>';
+  }
+  function sugLink(q) { return '<a class="pr-suggest mt16" href="#/sugerir?n=' + encodeURIComponent(String(q || '').trim()) + '">' + ic('plus', 18, { sw: 2.4 }) + '<span><b>¿No encuentras un negocio?</b> Sugiérelo y lo agregamos a “Pronto en Pido y Ido”.</span></a>'; }
+  // Customer suggests a business that is not in the list yet. Online it appears after approval (or 3 different people).
+  function scrSugerir(query) {
+    if (!ui.sug || (query && query.n && ui.sug.from !== query.n)) ui.sug = { name: (query && query.n) || '', kind: 'restaurante', town: myTown(), note: '', from: query && query.n };
+    var f = ui.sug, err = ui.sugErr || '';
+    if (ui.sugDone) return '<div class="screen">' + topbar('¡Gracias!', '/inicio') + '<div class="card center" style="padding:28px 18px"><div class="pr-owner-ic" style="margin:0 auto">' + ic('check', 26, { sw: 2.6 }) + '</div>' +
+      '<div class="t-h2 mt12">Recibimos tu sugerencia</div><div class="muted mt8" style="line-height:1.45">Revisamos <b>' + esc(ui.sugDone) + '</b> y, si está bien, aparece en “Pronto en Pido y Ido” para que más vecinos lo pidan. Tu voto ya cuenta.</div>' +
+      '<a class="btn btn-primary btn-block mt16" href="#/inicio">Volver al inicio</a><button class="btn btn-ghost btn-block mt8" data-a="sugAgain">Sugerir otro</button></div></div>';
+    var towns = townsOf(allPronto()); if (towns.indexOf(f.town) < 0 && f.town) towns.push(f.town);
+    return '<div class="screen has-cta">' + topbar('Sugerir un negocio', '/inicio', 'Restaurante o tienda que te gustaría ver aquí') +
+      '<div class="card"><div class="field"><label class="label" for="sg1">Nombre del negocio</label><input class="input' + (err === 'name' ? ' err' : '') + '" id="sg1" data-m="ui.sug.name" value="' + esc(f.name) + '" maxlength="80" placeholder="Ej.: Asadero Los Compadres" autocomplete="off"></div>' +
+      '<div class="label mt12">¿Qué es?</div><div class="kinds">' + KINDS.map(function (x) {
+        return '<button class="kind' + (x.id === f.kind ? ' on' : '') + '" data-a="sugKind" data-v="' + x.id + '" aria-pressed="' + (x.id === f.kind) + '"><span class="ki kt-' + x.id + '">' + ic(x.icon, 20, { sw: 1.8 }) + '</span><span>' + x.t + '</span></button>';
+      }).join('') + '</div>' +
+      '<div class="field mt12"><label class="label" for="sg2">Pueblo</label><input class="input' + (err === 'town' ? ' err' : '') + '" id="sg2" data-m="ui.sug.town" value="' + esc(f.town) + '" maxlength="40" list="sgTowns" autocomplete="off"><datalist id="sgTowns">' + towns.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist></div>' +
+      '<div class="field"><label class="label" for="sg3">Algo más (opcional)</label><textarea class="input" id="sg3" data-m="ui.sug.note" rows="2" maxlength="300" placeholder="Dónde queda, qué venden…">' + esc(f.note) + '</textarea></div></div>' +
+      '<div class="small muted mt12">No pongas teléfonos ni datos personales. Revisamos cada sugerencia antes de mostrarla.</div>' +
+      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="sugSend"' + (ui.sugBusy ? ' disabled' : '') + '>' + (ui.sugBusy ? 'Enviando…' : 'Enviar sugerencia') + '</button></div></div>';
   }
   // Own page for a business that has not joined yet: #/negocio/<slug>. Shareable. Not orderable.
   function scrNegocio(id) {
@@ -296,7 +324,7 @@
       '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a>' +
       '<a class="icon-btn fav" data-vote="' + p.id + '" target="_blank" rel="noopener" href="' + share + '" aria-label="Compartir esta página">' + ic('share', 20) + '</a></div>' +
       '<div class="card raised info-card"><span class="pr-tag">' + ic('clock', 13, { sw: 2.4 }) + 'Aún no está en Pido y Ido</span>' +
-      '<h1 class="t-title mt8" style="font-size:24px">' + esc(p.name) + '</h1><div class="small muted mt4">' + ic(k.icon, 14) + ' ' + esc(p.sub) + ' · Villanueva</div>' +
+      '<h1 class="t-title mt8" style="font-size:24px">' + esc(p.name) + '</h1><div class="small muted mt4">' + ic(k.icon, 14) + ' ' + esc(p.sub) + ' · ' + esc(p.town) + '</div>' +
       '<div class="note grey mt12">Por ahora no le puedes pedir aquí. Cuando se una, vas a ver su ' + (shop ? 'catálogo' : 'menú') + ' en esta misma página.</div></div>' +
       '<div class="pad">' +
       '<div class="card mt20 pr-demand">' + (votes.ok ? (n ? '<div class="pr-big">' + n + '</div><div class="b mt4" style="font-size:16px">' + (n === 1 ? 'persona ya pidió' : 'personas ya pidieron') + ' que ' + esc(p.name) + ' se una a Pido y Ido</div>' :
@@ -323,14 +351,16 @@
     return h;
   }
   function prontoSection(list, tiendas) {
-    if (!list.length) return '';
     loadVotes();
+    var towns = townsOf(pronto()), sug = '<a class="pr-suggest mt12" href="#/sugerir">' + ic('plus', 18, { sw: 2.4 }) + '<span><b>¿Falta tu ' + (tiendas ? 'tienda' : 'lugar') + ' favorito?</b> Sugiérelo y lo agregamos a la lista.</span></a>';
+    var chips = towns.length > 1 ? '<div class="chips scroll mt12">' + towns.map(function (t) { return '<button class="chip sm' + (t === myTown() ? ' on' : '') + '" data-a="ptown" data-v="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>' : '';
+    if (!list.length) return '<div class="pronto mt24"><div class="t-h2">Pronto en Pido y Ido</div>' + chips + sug + '</div>';
     list = list.map(function (p, i) { return [p, i]; }).sort(function (a, b) { return voteN(b[0]) - voteN(a[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; });
     var all = ui.prontoAll || list.length <= 6, vis = all ? list : list.slice(0, 5);
-    return '<div class="pronto mt24"><div class="row between"><div class="t-h2">Pronto en Pido y Ido</div><span class="pr-tag">Aún no están</span></div>' +
+    return '<div class="pronto mt24"><div class="row between"><div class="t-h2">Pronto en Pido y Ido</div><span class="pr-tag">Aún no están</span></div>' + chips +
       '<div class="pr-ask mt12"><span class="pr-ask-ic">' + ic('heart', 18, { sw: 2.2 }) + '</span><span><b>¿Te gusta alguno de estos ' + (tiendas ? 'negocios' : 'lugares') + '?</b> Pídele que se una a Pido y Ido. Así también le podrás pedir a domicilio desde aquí.</span></div>' +
       '<div class="card mt12 pr-list">' + vis.map(prontoRow).join('') + '</div>' +
-      (all ? '' : '<button class="btn btn-outline btn-block mt12" data-a="prontoAll">Ver los ' + list.length + '</button>') + '</div>';
+      (all ? '' : '<button class="btn btn-outline btn-block mt12" data-a="prontoAll">Ver los ' + list.length + '</button>') + sug + '</div>';
   }
 
   function seed() {
@@ -673,7 +703,7 @@
   function scrInicio() {
     var last = S.orders.filter(function (o) { return o.mine && o.status === 'entregado'; })[0];
     var active = S.orders.filter(function (o) { return o.mine && ['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0; })[0];
-    var shops = shown().filter(isShop), pr = pronto(), prShops = pr.filter(isShop), tiendas = (shops.length || prShops.length) && ui.home === 'tiendas';
+    var shops = shown().filter(isShop), pr = prontoHere(), prShops = pr.filter(isShop), tiendas = (shops.length || prShops.length) && ui.home === 'tiendas';
     var base = shown().filter(function (r) { return isShop(r) === !!tiendas; });
     var list = base.filter(function (r) { return tiendas ? (!ui.kind || r.kind === ui.kind) : (!ui.cat || r.cats.indexOf(ui.cat) >= 0); });
     var openN = base.filter(function (r) { return S.open[r.id]; }).length;
@@ -719,8 +749,8 @@
     var later = pronto().filter(function (p) { return (p.name + ' ' + p.sub + ' ' + p.cats.join(' ')).toLowerCase().indexOf(q) >= 0; });
     if (later.length) return (out.length ? '<div class="card mt16" style="padding:4px 14px">' + out.join('') + '</div>' : '<div class="small muted mt16">No encontramos “' + esc(ui.q) + '” en Pido y Ido todavía.</div>') +
       '<div class="label" style="margin-top:20px">Aún no están en Pido y Ido</div><div class="card mt8 pr-list">' + later.slice(0, 8).map(prontoRow).join('') + '</div>' +
-      '<div class="small muted mt8">¿Te gusta alguno? Invítalo por WhatsApp: inscribirse es gratis.</div>';
-    return out.length ? '<div class="card mt16" style="padding:4px 14px">' + out.join('') + '</div>' : '<div class="empty">No encontramos “' + esc(ui.q) + '”.</div>';
+      '<div class="small muted mt8">¿Te gusta alguno? Invítalo por WhatsApp: inscribirse es gratis.</div>' + sugLink(ui.q);
+    return (out.length ? '<div class="card mt16" style="padding:4px 14px">' + out.join('') + '</div>' : '<div class="empty">No encontramos “' + esc(ui.q) + '”.</div>') + sugLink(ui.q);
   }
   function scrBuscar() {
     return '<div class="screen has-tabs">' + topbar('Buscar') + '<label class="search">' + ic('search', 20) + '<input id="q" type="search" placeholder="Busca empanadas, pizza, arepas…" value="' + esc(ui.q) + '" data-live="q" autocomplete="off"></label><div id="results">' + searchResults() + '</div></div>' + cartBar(true) + tabs('cliente', 'buscar');
@@ -1457,6 +1487,7 @@
       case 'perfil': return scrPerfil();
       case 'r': return scrMenu(p[1], rt.query);
       case 'negocio': return scrNegocio(p[1]);
+      case 'sugerir': return scrSugerir(rt.query);
       case 'confirmar': return scrConfirmar();
       case 'pedido': return scrPedido(p[1]);
       case 'calificar': return scrCalificar(p[1]);
@@ -1890,6 +1921,35 @@
     pct: function (el) { S.promo.pct = +el.dataset.v; save(); sheet(null); render(); },
     // shops
     prontoAll: function () { ui.prontoAll = true; render(); },
+    ptown: function (el) { ui.ptown = el.dataset.v; ui.prontoAll = false; try { localStorage.setItem('pyi-town', ui.ptown); } catch (e) {} render(); },
+    sugKind: function (el) { ui.sug.kind = el.dataset.v; render(); },
+    sugAgain: function () { ui.sug = null; ui.sugDone = null; render(); },
+    sugSend: function () {
+      var f = ui.sug; if (!f || ui.sugBusy) return;
+      var name = String(f.name || '').replace(/\s+/g, ' ').trim(), town = String(f.town || '').replace(/\s+/g, ' ').trim();
+      if (name.length < 3 || /\d{6,}|https?:|www\./i.test(name)) { ui.sugErr = 'name'; render(); toast('Escribe el nombre del negocio, sin teléfonos ni enlaces.'); return; }
+      if (town.length < 3) { ui.sugErr = 'town'; render(); toast('¿En qué pueblo queda?'); return; }
+      ui.sugErr = '';
+      if (name === name.toLowerCase()) name = name.replace(/(^|\s)(\S)/g, function (m, a, c) { return a + c.toUpperCase(); });
+      town = town.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+      for (var i = 0; i < RESTAURANTS.length; i++) if (town.toLowerCase() === 'villanueva' && shown().indexOf(RESTAURANTS[i]) >= 0 && sameBiz(name, RESTAURANTS[i].name)) { toast('¡Ya está en Pido y Ido! Le puedes pedir aquí.'); go('/r/' + RESTAURANTS[i].id); return; }
+      var known = allPronto().filter(function (p) { return p.town.toLowerCase() === town.toLowerCase() && sameBiz(name, p.name); })[0];
+      if (known) { vote(known.id); ui.sug = null; toast('Ya estaba en la lista. Sumamos tu voto.'); go('/negocio/' + known.id); return; }
+      var id = (slug(name) + (town.toLowerCase() !== 'villanueva' ? '-' + slug(town) : '')).slice(0, 80).replace(/-$/, '');
+      if (id.length < 2) { ui.sugErr = 'name'; render(); return; }
+      var row = { slug: id, name: name, kind: f.kind, town: town, note: String(f.note || '').trim().slice(0, 300) };
+      if (!ONLINE) {
+        try { var l = JSON.parse(localStorage.getItem(SK) || '[]') || []; l.push(row); localStorage.setItem(SK, JSON.stringify(l)); } catch (e) {}
+        EXTRA.push(extraFrom(row)); vote(id); ui.sug = null; toast('¡Gracias! En la demo aparece de una vez.'); go('/negocio/' + id); return;
+      }
+      ui.sugBusy = true; render();
+      CLOUD.suggestBiz(row).then(function (res) {
+        ui.sugBusy = false;
+        if (res === 'limite') { render(); toast('Ya enviaste varias sugerencias hoy. Intenta mañana.'); return; }
+        myV[id] = 1; try { localStorage.setItem(VK, JSON.stringify(myV)); } catch (e) {}
+        ui.sugDone = name; ui.sug = null; votes.at = 0; render();
+      }, function () { ui.sugBusy = false; render(); toast('No se pudo enviar. Revisa tu internet.'); });
+    },
     vote: function (el) { vote(el.dataset.v); render(); toast('¡Gracias! Ahora invítalo por WhatsApp.'); },
     claim: function (el) {
       var p = prontoById(el.dataset.v); if (!p) return;

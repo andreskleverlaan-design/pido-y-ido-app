@@ -459,3 +459,5 @@ a.pr-main{text-decoration:none}
 .pr-demand{text-align:center;padding:18px 16px}
 .pr-big{font-family:Poppins,Inter,sans-serif;font-size:44px;font-weight:700;line-height:1;color:var(--orange)}
 .pr-done{display:inline-flex;align-items:center;gap:6px;background:var(--gsoft);color:var(--green);font-weight:600;font-size:14px;border-radius:999px;padding:8px 14px}
+.pr-suggest{display:flex;gap:10px;align-items:center;border:1.5px dashed var(--dashed);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.4;color:var(--text);text-decoration:none;background:#fff}
+.pr-suggest>svg{flex:none;color:var(--green)}
