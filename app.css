@@ -461,3 +461,16 @@ a.pr-main{text-decoration:none}
 .pr-done{display:inline-flex;align-items:center;gap:6px;background:var(--gsoft);color:var(--green);font-weight:600;font-size:14px;border-radius:999px;padding:8px 14px}
 .pr-suggest{display:flex;gap:10px;align-items:center;border:1.5px dashed var(--dashed);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.4;color:var(--text);text-decoration:none;background:#fff}
 .pr-suggest>svg{flex:none;color:var(--green)}
+.town-pill{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid var(--border);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--text)}
+.town-pill>svg:first-child{color:var(--orange)}
+.town-list{padding:4px 12px}
+.town-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 0;border-bottom:1px solid var(--border);background:none;font:inherit;color:inherit}
+.town-row:last-child{border-bottom:0}
+.town-row.on .b{color:var(--green)}
+.town-ic{flex:none;width:40px;height:40px;border-radius:12px;background:var(--input);color:var(--muted);display:flex;align-items:center;justify-content:center}
+.town-ic.live{background:var(--gsoft);color:var(--green)}
+.town-live,.town-soon{flex:none;font-size:12px;font-weight:600;border-radius:999px;padding:4px 10px}
+.town-live{background:var(--green);color:#fff}
+.town-soon{background:var(--input);color:var(--muted)}
+.town-soon.sm{padding:2px 8px;font-size:11px}
+.town-soon-card{border:1.5px solid var(--border2);box-shadow:none}
