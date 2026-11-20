@@ -1176,7 +1176,8 @@
   }
   function scrInicio() {
     if (!hasTown()) return scrPueblo(true);
-    if (!(ONLINE && !ui.synced) && !isLive(myTown())) return scrInicioPronto();
+    if (ONLINE && !ui.synced) return scrLoading('Pido y Ido');
+    if (!isLive(myTown())) return scrInicioPronto();
     var last = S.orders.filter(function (o) { return o.mine && o.status === 'entregado'; })[0];
     var active = S.orders.filter(function (o) { return o.mine && ['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0; })[0];
     var here = shownHere(), shops = here.filter(isShop), pr = prontoHere(), prShops = pr.filter(isShop), tiendas = (shops.length || prShops.length) && ui.home === 'tiendas';
