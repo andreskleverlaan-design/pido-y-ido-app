@@ -47,6 +47,7 @@
       id: pad(o.id), dbId: o.id, restId: o.rest_id, mine: !!mine, customer: o.customer || {}, items: o.items || [],
       subtotal: o.subtotal, fee: o.fee, total: o.total, mode: o.mode, note: o.note || '', pay: o.pay, cashGiven: o.cash_given,
       pin: pin || '', status: o.status, etaMin: o.eta_min, rejectReason: o.reject_reason, riderId: o.rider_id, rider: o.rider,
+      discount: o.discount || 0, paidClaimAt: ms(o.paid_claim_at),
       geo: o.geo, ref: o.ref_slug ? { slug: o.ref_slug } : null, rating: o.rating, tags: o.tags || [], wish: o.wish || '', wishImg: o.wish_img || '',
       createdAt: ms(o.created_at), acceptedAt: ms(o.accepted_at), sentAt: ms(o.sent_at), deliveredAt: ms(o.delivered_at)
     };
@@ -59,7 +60,7 @@
   async function fetchAll() {
     await ensureCust();
     await restSession();
-    var out = { custUid: custUid, restUid: restUid, myRest: null, restaurants: [], orders: [], riders: {}, myRiders: [], myProfile: null };
+    var out = { custUid: custUid, restUid: restUid, myRest: null, restaurants: [], orders: [], riders: {}, myRiders: [], myProfile: null, reward: null };
     var q = [
       cust.from('restaurants').select('*').order('created_at'),
       cust.from('orders').select('*').eq('customer_uid', custUid).order('created_at', { ascending: false }).limit(50),
@@ -72,6 +73,9 @@
     check(res[2]).forEach(function (r) { out.riders[r.id] = mapRider(r); if (r.owner === custUid) out.myProfile = r.id; });
     myRest = restUid ? ((check(res[3])[0] || {}).id || null) : null;
     out.myRest = myRest;
+
+    // Premio "cada 5º pedido" (null si todavía no se pegó supabase/005-clientes-fieles.sql).
+    try { var rw = await cust.rpc('my_reward'); if (!rw.error && rw.data) out.reward = rw.data; } catch (e) {}
 
     var pins = {};
     if (mineRows.length) {
@@ -86,6 +90,11 @@
       ]);
       check(r2[0]).forEach(function (o) { if (!byId[o.id]) byId[o.id] = mapOrder(o, false); });
       out.myRiders = check(r2[1]).map(function (x) { return x.rider_id; });
+      // Mi WhatsApp y Nequi: ya no son públicos, solo los ve el dueño (005-clientes-fieles.sql).
+      try {
+        var ct = await rest.from('rest_contact').select('phone,nequi').eq('rest_id', myRest).maybeSingle();
+        if (!ct.error && ct.data) out.restaurants.forEach(function (r) { if (r.id === myRest) { r.phone = ct.data.phone || r.phone; r.nequi = ct.data.nequi || ct.data.phone || r.nequi; } });
+      } catch (e) {}
       var missing = out.myRiders.filter(function (id) { return !out.riders[id]; });
       if (missing.length) check(await rest.from('riders').select('*').in('id', missing)).forEach(function (r) { out.riders[r.id] = mapRider(r); });
     }
@@ -96,6 +105,9 @@
   // ---------- customer ----------
   async function placeOrder(p) { await ensureCust(); return check(await cust.rpc('place_order', { p: p })); }
   async function cancelOrder(dbId) { return check(await cust.rpc('cancel_order', { p_id: dbId })); }
+  // Nequi del negocio (solo con pedido aceptado) y su teléfono (solo si lo lleva el mismo negocio y va en camino).
+  async function orderContact(dbId) { await ensureCust(); return check(await cust.rpc('order_contact', { p_id: dbId })) || {}; }
+  async function markPaid(dbId) { await ensureCust(); return check(await cust.rpc('mark_paid', { p_id: dbId })); }
   async function rateOrder(dbId, stars, tags) { return check(await cust.rpc('rate_order', { p_id: dbId, p_stars: stars, p_tags: tags })); }
 
   // ---------- delivery code (restaurant or rider link) ----------
@@ -200,7 +212,7 @@
   }
 
   window.PYI_CLOUD = {
-    fetchAll: fetchAll, placeOrder: placeOrder, cancelOrder: cancelOrder, rateOrder: rateOrder,
+    fetchAll: fetchAll, placeOrder: placeOrder, orderContact: orderContact, markPaid: markPaid, cancelOrder: cancelOrder, rateOrder: rateOrder,
     deliver: deliver, orderForRider: orderForRider,
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,

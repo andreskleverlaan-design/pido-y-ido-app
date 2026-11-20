@@ -446,6 +446,43 @@
     if (o.pay === 'ef') return 'Efectivo ' + fmt(o.total) + (o.cashGiven > o.total ? ' · paga con ' + fmt(o.cashGiven) + ' · vueltas ' + fmt(o.cashGiven - o.total) : ' · exacto');
     return (o.pay === 'nequi' ? 'Nequi ' : 'Daviplata ') + fmt(o.total) + ' · transferencia';
   }
+  // ---------- Premio: cada 5º pedido por la app, $2.000 menos (lo paga Pido y Ido) ----------
+  // Online lo calcula el servidor (supabase/005-clientes-fieles.sql); sin ese paso, el premio no se muestra.
+  function reward() {
+    if (ONLINE) return S.reward || null;
+    var mine = S.orders.filter(function (o) { return o.mine; });
+    var normal = mine.filter(function (o) { return o.status === 'entregado' && !o.discount; }).length;
+    var used = mine.filter(function (o) { return o.discount > 0 && o.status !== 'rechazado' && o.status !== 'cancelado'; }).length;
+    var st = Math.max(normal - used * 4, 0);
+    return { every: 5, amount: 2000, min: 10000, stamps: st, ready: st >= 4 };
+  }
+  function cartDiscount() { var rw = reward(); return rw && rw.ready && !cartShop() && cartSubtotal() >= rw.min ? rw.amount : 0; }
+  function stampCard(cls) {
+    var rw = reward(); if (!rw) return '';
+    var n = Math.min(rw.stamps, 4), dots = '';
+    for (var i = 0; i < 4; i++) dots += '<i class="' + (i < n ? 'on' : '') + '">' + (i < n ? ic('check', 16, { sw: 3 }) : i + 1) + '</i>';
+    dots += '<i class="gift' + (rw.ready ? ' on' : '') + '">' + ic('gift', 18) + '</i>';
+    return '<div class="card stamp-card ' + (cls || '') + '"><div class="row between"><div class="b">' + (rw.ready ? '¡Tu próximo pedido tiene ' + fmt(rw.amount) + ' de descuento!' : 'Tu 5º pedido: ' + fmt(rw.amount) + ' menos') + '</div></div>' +
+      '<div class="stamps mt8">' + dots + '</div>' +
+      '<div class="xs muted mt8">' + (rw.ready ? 'Se aplica solo al pagar, en pedidos desde ' + fmt(rw.min) + '.' : 'Llevas ' + n + ' de 4 sellos. Cada pedido entregado por la app suma uno.') + ' Solo pidiendo por Pido y Ido.</div></div>';
+  }
+  // WhatsApp avisos desde el número de Pido y Ido (cuando esté activado en config.js).
+  function waOn() { return !ONLINE || !!(window.PYI_CONFIG || {}).whatsappAvisos; }
+  // Nequi del negocio para este pedido (online: solo después de que aceptan) y su teléfono si lo lleva el mismo negocio.
+  function contactFor(o) {
+    var r = R(o.restId);
+    if (!ONLINE) return { nequi: r.nequi, phone: r.phone };
+    ui.ct = ui.ct || {};
+    var k = o.dbId + ':' + o.status + ':' + (o.riderId || '');
+    if (!(k in ui.ct)) {
+      ui.ct[k] = null;
+      if (['preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0 && CLOUD.orderContact) {
+        CLOUD.orderContact(o.dbId).then(function (c) { ui.ct[k] = c || {}; safeRender(); }, function () { ui.ct[k] = {}; safeRender(); });
+      } else ui.ct[k] = {};
+    }
+    var c = ui.ct[k] || {};
+    return { nequi: c.nequi || r.nequi || '', phone: c.phone || r.phone || '', loading: ui.ct[k] === null };
+  }
   function itemsTxt(o) { if (o.wish) return o.wish === '(Ver la foto)' ? 'Lista en foto' : String(o.wish).replace(/\s*\n+\s*/g, ', ') + (o.wishImg ? ' + foto' : ''); return o.items.map(function (i) { return i.qty + '× ' + i.name; }).join(', '); }
 
   // ---------- Screens: start ----------
@@ -577,6 +614,7 @@
     if (active) {
       h += '<a class="card mt16 row" href="#/pedido/' + active.id + '" style="border:2px solid var(--green)"><span class="pulse"></span><div class="grow"><div class="b">Pedido #' + active.id + ' · ' + R(active.restId).short + '</div><div class="small muted">' + statusLine(active) + '</div></div>' + ic('right', 20) + '</a>';
     }
+    if (!ui.cat && !tiendas) h += stampCard('mt16');
     if (tiendas) {
       var kinds = KINDS.filter(function (k) { return shops.concat(prShops).some(function (r) { return r.kind === k.id; }); });
       if (kinds.length > 1) h += '<div class="chips scroll mt16">' + kinds.map(function (k) { return '<button class="chip' + (ui.kind === k.id ? ' on' : '') + '" data-a="kindPick" data-v="' + k.id + '">' + ic(k.icon, 16) + k.t + '</button>'; }).join('') + '</div>';
@@ -708,7 +746,7 @@
     if (!lines.length && !wishHas()) {
       return '<div class="screen">' + topbar('Tu carrito', '/inicio') + '<div class="empty"><div class="ic">' + ic('bag', 28) + '</div><div class="b" style="color:var(--text)">Tu carrito está vacío</div><div class="small mt4">Elige un restaurante y agrega algo rico.</div><a class="btn btn-primary mt16" href="#/inicio">Ver restaurantes</a></div></div>';
     }
-    var r = R(S.cart.restId), sub = cartSubtotal(), fee = cartFee(), total = sub + fee, co = S.co;
+    var r = R(S.cart.restId), sub = cartSubtotal(), fee = cartFee(), disc = cartDiscount(), total = sub + fee - disc, co = S.co, rw = reward();
     var short = shop ? 0 : r.min - sub;
     var cashVal = co.cash === 'exact' ? total : +co.cash;
     if (co.cash !== 'exact' && cashVal <= total) { co.cash = 'exact'; cashVal = total; }
@@ -729,7 +767,7 @@
         '<label class="label mt12" for="note">' + (shop ? 'Nota para la tienda' : 'Nota para la cocina') + '</label><input class="input" id="note" data-m="co.note" value="' + esc(co.note) + '" placeholder="' + (shop ? 'Ej.: paso a las 5 p. m.' : 'Ej.: sin cebolla') + '"></div>';
     }
     h += '<div class="card mt12"><div class="t-h3" style="margin-bottom:12px">¿Cómo pagas?</div>' +
-      [['ef', 'Efectivo', 'Pagas al recibir'], ['nequi', 'Nequi', 'Transfieres y envías el comprobante'], ['davi', 'Daviplata', 'Transfieres y envías el comprobante']].map(function (p) {
+      [['ef', 'Efectivo', 'Pagas al recibir'], ['nequi', 'Nequi', 'Transfieres y nos avisas aquí'], ['davi', 'Daviplata', 'Transfieres y nos avisas aquí']].map(function (p) {
         var on = co.pay === p[0];
         var subt = p[0] === 'ef' && on ? (shop ? (co.cash === 'exact' ? 'Pagas exacto' : 'Pagas con billete de ' + fmt(cashVal)) : cashVal > total ? 'Pagas con ' + fmt(cashVal) + ' · vueltas ' + fmt(cashVal - total) : 'Pagas exacto') : p[2];
         return '<button class="radio-row' + (on ? ' on' : '') + '" data-a="pay" data-v="' + p[0] + '"><span class="ring"></span><span class="grow"><span class="b" style="display:block">' + p[1] + '</span><span class="small muted">' + subt + '</span></span></button>';
@@ -739,6 +777,9 @@
         (cashVal > total && !shop ? '<div class="note green mt12 row between b"><span>Tus vueltas</span><span>' + fmt(cashVal - total) + '</span></div>' : '');
     } else {
       h += '<div class="note grey mt12">' + (shop ? 'Cuando la tienda confirme el precio' : 'Después de hacer el pedido') + ' te mostramos el número de ' + (co.pay === 'nequi' ? 'Nequi' : 'Daviplata') + ' ' + (shop ? 'de la tienda' : 'del restaurante') + '.</div>';
+    }
+    if (waOn()) {
+      h += '</div><div class="card mt12"><button class="radio-row check' + (S.user.waOk ? ' on' : '') + '" data-a="waOk" style="margin:0"><span class="ring">' + (S.user.waOk ? ic('check', 14, { sw: 3 }) : '') + '</span><span class="grow"><span class="b" style="display:block">Avísame por WhatsApp</span><span class="small muted">Te escribe Pido y Ido cuando acepten tu pedido y cuando salga.</span></span></button>';
     }
     if (shop) {
       h += '</div><div class="card mt12"><div class="row between"><span class="t-h3">Tu pedido</span><a class="link small" href="#/r/' + r.id + '">Cambiar</a></div>' +
@@ -752,7 +793,9 @@
     }
     h += '</div><div class="card mt12">' + lines.map(function (l) { return '<div class="row between small" style="padding:3px 0"><span>' + l.qty + ' × ' + l.name + '</span><span>' + fmt(l.qty * l.price) + '</span></div>'; }).join('') +
       '<div class="row between small" style="padding:3px 0"><span class="' + (fee ? '' : 'green b') + '">' + (S.cart.mode === 'dom' ? 'Domicilio' : 'Recoges tú') + '</span><span class="' + (fee ? '' : 'green b') + '">' + (fee ? fmt(fee) : 'Gratis') + '</span></div>' +
+      (disc ? '<div class="row between small green b" style="padding:3px 0"><span class="row" style="gap:6px">' + ic('gift', 15) + 'Premio 5º pedido</span><span>−' + fmt(disc) + '</span></div>' : '') +
       '<div class="divider dashed"></div><div class="row between"><span class="t-h3">Total</span><span class="num" style="font-size:18px">' + fmt(total) + '</span></div></div>' +
+      (!disc && rw && rw.ready && sub < rw.min ? '<div class="note green mt12">Tienes un premio de ' + fmt(rw.amount) + '. Se usa en pedidos desde ' + fmt(rw.min) + '.</div>' : '') +
       (short > 0 ? '<div class="note amber mt12">El pedido mínimo es ' + fmt(r.min) + '. Te faltan <b>' + fmt(short) + '</b>. <a class="b" href="#/r/' + r.id + '" style="text-decoration:underline">Agregar más</a></div>' : '') +
       '<button class="btn btn-ghost btn-block mt8" data-a="clearCart">Vaciar carrito</button>';
     h += '</div><div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="placeOrder"' + (short > 0 || !S.open[r.id] || ui.busy || far ? ' disabled' : '') + '>' + (ui.busy ? 'Enviando pedido…' : S.open[r.id] ? 'Hacer pedido · ' + fmt(total) : 'Restaurante cerrado') + '</button></div>';
@@ -801,7 +844,7 @@
       h += '<div class="divider"></div><div class="row"><div class="avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + initials(rd.name) + '</div><div class="grow"><div class="b">' + esc(rd.name) + '</div><div class="small muted">Domiciliario del restaurante · ' + esc((rd.vehicle || 'Moto').toLowerCase()) + '</div></div>' +
         '<a class="icon-btn green" href="' + waLink(rd.phone, 'Hola ' + first(rd.name) + ', soy ' + S.user.name + ' (pedido #' + o.id + ').') + '" target="_blank" rel="noopener" aria-label="WhatsApp">' + ic('msg', 20) + '</a><a class="icon-btn green" href="tel:' + rd.phone + '" aria-label="Llamar">' + ic('phone', 20) + '</a></div>';
     } else if (o.status === 'en_camino' && o.riderId === 'yo') {
-      h += '<div class="divider"></div><div class="row"><div class="avatar">' + ic('store', 22) + '</div><div class="grow"><div class="b">Lo lleva el restaurante</div><div class="small muted">' + r.name + '</div></div><a class="icon-btn green" href="tel:' + r.phone + '">' + ic('phone', 20) + '</a></div>';
+      h += '<div class="divider"></div><div class="row"><div class="avatar">' + ic('store', 22) + '</div><div class="grow"><div class="b">Lo lleva el restaurante</div><div class="small muted">' + r.name + '</div></div>' + (contactFor(o).phone ? '<a class="icon-btn green" href="tel:' + contactFor(o).phone + '" aria-label="Llamar">' + ic('phone', 20) + '</a>' : '') + '</div>';
     }
     h += '</div>';
     if (o.status !== 'entregado') {
@@ -813,10 +856,15 @@
         (o.status === 'preparando' ? '<button class="btn btn-ghost btn-block mt8" data-a="cancelOrder" data-id="' + o.id + '">No estoy de acuerdo · cancelar</button>' : '') + '</div>';
     }
     if (o.pay !== 'ef' && o.status !== 'entregado' && !unpriced(o)) {
-      h += '<div class="card mt12"><div class="b">Paga con ' + (o.pay === 'nequi' ? 'Nequi' : 'Daviplata') + '</div><div class="small muted mt4">Transfiere <b style="color:var(--text)">' + fmt(o.total) + '</b> al ' + r.nequi + ' (' + r.name + ') y envía el comprobante.</div>' +
-        '<a class="btn btn-green btn-sm btn-block mt12" target="_blank" rel="noopener" href="' + waLink(r.phone, 'Hola, envío el comprobante del pedido #' + o.id + ' por ' + fmt(o.total) + '.') + '">' + ic('msg', 18) + ' Enviar comprobante por WhatsApp</a></div>';
+      var payApp = o.pay === 'nequi' ? 'Nequi' : 'Daviplata', ct = o.status === 'recibido' ? {} : contactFor(o);
+      h += '<div class="card mt12"><div class="b">Paga con ' + payApp + '</div>' +
+        (o.status === 'recibido' ? '<div class="small muted mt4">Cuando ' + esc(r.short) + ' acepte tu pedido, aquí te mostramos el número para transferir.</div>'
+          : ct.nequi ? '<div class="small muted mt4">Transfiere <b style="color:var(--text)">' + fmt(o.total) + '</b> al <b style="color:var(--text)">' + esc(ct.nequi) + '</b> (' + esc(r.name) + ').</div>' +
+            (o.paidClaimAt ? '<div class="note green mt12 row" style="gap:8px">' + ic('check', 16, { sw: 3 }) + '<span>Le avisamos a ' + esc(r.short) + ' que ya pagaste. Lo revisan en su ' + payApp + '.</span></div>'
+              : '<button class="btn btn-green btn-sm btn-block mt12" data-a="markPaid" data-id="' + o.id + '">' + ic('check', 18) + ' Ya transferí</button>')
+          : '<div class="small muted mt4">' + (ct.loading ? 'Cargando el número…' : 'Paga al recibir o pregúntale al domiciliario.') + '</div>') + '</div>';
     }
-    h += '<div class="card mt12 small">' + (unpriced(o) ? '<div class="row between" style="padding:3px 0"><span class="muted">Total</span><span class="b">Por confirmar</span></div>' : o.pay === 'ef' ? '<div class="row between" style="padding:3px 0"><span class="muted">Pagas en efectivo</span><span class="b">' + fmt(o.total) + '</span></div>' +
+    h += '<div class="card mt12 small">' + (o.discount ? '<div class="row between green b" style="padding:3px 0"><span>Premio 5º pedido (ya descontado)</span><span>−' + fmt(o.discount) + '</span></div>' : '') + (unpriced(o) ? '<div class="row between" style="padding:3px 0"><span class="muted">Total</span><span class="b">Por confirmar</span></div>' : o.pay === 'ef' ? '<div class="row between" style="padding:3px 0"><span class="muted">Pagas en efectivo</span><span class="b">' + fmt(o.total) + '</span></div>' +
       (o.cashGiven > o.total ? '<div class="row between" style="padding:3px 0"><span class="muted">Ten listo</span><span class="b">' + fmt(o.cashGiven) + ' · vueltas ' + fmt(o.cashGiven - o.total) + '</span></div>' : '') : '<div class="row between" style="padding:3px 0"><span class="muted">Total</span><span class="b">' + fmt(o.total) + '</span></div>') +
       '<div class="row between" style="padding:3px 0"><span class="muted">' + (o.mode === 'rec' ? 'Recoges en' : 'Entrega') + '</span><span class="b" style="text-align:right;max-width:65%">' + esc(o.mode === 'rec' ? r.address : o.customer.address) + '</span></div>' +
       '<div class="row between" style="padding:3px 0"><span class="muted">Pediste</span><span style="text-align:right;max-width:65%' + (o.wish ? ';white-space:pre-line' : '') + '">' + esc(o.wish ? (o.wish === '(Ver la foto)' ? 'Lista en foto' : o.wish) : itemsTxt(o)) + '</span></div>' +
@@ -824,7 +872,7 @@
     if (o.status === 'entregado') {
       h += o.rating ? '<div class="card mt12 center"><div class="small muted">Tu calificación</div><div style="color:var(--orange);font-size:24px;letter-spacing:2px">' + '★★★★★'.slice(0, o.rating) + '<span style="color:#E9E3DB">' + '★★★★★'.slice(o.rating) + '</span></div></div>'
         : '<a class="btn btn-primary btn-block mt12" href="#/calificar/' + o.id + '">Calificar pedido</a>';
-      h += '<button class="btn btn-outline btn-block mt12" data-a="reorder" data-id="' + o.id + '">Pedir lo mismo otra vez</button>';
+      h += '<button class="btn btn-outline btn-block mt12" data-a="reorder" data-id="' + o.id + '">Pedir lo mismo otra vez</button>' + stampCard('mt12');
     }
     // demo helper
     if (['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0) {
@@ -942,7 +990,7 @@
       }).join('') + '</div><div class="mt12">';
     var list = groups[ui.rtab];
     if (!list.length) {
-      var emptyTxt = { nuevos: 'No hay pedidos nuevos. Cuando llegue uno, aparece aquí (y te avisamos por WhatsApp).', preparando: 'Nada en preparación.', camino: 'Ningún pedido en camino.', hechos: 'Todavía no hay pedidos terminados.' }[ui.rtab];
+      var emptyTxt = { nuevos: 'No hay pedidos nuevos. Cuando llegue uno, aparece aquí' + (waOn() ? ' (y Pido y Ido te avisa por WhatsApp).' : '.'), preparando: 'Nada en preparación.', camino: 'Ningún pedido en camino.', hechos: 'Todavía no hay pedidos terminados.' }[ui.rtab];
       h += '<div class="empty"><div class="ic">' + ic('receipt', 26) + '</div>' + emptyTxt + '</div>';
       if (ui.rtab === 'nuevos' && ONLINE) h += '<div class="note grey center">Deja esta pantalla abierta: suena cuando llega un pedido.</div>';
       if (ui.rtab === 'nuevos' && !ONLINE) h += '<div class="demo-bar"><b>Modo demo</b>Haz un pedido como cliente y vuelve aquí para aceptarlo.<a class="btn btn-outline btn-block mt8" href="#/r/' + r.id + '">Pedir como cliente</a></div>';
@@ -950,10 +998,14 @@
     h += list.map(function (o) { return restOrderCard(o); }).join('');
     return h + '</div></div>' + tabs('rest', 'pedidos');
   }
+  function restPayNotes(o) {
+    return (o.discount ? '<div class="xs green b mt4">' + ic('gift', 12) + ' Premio Pido y Ido: el cliente paga ' + fmt(o.discount) + ' menos. Te lo descontamos de la comisión.</div>' : '') +
+      (o.paidClaimAt && o.pay !== 'ef' ? '<div class="xs b mt4" style="color:var(--green)">' + ic('check', 12, { sw: 3 }) + ' El cliente dice que ya transfirió. Revisa tu ' + (o.pay === 'nequi' ? 'Nequi' : 'Daviplata') + '.</div>' : '');
+  }
   function restOrderCard(o) {
     var items = o.wish ? '<div class="wish-box">' + (o.wishImg ? wishPic(o, true) : '') + '<div class="grow"><div class="xs muted b" style="text-transform:uppercase;letter-spacing:.4px">Lista del cliente</div><div class="wish-txt mt4">' + esc(o.wish === '(Ver la foto)' ? 'Ver la foto' : o.wish) + '</div></div></div>'
       : o.items.map(function (i) { return '<div class="row between" style="padding:2px 0"><span><b>' + i.qty + '×</b> ' + esc(i.name) + '</span><span>' + fmt(i.qty * i.price) + '</span></div>'; }).join('');
-    var cust = '<div class="small mt8"><b>' + esc(o.customer.name) + '</b> · ' + (o.mode === 'rec' ? 'Recoge en el local' : esc(o.customer.address)) + (o.mode === 'dom' && o.geo ? ' · <a class="link" target="_blank" rel="noopener" href="' + mapsLink(o.geo) + '">Ver en el mapa</a>' : '') + '</div><div class="small mt4"><b>' + payTxt(o).split(' · ')[0] + '</b>' + (payTxt(o).indexOf(' · ') > 0 ? ' · ' + payTxt(o).split(' · ').slice(1).join(' · ') : '') + '</div>';
+    var cust = '<div class="small mt8"><b>' + esc(o.customer.name) + '</b> · ' + (o.mode === 'rec' ? 'Recoge en el local' : esc(o.customer.address)) + (o.mode === 'dom' && o.geo ? ' · <a class="link" target="_blank" rel="noopener" href="' + mapsLink(o.geo) + '">Ver en el mapa</a>' : '') + '</div><div class="small mt4"><b>' + payTxt(o).split(' · ')[0] + '</b>' + (payTxt(o).indexOf(' · ') > 0 ? ' · ' + payTxt(o).split(' · ').slice(1).join(' · ') : '') + '</div>' + (o.status === 'recibido' ? restPayNotes(o) : '');
     var note = o.note ? '<div class="note grey mt8">Nota: ' + esc(o.note) + '</div>' : '';
     if (o.status === 'recibido') {
       return '<div class="order-card"><div class="oh"><span class="row" style="gap:8px"><span class="pulse"></span>Pedido nuevo · ' + ago(o.createdAt) + '</span><span>#' + o.id + '</span></div><div class="ob">' + items + note + '<div class="divider"></div>' + cust +
@@ -962,7 +1014,7 @@
         '<div class="label mt12">' + (o.wish ? 'Tiempo para alistarlo' : 'Tiempo de preparación') + (o.mode === 'dom' ? ' y entrega' : '') + '</div><div class="chips">' + [20, 30, 45].map(function (m) { var on = (ui.choose['eta' + o.id] || 30) === m; return '<button class="chip sm' + (on ? ' on' : '') + '" data-a="etaPick" data-id="' + o.id + '" data-v="' + m + '">' + m + ' min</button>'; }).join('') + '</div>' +
         '<div class="row mt12" style="gap:10px"><button class="btn btn-outline" style="flex:1" data-a="reject" data-id="' + o.id + '">Rechazar</button><button class="btn btn-primary" style="flex:1.6" data-a="accept" data-id="' + o.id + '">' + (o.wish ? 'Aceptar con este precio' : 'Aceptar · ' + (ui.choose['eta' + o.id] || 30) + ' min') + '</button></div></div></div>';
     }
-    var head = '<div class="row between"><span class="b">#' + o.id + ' · ' + esc(first(o.customer.name)) + '</span>' + statusBadge(o) + '</div><div class="small muted mt4">' + esc(itemsTxt(o)) + ' · ' + fmt(o.total) + '</div>';
+    var head = '<div class="row between"><span class="b">#' + o.id + ' · ' + esc(first(o.customer.name)) + '</span>' + statusBadge(o) + '</div><div class="small muted mt4">' + esc(itemsTxt(o)) + ' · ' + fmt(o.total) + '</div>' + restPayNotes(o);
     if (o.status === 'preparando') {
       var mins = Math.round((now() - o.acceptedAt) / 60000);
       return '<div class="order-card"><div class="ob">' + head + '<div class="xs muted mt4">Aceptado ' + ago(o.acceptedAt) + ' · ' + mins + ' de ' + o.etaMin + ' min</div>' + note + '<button class="btn btn-green btn-sm btn-block mt12" data-a="ready" data-id="' + o.id + '">' + ic('check', 18) + ' Listo' + (o.mode === 'dom' ? ', ¿quién lo lleva?' : ' para recoger') + '</button></div></div>';
@@ -1209,6 +1261,7 @@
       '<div class="field"><label class="label" for="rm3">Dirección</label><input class="input" id="rm3" data-m="ui.rm.address" data-dirty="1" value="' + esc(f.address) + '"></div>' +
       '<div class="row" style="gap:10px"><div class="grow field"><label class="label" for="rm4">WhatsApp</label><input class="input" id="rm4" data-m="ui.rm.phone" data-dirty="1" inputmode="tel" value="' + esc(f.phone) + '"></div>' +
       '<div class="grow field"><label class="label" for="rm5">Nequi / Daviplata</label><input class="input" id="rm5" data-m="ui.rm.nequi" data-dirty="1" inputmode="tel" value="' + esc(f.nequi) + '"></div></div>' +
+      '<div class="xs muted" style="margin:-6px 0 8px">' + ic('lock', 12) + ' Los clientes no ven tu WhatsApp. El Nequi solo lo ve quien tiene un pedido aceptado contigo.</div>' +
       (shop ? '' : '<div class="label mt8">Categorías</div><div class="chips">' + CATS.map(function (c) { return '<button class="chip sm' + (f.cats.indexOf(c[0]) >= 0 ? ' on' : '') + '" data-a="rmCat" data-v="' + c[0] + '">' + c[0] + '</button>'; }).join('') + '</div>') +
       '<button class="btn btn-green btn-block mt16" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Guardando…' : 'Guardar datos') + '</button></div>' +
       '<button class="btn btn-ghost btn-block mt12" data-a="restLogout">Cerrar sesión</button></div>' +
@@ -1435,6 +1488,12 @@
     mode: function (el) { if (S.cart.restId !== el.dataset.r) { if (cartCount()) { toast('Primero termina o vacía tu carrito actual'); return; } S.cart = { restId: el.dataset.r, items: {}, mode: el.dataset.v }; } else S.cart.mode = el.dataset.v; save(); render(); },
     fav: function () { toast('Guardado en tus favoritos'); },
     pay: function (el) { S.co.pay = el.dataset.v; save(); render(); },
+    waOk: function () { S.user.waOk = !S.user.waOk; save(); render(); },
+    markPaid: function (el) {
+      var o = order(el.dataset.id); if (!o || o.paidClaimAt) return;
+      o.paidClaimAt = now(); save(); render(); toast('Listo, le avisamos a ' + R(o.restId).short);
+      if (ONLINE) push(CLOUD.markPaid(o.dbId));
+    },
     cash: function (el) { S.co.cash = el.dataset.v; save(); render(); },
     clearCart: function () { S.cart = { restId: null, items: {}, mode: 'dom' }; save(); go('/inicio'); },
     geo: function () {
@@ -1460,12 +1519,12 @@
       if (ONLINE && S.cart.mode === 'dom' && tooFar(r, S.co.geo)) { toast('Estás fuera de la zona de entrega. Elige Recoger.'); return; }
       if (!(S.user.name || '').trim()) { toast('Escribe tu nombre'); return; }
       if (phone.length < 10) { toast('Escribe tu celular (10 números)'); var pe = document.getElementById('ph'); if (pe) { pe.classList.add('err'); pe.focus(); } return; }
-      var sub = cartSubtotal(), fee = cartFee(), total = sub + fee;
+      var sub = cartSubtotal(), fee = cartFee(), disc = cartDiscount(), total = sub + fee - disc;
       var o = {
         id: String(S.nextId++).padStart(4, '0'), restId: r.id, mine: true,
-        customer: { name: S.user.name.trim(), phone: phone, address: S.cart.mode === 'dom' ? addr : 'Recoge en el local' },
+        customer: { name: S.user.name.trim(), phone: phone, address: S.cart.mode === 'dom' ? addr : 'Recoge en el local', wa: !!S.user.waOk && waOn() },
         items: lines.map(function (l) { return { id: l.id, name: l.name, price: l.price, qty: l.qty }; }),
-        subtotal: sub, fee: fee, total: total, mode: S.cart.mode, note: S.co.note, pay: S.co.pay,
+        subtotal: sub, fee: fee, total: total, discount: disc, mode: S.cart.mode, note: S.co.note, pay: S.co.pay,
         cashGiven: S.co.pay === 'ef' ? (S.co.cash === 'exact' ? (shop ? 0 : total) : +S.co.cash) : 0,
         pin: randPin(), status: 'recibido', createdAt: now(), geo: S.co.geo,
         ref: S.ref && S.ref.restId === r.id ? { slug: S.ref.slug } : null
@@ -1481,7 +1540,7 @@
       ui.busy = true; render();
       CLOUD.placeOrder({ rest_id: r.id, items: o.items.map(function (i) { return { id: i.id, qty: i.qty }; }), mode: o.mode, note: o.note, pay: o.pay, cash_given: o.cashGiven,
         customer: o.customer, geo: o.geo, ref_slug: o.ref ? o.ref.slug : null, wish: shop ? o.wish : undefined, wish_img: shop ? o.wishImg : undefined })
-        .then(function (res) { ui.busy = false; o.dbId = res.id; o.id = String(res.id).padStart(4, '0'); o.pin = res.pin; finish(); sync(); },
+        .then(function (res) { ui.busy = false; o.dbId = res.id; o.id = String(res.id).padStart(4, '0'); o.pin = res.pin; if (res.total != null) { o.total = res.total; o.discount = res.discount || 0; } else { o.total = sub + fee; o.discount = 0; } finish(); sync(); },
           function (e) { ui.busy = false; render(); toast(errTxt(e)); sync(); });
     },
     cancelOrder: function (el) { var o = order(el.dataset.id); if (o && (o.status === 'recibido' || (o.wish && o.status === 'preparando'))) { o.status = 'cancelado'; save(); go('/pedidos'); toast('Pedido cancelado'); if (ONLINE) push(CLOUD.cancelOrder(o.dbId)); } },
@@ -1865,6 +1924,7 @@
     S.riders = d.riders;
     S.myRiders = {}; if (d.myRest) S.myRiders[d.myRest] = d.myRiders;
     S.myProfile = d.myProfile;
+    S.reward = d.reward || null;
     S.restId = d.myRest;
     save();
     // new order sound for the restaurant
