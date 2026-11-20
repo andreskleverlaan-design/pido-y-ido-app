@@ -391,3 +391,32 @@ textarea.input{min-height:76px;line-height:1.4}
   50%{box-shadow:0 0 6px 2px rgba(52,222,120,1),0 0 16px 6px rgba(52,222,120,.6),0 0 0 6px rgba(52,222,120,0)}}
 @media (prefers-reduced-motion:reduce){.glow,.skel,.save-bar.show{animation:none}}
 .label.mt8{margin-top:8px}.label.mt12{margin-top:12px}.label.mt16{margin-top:16px}
+
+/* ---------- Tiendas (pedido libre) ---------- */
+.kt{display:flex;align-items:center;justify-content:center}
+.kt .kt-ico{display:flex;opacity:.9}
+.kt-restaurante{background:linear-gradient(135deg,#FFE9DE,#F7CDB4);color:#B9440F}
+.kt-drogueria{background:linear-gradient(135deg,#E3EFE8,#C3DDCD);color:#1F4D3A}
+.kt-minimercado{background:linear-gradient(135deg,#FFF1E0,#F6D9AE);color:#8A4A00}
+.kt-licorera{background:linear-gradient(135deg,#EAE6F5,#D2CAEB);color:#4A3C7A}
+.kt-floristeria{background:linear-gradient(135deg,#FCE7EE,#F4C6D5);color:#9B2C55}
+.kt-ferreteria{background:linear-gradient(135deg,#E4EEF8,#C6D9EE);color:#24507A}
+.kt-otro{background:linear-gradient(135deg,#F3EFEA,#E2DAD0);color:#5A5148}
+.rest-card .kind-over{left:12px;bottom:12px;background:#fff;color:var(--text);display:inline-flex;align-items:center;gap:5px}
+.rest-card .kind-over svg{color:var(--green)}
+.kinds{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:8px}
+.kind{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px 10px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--border2);font-size:13px;font-weight:600;text-align:center;line-height:1.2}
+.kind .ki{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.kind.on{box-shadow:inset 0 0 0 2px var(--green);background:var(--gsoft)}
+.home-seg button{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.wish-in{min-height:150px;line-height:1.5;font-size:16px}
+.wish-att{display:flex;align-items:center;gap:12px;padding:10px;border-radius:14px;background:var(--gsoft);box-shadow:inset 0 0 0 1.5px var(--gtint)}
+.wish-att img{width:56px;height:56px;border-radius:10px;object-fit:cover;flex:none}
+.wish-pic{width:72px;height:72px;border-radius:12px;overflow:hidden;flex:none;background:var(--input);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.wish-pic img{width:100%;height:100%;object-fit:cover}
+.wish-box{display:flex;gap:12px;align-items:flex-start}
+.wish-txt{white-space:pre-line;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.input-ic .pre.money+.input{padding-left:58px}
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.how-step{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:12px 6px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1px var(--border2);color:var(--muted);line-height:1.3}
+.how-n{width:32px;height:32px;border-radius:999px;background:var(--soft);color:var(--cta);display:flex;align-items:center;justify-content:center}

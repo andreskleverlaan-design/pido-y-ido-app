@@ -35,7 +35,7 @@
 
   function mapRest(r) {
     return {
-      id: r.id, owner: r.owner, name: r.name, short: r.short || r.name, sub: r.sub || '', img: r.img || '', cats: r.cats || [],
+      id: r.id, owner: r.owner, kind: r.kind || 'restaurante', name: r.name, short: r.short || r.name, sub: r.sub || '', img: r.img || '', cats: r.cats || [],
       eta: r.eta, pickup: r.pickup, min: r.min, fee: r.fee, address: r.address, phone: r.phone, nequi: r.nequi || r.phone,
       dishes: Array.isArray(r.dishes) ? r.dishes : [], open: r.open,
       rating: r.rating_count ? Number(r.rating_sum) / r.rating_count : 0, count: r.rating_count,
@@ -47,7 +47,7 @@
       id: pad(o.id), dbId: o.id, restId: o.rest_id, mine: !!mine, customer: o.customer || {}, items: o.items || [],
       subtotal: o.subtotal, fee: o.fee, total: o.total, mode: o.mode, note: o.note || '', pay: o.pay, cashGiven: o.cash_given,
       pin: pin || '', status: o.status, etaMin: o.eta_min, rejectReason: o.reject_reason, riderId: o.rider_id, rider: o.rider,
-      geo: o.geo, ref: o.ref_slug ? { slug: o.ref_slug } : null, rating: o.rating, tags: o.tags || [],
+      geo: o.geo, ref: o.ref_slug ? { slug: o.ref_slug } : null, rating: o.rating, tags: o.tags || [], wish: o.wish || '', wishImg: o.wish_img || '',
       createdAt: ms(o.created_at), acceptedAt: ms(o.accepted_at), sentAt: ms(o.sent_at), deliveredAt: ms(o.delivered_at)
     };
   }
@@ -145,6 +145,19 @@
     return rest.storage.from('fotos').getPublicUrl(path).data.publicUrl;
   }
 
+  // ---------- shops: free order (list photo is private: only the customer and that shop can open it) ----------
+  async function uploadList(blob) {
+    await ensureCust();
+    var path = custUid + '/' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + '.jpg';
+    check(await cust.storage.from('listas').upload(path, blob, { contentType: 'image/jpeg', upsert: false }));
+    return path;
+  }
+  async function listUrl(path, asRest) {
+    var c = asRest && restUid ? rest : cust;
+    return check(await c.storage.from('listas').createSignedUrl(path, 3600)).signedUrl;
+  }
+  async function priceOrder(dbId, amount, eta) { return check(await rest.rpc('price_order', { p_id: dbId, p_amount: amount, p_eta: eta })); }
+
   // ---------- rider board profile ----------
   async function saveProfile(id, p) {
     await ensureCust();
@@ -190,7 +203,7 @@
     fetchAll: fetchAll, placeOrder: placeOrder, cancelOrder: cancelOrder, rateOrder: rateOrder,
     deliver: deliver, orderForRider: orderForRider,
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder,
-    addMyRider: addMyRider, uploadPhoto: uploadPhoto, linkRider: linkRider, unlinkRider: unlinkRider,
+    addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
     saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
   };
