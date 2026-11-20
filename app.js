@@ -447,7 +447,7 @@
     return (o.pay === 'nequi' ? 'Nequi ' : 'Daviplata ') + fmt(o.total) + ' · transferencia';
   }
   // ---------- Premio: cada 5º pedido por la app, $2.000 menos (lo paga Pido y Ido) ----------
-  // Online lo calcula el servidor (supabase/005-clientes-fieles.sql); sin ese paso, el premio no se muestra.
+  // Online lo calcula el servidor (supabase/006-clientes-fieles.sql); sin ese paso, el premio no se muestra.
   function reward() {
     if (ONLINE) return S.reward || null;
     var mine = S.orders.filter(function (o) { return o.mine; });
