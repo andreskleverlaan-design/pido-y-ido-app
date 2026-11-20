@@ -778,10 +778,48 @@
       '</div></div>';
     return h;
   }
+  // ---------- Towns ----------
+  // Pido y Ido takes orders in LIVE_TOWN; the other towns show "Pronto" businesses only (invite + suggest).
+  var LIVE_TOWN = 'Villanueva';
+  var TOWN_GEO = { 'Villanueva': [4.6075, -72.9289], 'Acacías': [3.987, -73.758], 'Aguazul': [5.172, -72.547], 'Arauca': [7.084, -70.759], 'Chiquinquirá': [5.617, -73.818],
+    'Granada': [3.546, -73.707], 'Paz de Ariporo': [5.88, -71.892], 'Puerto López': [4.084, -72.957], 'Saravena': [6.953, -71.873], 'Tame': [6.461, -71.73], 'Tauramena': [5.017, -72.748] };
+  var TOWN_DEP = { 'Villanueva': 'Casanare', 'Acacías': 'Meta', 'Aguazul': 'Casanare', 'Arauca': 'Arauca', 'Chiquinquirá': 'Boyacá', 'Granada': 'Meta', 'Paz de Ariporo': 'Casanare', 'Puerto López': 'Meta', 'Saravena': 'Arauca', 'Tame': 'Arauca', 'Tauramena': 'Casanare' };
+  function hasTown() { myTown(); return !!ui.ptown; }
+  function setTown(t) { ui.ptown = t; ui.prontoAll = false; ui.cat = null; ui.kind = null; try { localStorage.setItem('pyi-town', t); } catch (e) {} }
+  function allTowns() { var t = [LIVE_TOWN]; townsOf(pronto()).forEach(function (x) { if (t.indexOf(x) < 0) t.push(x); }); return t; }
+  function townCount(t) { return pronto().filter(function (p) { return p.town === t; }).length; }
+  function scrPueblo(first) {
+    var cur = hasTown() ? myTown() : '';
+    var rows = allTowns().map(function (t) {
+      var live = t === LIVE_TOWN, n = townCount(t);
+      return '<button class="town-row' + (t === cur ? ' on' : '') + '" data-a="pickTown" data-v="' + esc(t) + '"><span class="town-ic' + (live ? ' live' : '') + '">' + ic('pin', 20, { sw: 2.2 }) + '</span>' +
+        '<span class="grow"><span class="b" style="display:block">' + esc(t) + '</span><span class="small muted">' + esc(TOWN_DEP[t] || '') + ' · ' + (live ? 'Ya puedes pedir a domicilio' : n + ' negocios por invitar') + '</span></span>' +
+        (live ? '<span class="town-live">Activo</span>' : '<span class="town-soon">Pronto</span>') + '</button>';
+    }).join('');
+    return '<div class="screen">' + (first ? '<div class="row" style="gap:10px">' + logo(40, 'mark') + '<span class="b" style="font-size:17px">Pido y Ido</span></div>' : topbar('Elige tu pueblo', '/inicio')) +
+      (first ? '<h1 class="t-title mt16" style="font-size:28px">¿Dónde estás?</h1><div class="muted mt4">Elige tu pueblo para ver los restaurantes y tiendas de allí.</div>' : '') +
+      '<button class="btn btn-soft btn-block mt16" data-a="townGeo">' + ic('pin', 18) + ' Usar mi ubicación</button>' +
+      '<div class="card mt16 town-list">' + rows + '</div>' +
+      '<div class="small muted mt12 center">¿Tu pueblo no está? <a class="link" href="#/sugerir">Sugiere un negocio</a> y lo tenemos en cuenta.</div></div>';
+  }
+  function townPill() {
+    var live = myTown() === LIVE_TOWN;
+    return '<button class="town-pill mt12" data-a="goPueblo">' + ic('pin', 16, { sw: 2.4 }) + '<span class="b">' + esc(myTown()) + '</span>' + (live ? '' : '<span class="town-soon sm">Pronto</span>') + '<span class="muted">· Cambiar</span>' + ic('down', 14) + '</button>';
+  }
+  // Home for a town where Pido y Ido does not take orders yet
+  function scrInicioPronto() {
+    var t = myTown(), pr = prontoHere(), prShops = pr.filter(isShop), tiendas = prShops.length && ui.home === 'tiendas';
+    var h = '<div class="screen has-tabs"><div class="row">' + logo(40, 'mark') + '<div class="grow"></div></div>' + townPill() +
+      '<div class="card mt16 town-soon-card"><div class="t-h2">Pido y Ido llega pronto a ' + esc(t) + '</div><div class="muted mt8" style="line-height:1.45">Todavía no puedes pedir aquí. Mira qué negocios de ' + esc(t) + ' queremos sumar, y pídeles que se unan: entre más vecinos lo pidan, más rápido llegamos.</div>' +
+      '<a class="btn btn-outline btn-block mt12" href="#/rest/registro">¿Tienes un negocio en ' + esc(t) + '? Inscríbete gratis</a></div>' +
+      (prShops.length && prShops.length < pr.length ? '<div class="seg home-seg mt16"><button class="' + (tiendas ? '' : 'on') + '" data-a="homeTab" data-v="comida">' + ic('utensils', 17) + 'Comida</button><button class="' + (tiendas ? 'on' : '') + '" data-a="homeTab" data-v="tiendas">' + ic('basket', 17) + 'Tiendas</button></div>' : '');
+    var list = prShops.length && prShops.length < pr.length ? pr.filter(function (p) { return isShop(p) === !!tiendas; }) : pr;
+    return h + prontoSection(list, tiendas) + '</div>' + tabs('cliente', 'inicio');
+  }
   function prontoSection(list, tiendas) {
     loadVotes();
     var towns = townsOf(pronto()), sug = '<a class="pr-suggest mt12" href="#/sugerir">' + ic('plus', 18, { sw: 2.4 }) + '<span><b>¿Falta tu ' + (tiendas ? 'tienda' : 'lugar') + ' favorito?</b> Sugiérelo y lo agregamos a la lista.</span></a>';
-    var chips = towns.length > 1 ? '<div class="chips scroll mt12">' + towns.map(function (t) { return '<button class="chip sm' + (t === myTown() ? ' on' : '') + '" data-a="ptown" data-v="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>' : '';
+    var chips = '' && towns.length > 1 ? '<div class="chips scroll mt12">' + towns.map(function (t) { return '<button class="chip sm' + (t === myTown() ? ' on' : '') + '" data-a="ptown" data-v="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>' : '';
     if (!list.length) return '<div class="pronto mt24"><div class="t-h2">Pronto en Pido y Ido</div>' + chips + sug + '</div>';
     list = list.map(function (p, i) { return [p, i]; }).sort(function (a, b) { return voteN(b[0]) - voteN(a[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; });
     var all = ui.prontoAll || list.length <= 6, vis = all ? list : list.slice(0, 5);
@@ -1129,6 +1167,8 @@
     return '<div class="cta-wrap' + (above ? ' above-tabs' : '') + '"><a class="cart-bar" href="#/confirmar"><span class="c">' + n + '</span><span class="grow">Ver carrito · ' + R(S.cart.restId).short + '</span><span>' + fmt(cartSubtotal()) + '</span></a></div>';
   }
   function scrInicio() {
+    if (!hasTown()) return scrPueblo(true);
+    if (myTown() !== LIVE_TOWN) return scrInicioPronto();
     var last = S.orders.filter(function (o) { return o.mine && o.status === 'entregado'; })[0];
     var active = S.orders.filter(function (o) { return o.mine && ['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0; })[0];
     var shops = shown().filter(isShop), pr = prontoHere(), prShops = pr.filter(isShop), tiendas = (shops.length || prShops.length) && ui.home === 'tiendas';
@@ -1137,9 +1177,10 @@
     var openN = base.filter(function (r) { return S.open[r.id]; }).length;
     list.sort(function (a, b) { return (S.open[b.id] ? 1 : 0) - (S.open[a.id] ? 1 : 0); });
     var h = '<div class="screen has-tabs' + (cartCount() ? ' has-cta' : '') + '">' +
-      '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + (S.user.address ? esc(S.user.address.split(',')[0]) + ', Villanueva' : 'Agrega tu dirección') + '</span>' + ic('down', 16) + '</div></button>' +
+      '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + (S.user.address ? esc(S.user.address.split(',')[0]) + ', ' + LIVE_TOWN : 'Agrega tu dirección') + '</span>' + ic('down', 16) + '</div></button>' +
       '<a class="icon-btn" href="#/confirmar" aria-label="Carrito" style="position:relative">' + ic('bag', 20) + (cartCount() ? '<span style="position:absolute;top:-2px;right:-2px;background:var(--cta);color:#fff;border-radius:999px;min-width:18px;height:18px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">' + cartCount() + '</span>' : '') + '</a></div>' +
-      '<h1 class="t-title mt16" style="font-size:28px">' + (tiendas ? '¿Qué necesitas hoy' : '¿Qué se te antoja hoy') + (S.user.name ? ', ' + esc(first(S.user.name)) : '') + '?</h1>' +
+      townPill() +
+      '<h1 class="t-title mt12" style="font-size:28px">' + (tiendas ? '¿Qué necesitas hoy' : '¿Qué se te antoja hoy') + (S.user.name ? ', ' + esc(first(S.user.name)) : '') + '?</h1>' +
       '<a class="search mt16" href="#/buscar">' + ic('search', 20) + '<span class="muted">' + (tiendas ? 'Busca droguerías, minimercados…' : 'Busca empanadas, pizza, arepas…') + '</span></a>' +
       (shops.length || prShops.length ? '<div class="seg home-seg mt16"><button class="' + (tiendas ? '' : 'on') + '" data-a="homeTab" data-v="comida">' + ic('utensils', 17) + 'Comida</button><button class="' + (tiendas ? 'on' : '') + '" data-a="homeTab" data-v="tiendas">' + ic('basket', 17) + 'Tiendas</button></div>' : '');
     if (active) {
@@ -1916,6 +1957,7 @@
       case 'r': return scrMenu(p[1], rt.query);
       case 'negocio': return scrNegocio(p[1]);
       case 'sugerir': return scrSugerir(rt.query);
+      case 'pueblo': return scrPueblo(false);
       case 'confirmar': return scrConfirmar();
       case 'pedido': return scrPedido(p[1]);
       case 'calificar': return scrCalificar(p[1]);
@@ -2349,6 +2391,18 @@
     pct: function (el) { S.promo.pct = +el.dataset.v; save(); sheet(null); render(); },
     // shops
     prontoAll: function () { ui.prontoAll = true; render(); },
+    goPueblo: function () { go('/pueblo'); },
+    pickTown: function (el) { setTown(el.dataset.v); ui.home = null; go('/inicio'); },
+    townGeo: function () {
+      if (!navigator.geolocation) { toast('Tu celular no comparte la ubicación. Elige el pueblo de la lista.'); return; }
+      toast('Buscando tu ubicación…');
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        var best = null, bd = 1e9, me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        Object.keys(TOWN_GEO).forEach(function (t) { var d = km(me, { lat: TOWN_GEO[t][0], lng: TOWN_GEO[t][1] }); if (d < bd) { bd = d; best = t; } });
+        if (best && bd <= 25) { setTown(best); ui.home = null; go('/inicio'); toast('Estás en ' + best); }
+        else toast('No estás cerca de nuestros pueblos. Elige uno de la lista.');
+      }, function () { toast('No pudimos ver tu ubicación. Elige el pueblo de la lista.'); }, { timeout: 10000, maximumAge: 600000 });
+    },
     ptown: function (el) { ui.ptown = el.dataset.v; ui.prontoAll = false; try { localStorage.setItem('pyi-town', ui.ptown); } catch (e) {} render(); },
     sugKind: function (el) { ui.sug.kind = el.dataset.v; render(); },
     sugAgain: function () { ui.sug = null; ui.sugDone = null; render(); },
