@@ -39,7 +39,8 @@
       eta: r.eta, pickup: r.pickup, min: r.min, fee: r.fee, address: r.address, phone: r.phone, nequi: r.nequi || r.phone,
       dishes: Array.isArray(r.dishes) ? r.dishes : [], open: r.open,
       rating: r.rating_count ? Number(r.rating_sum) / r.rating_count : 0, count: r.rating_count,
-      lat: r.lat == null ? null : Number(r.lat), lng: r.lng == null ? null : Number(r.lng), radius: r.radius_km == null ? 3 : Number(r.radius_km)
+      lat: r.lat == null ? null : Number(r.lat), lng: r.lng == null ? null : Number(r.lng), radius: r.radius_km == null ? 3 : Number(r.radius_km),
+      abre: r.abre || null, cierra: r.cierra || null, progOk: Object.prototype.hasOwnProperty.call(r, 'abre')
     };
   }
   function mapOrder(o, mine, pin) {
@@ -49,7 +50,7 @@
       pin: pin || '', status: o.status, etaMin: o.eta_min, rejectReason: o.reject_reason, riderId: o.rider_id, rider: o.rider,
       discount: o.discount || 0, paidClaimAt: ms(o.paid_claim_at),
       geo: o.geo, ref: o.ref_slug ? { slug: o.ref_slug } : null, rating: o.rating, tags: o.tags || [], wish: o.wish || '', wishImg: o.wish_img || '',
-      createdAt: ms(o.created_at), acceptedAt: ms(o.accepted_at), sentAt: ms(o.sent_at), deliveredAt: ms(o.delivered_at)
+      scheduledFor: ms(o.scheduled_for), createdAt: ms(o.created_at), acceptedAt: ms(o.accepted_at), sentAt: ms(o.sent_at), deliveredAt: ms(o.delivered_at)
     };
   }
   function mapRider(r) {
