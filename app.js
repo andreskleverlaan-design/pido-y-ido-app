@@ -1547,7 +1547,7 @@
     var rd = riderOf(o);
     if (o.status === 'en_camino' && rd) {
       var c = avColor(rd.id);
-      h += '<div class="divider"></div><div class="row"><div class="avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + initials(rd.name) + '</div><div class="grow"><div class="b">' + esc(rd.name) + '</div><div class="small muted">Domiciliario del restaurante · ' + esc((rd.vehicle || 'Moto').toLowerCase()) + '</div></div>' +
+      h += '<div class="divider"></div><div class="row"><div class="avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + initials(rd.name) + '</div><div class="grow"><div class="b">' + esc(rd.name) + '</div><div class="small muted">' + (o.pickedAt ? 'Recogió tu pedido a las ' + hora(o.pickedAt) : 'Domiciliario del restaurante · ' + esc((rd.vehicle || 'Moto').toLowerCase())) + '</div></div>' +
         '<a class="icon-btn green" href="' + waLink(rd.phone, 'Hola ' + first(rd.name) + ', soy ' + S.user.name + ' (pedido #' + o.id + ').') + '" target="_blank" rel="noopener" aria-label="WhatsApp">' + ic('msg', 20) + '</a><a class="icon-btn green" href="tel:' + rd.phone + '" aria-label="Llamar">' + ic('phone', 20) + '</a></div>';
     } else if (o.status === 'en_camino' && o.riderId === 'yo') {
       h += '<div class="divider"></div><div class="row"><div class="avatar">' + ic('store', 22) + '</div><div class="grow"><div class="b">Lo lleva el restaurante</div><div class="small muted">' + r.name + '</div></div>' + (contactFor(o).phone ? '<a class="icon-btn green" href="tel:' + contactFor(o).phone + '" aria-label="Llamar">' + ic('phone', 20) + '</a>' : '') + '</div>';
@@ -1556,6 +1556,9 @@
     if (o.status !== 'entregado') {
       h += '<div class="pin-box mt12"><div class="b" style="color:var(--soft-t)">' + (o.mode === 'rec' ? 'Dale este código al recoger' : 'Dale este código a ' + (rd ? esc(callName(rd.name)) : 'quien te entregue') + ' al recibir') + '</div>' +
         '<div class="pin">' + String(o.pin || '····').split('').map(function (d) { return '<span>' + d + '</span>'; }).join('') + '</div><div class="small" style="color:var(--soft-t)">Así sabemos que el pedido llegó a la persona correcta.</div></div>';
+    }
+    if (o.status === 'en_camino' || o.status === 'listo') {
+      h += '<div class="card mt12 row" style="gap:12px"><div class="grow"><div class="b">¿Ya te llegó?</div><div class="small muted">Si nadie te pidió el código, confírmalo tú.</div></div><button class="btn btn-green btn-sm" data-a="gotIt" data-id="' + o.id + '">' + ic('check', 16, { sw: 2.6 }) + ' Ya lo recibí</button></div>';
     }
     if (priced) {
       h += '<div class="card mt12" style="box-shadow:inset 0 0 0 2px var(--green)"><div class="row" style="gap:10px"><span class="pi">' + ic('check', 18, { sw: 2.6 }) + '</span><div class="grow"><div class="b">' + esc(r.short) + ' confirmó el precio</div><div class="small muted">Productos ' + fmt(o.subtotal) + (o.fee ? ' + domicilio ' + fmt(o.fee) : '') + '</div></div><div class="num" style="font-size:20px">' + fmt(o.total) + '</div></div>' +
@@ -1849,10 +1852,10 @@
     }
     if (o.status === 'en_camino') {
       var rd = riderOf(o);
-      return '<div class="order-card"><div class="ob">' + head + '<div class="small mt8">' + ic('bike', 14) + ' ' + (rd ? esc(rd.name) + ' · salió ' + ago(o.sentAt) : 'Lo lleva alguien del restaurante') + '</div>' + cust +
+      return '<div class="order-card"><div class="ob">' + head + '<div class="small mt8">' + ic('bike', 14) + ' ' + (rd ? esc(rd.name) + (o.pickedAt ? ' · lo recogió a las ' + hora(o.pickedAt) : ' · enviado ' + ago(o.sentAt) + ', aún no marca recogido') : 'Lo lleva alguien del restaurante') + '</div>' + cust +
         '<div class="row mt12" style="gap:8px">' + (rd ? (ONLINE ? '<a class="btn btn-outline btn-sm" style="flex:1" target="_blank" rel="noopener" href="' + waLink(rd.phone, riderMsg(o)) + '">Reenviar</a>' : '<a class="btn btn-outline btn-sm" style="flex:1" href="#/wa/' + o.id + '">Ver chat</a>') : '') + '<button class="btn btn-green btn-sm" style="flex:1" data-a="pinAsk" data-id="' + o.id + '">Confirmar entrega</button></div></div></div>';
     }
-    return '<div class="order-card" style="opacity:' + (o.status === 'entregado' ? 1 : .6) + '"><div class="ob">' + head + (o.rating ? '<div class="small mt4"><span style="color:var(--orange)">' + '★★★★★'.slice(0, o.rating) + '</span> ' + esc((o.tags || []).join(', ')) + '</div>' : '') + '</div></div>';
+    return '<div class="order-card" style="opacity:' + (o.status === 'entregado' ? 1 : .6) + '"><div class="ob">' + head + (o.status === 'entregado' && o.deliveredAt ? '<div class="xs muted mt4">' + ic('check', 12, { sw: 3 }) + ' Entregado a las ' + hora(o.deliveredAt) + (porTxt(o) ? ' · ' + porTxt(o) : '') + '</div>' : '') + (o.rating ? '<div class="small mt4"><span style="color:var(--orange)">' + '★★★★★'.slice(0, o.rating) + '</span> ' + esc((o.tags || []).join(', ')) + '</div>' : '') + '</div></div>';
   }
   function scrEnviar(id) {
     var o = order(id); if (!o) return scrRest();
@@ -1883,8 +1886,8 @@
       (o.geo ? 'Mapa: ' + mapsLink(o.geo) + '\n' : '') +
       'Cliente: ' + o.customer.name + ' · ' + phoneFmt(o.customer.phone) + '\n' +
       cash + '\n' +
-      (ONLINE ? 'Al entregar, pide al cliente el código de 4 números y confírmalo aquí: ' + location.href.split('#')[0] + '#/entrega/' + o.dbId
-        : 'Al entregar, pide el código de 4 números y responde: ENTREGADO + código');
+      (ONLINE ? 'Tu enlace: toca *Ya lo recogí* al salir y *Entregado* con el código de 4 números del cliente: ' + location.href.split('#')[0] + '#/entrega/' + o.dbId + (o.riderKey ? '-' + o.riderKey : '')
+        : 'Responde *RECOGIDO* al salir. Al entregar, pide el código de 4 números y responde: ENTREGADO + código');
   }
   function scrMisRiders() {
     var r = R(S.restId);
@@ -1981,7 +1984,7 @@
       '<div class="bubble order">' + photo(d ? d.img : r.img, '', 'height:120px;width:100%') + '<div style="padding:10px 12px"><div class="b" style="color:var(--cta);font-size:15px">Domicilio #' + o.id + '</div>' +
       '<div class="mt8"><b>Recoger:</b> ' + r.name + ', ' + r.address + '</div><div class="mt4"><b>Entregar:</b> ' + esc(o.customer.address) + '</div><div class="mt4"><b>Cliente:</b> ' + esc(o.customer.name) + ' · ' + phoneFmt(o.customer.phone) + '</div>' +
       '<div class="note soft mt8">' + cash + '</div><div class="small muted mt8">Al entregar, pide el código de 4 números y responde: <b>ENTREGADO + código</b></div><div class="time">' + hora(o.sentAt || now()) + '</div></div>' +
-      '<button class="wa-qr" data-a="waQuick" data-id="' + id + '" data-v="Voy en camino">Voy en camino</button><a class="wa-qr" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapQ) + '">Ver en el mapa</a></div>';
+      '<button class="wa-qr" data-a="waQuick" data-id="' + id + '" data-v="Ya lo recogí">Ya lo recogí</button><a class="wa-qr" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapQ) + '">Ver en el mapa</a></div>';
     h += chat.map(function (m) {
       return '<div class="bubble' + (m.out ? ' out' : '') + '">' + (m.ok ? '<span class="green">' + ic('check', 16, { sw: 3 }) + '</span> ' : '') + esc(m.text) + '<div class="time">' + hora(m.t) + (m.out ? ' ✓✓' : '') + '</div></div>';
     }).join('');
@@ -2116,27 +2119,37 @@
       '<div class="cta-wrap above-tabs save-bar' + (dirty ? ' show' : '') + '" id="saveBar"><button class="btn btn-green btn-block" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + ic('check', 18) + (ui.busy ? 'Guardando…' : 'Guardar cambios') + '</button></div>' + tabs('rest', 'menu');
     return h;
   }
-  function scrEntrega(dbId) {
-    var e = ui.ent && ui.ent.id === dbId ? ui.ent : null;
+  // Enlace del domiciliario: #/entrega/<id>-<clave>. Paso 1 "Ya lo recogí", paso 2 "Entregado" con el código del cliente.
+  function scrEntrega(ref) {
+    var e = ui.ent && ui.ent.ref === ref ? ui.ent : null;
     if (!e) {
-      ui.ent = { id: dbId, info: null, msg: '', done: false };
-      CLOUD.orderForRider(+dbId).then(function (info) { if (ui.ent && ui.ent.id === dbId) { ui.ent.info = info || { missing: true }; render(); } }, function (err) { if (ui.ent) { ui.ent.info = { missing: true }; ui.ent.msg = errTxt(err); render(); } });
+      var parts = String(ref || '').split('-');
+      ui.ent = { ref: ref, id: +parts[0], key: parts[1] || '', info: null, msg: '', done: false };
+      CLOUD.orderForRider(ui.ent.id, ui.ent.key).then(function (info) { if (ui.ent && ui.ent.ref === ref) { ui.ent.info = info || { missing: true }; render(); } }, function (err) { if (ui.ent) { ui.ent.info = { missing: true }; ui.ent.msg = errTxt(err); render(); } });
       e = ui.ent;
     }
     var i = e.info;
-    var h = '<div class="screen flush has-cta auth">' + authHero('Pido y Ido · domiciliario', 'Confirmar entrega', null).replace('auth-tag">Restaurantes', 'auth-tag">Domicilios').replace(IMG_ESC_ASADO, IMG_ESC_MOTO) + '<div class="auth-body">';
+    var h = '<div class="screen flush has-cta auth">' + authHero('Pido y Ido · domiciliario', 'Tu domicilio', null).replace('auth-tag">Restaurantes', 'auth-tag">Domicilios').replace(IMG_ESC_ASADO, IMG_ESC_MOTO) + '<div class="auth-body">';
     if (!i) return h + '<div class="skel" style="height:120px"></div><div class="skel mt12" style="height:150px"></div></div></div>';
-    if (i.missing) return h + '<div class="card center"><div class="t-h3">No encontramos este pedido</div><div class="small muted mt4">' + (e.msg ? esc(e.msg) : 'Revisa el enlace que te mandó el restaurante.') + '</div></div></div></div>';
+    if (i.missing) return h + '<div class="card center"><div class="t-h3">No encontramos este pedido</div><div class="small muted mt4">' + (e.msg ? esc(e.msg) : 'Revisa el enlace que te mandó el restaurante, o pídele que te lo reenvíe.') + '</div></div></div></div>';
+    var cobrar = i.pay === 'ef' ? 'Cobrar ' + fmt(i.total) + ' en efectivo' : i.pay ? 'Ya pagó por ' + (i.pay === 'nequi' ? 'Nequi' : 'Daviplata') + ' · no cobrar' : '';
     h += '<div class="card"><div class="row between"><span class="badge dark">Domicilio #' + String(i.id).padStart(4, '0') + '</span>' + (i.total ? '<span class="b">' + fmt(i.total) + '</span>' : '') + '</div>' +
       '<div class="route mt12"><div class="route-row"><span class="rdot from">' + ic('store', 14) + '</span><div><div class="xs muted">Recoger en</div><div class="b">' + esc(i.rest) + '</div></div></div>' +
-      '<div class="route-row"><span class="rdot to">' + ic('pin', 14) + '</span><div><div class="xs muted">Entregar a ' + esc(i.name) + '</div><div class="b">' + esc(i.address) + '</div></div></div></div></div>';
-    if (e.done || i.status === 'entregado') return h + '<div class="card mt12 center"><div class="big-check pop">' + ic('check', 44, { sw: 2.6 }) + '</div><div class="t-h2 mt12">¡Pedido entregado!</div><div class="small muted mt4">Gracias. El restaurante ya lo ve como entregado.</div></div></div></div>';
+      '<div class="route-row"><span class="rdot to">' + ic('pin', 14) + '</span><div><div class="xs muted">Entregar a ' + esc(i.name) + '</div><div class="b">' + esc(i.address) + '</div></div></div></div>' +
+      (cobrar ? '<div class="note ' + (i.pay === 'ef' ? 'amber' : 'green') + ' mt12">' + cobrar + '</div>' : '') + '</div>';
+    if (e.done || i.status === 'entregado') {
+      var por = e.done ? '' : i.delivered_by === 'cliente' ? 'El cliente confirmó que lo recibió.' : i.delivered_by === 'negocio' ? 'El restaurante lo confirmó.' : '';
+      return h + '<div class="card mt12 center"><div class="big-check pop">' + ic('check', 44, { sw: 2.6 }) + '</div><div class="t-h2 mt12">¡Pedido entregado!</div><div class="small muted mt4">' + (por ? por + ' ' : '') + 'Gracias. El restaurante ya lo ve como entregado.</div></div></div></div>';
+    }
     if (['listo', 'en_camino'].indexOf(i.status) < 0) return h + '<div class="note amber mt12">Este pedido no está en camino (' + esc(STATUS_TXT[i.status] || i.status) + ').</div></div></div>';
-    return h + '<div class="card mt12 center"><div class="t-h3">Pídele al cliente su código</div><div class="small muted mt4">Son 4 números. El cliente los ve en su app.</div>' +
+    var picked = i.picked_at ? new Date(i.picked_at).getTime() : 0;
+    h += '<div class="card mt12"><div class="row" style="gap:10px"><span class="step-n' + (picked ? ' ok' : '') + '">' + (picked ? ic('check', 16, { sw: 3 }) : '1') + '</span><div class="grow"><div class="b">' + (picked ? 'Recogido a las ' + hora(picked) : '¿Ya lo recogiste?') + '</div><div class="small muted">' + (picked ? 'El cliente ve que su pedido va en camino.' : 'Tócalo al salir del local. El cliente ve que va en camino.') + '</div></div></div>' +
+      (picked ? '' : '<button class="btn btn-green btn-block mt12" data-a="entregaPick"' + (ui.busy ? ' disabled' : '') + '>' + ic('bike', 18) + ' Ya lo recogí</button>') + '</div>';
+    return h + '<div class="card mt12 center"><div class="row" style="gap:10px;text-align:left"><span class="step-n">2</span><div class="grow"><div class="b">Al entregar, pídele el código</div><div class="small muted">Son 4 números. El cliente los ve en su app.</div></div></div>' +
       '<label class="pin-wrap mt16"><input id="entPin" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="4" aria-label="Código de 4 números" data-enter="entregaDo" data-pin="1">' +
       '<span class="pin-boxes" aria-hidden="true"><i></i><i></i><i></i><i></i></span></label>' +
-      '<div class="err-msg center">' + esc(e.msg || '') + '</div></div></div></div>' +
-      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="entregaDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Revisando…' : ic('check', 20) + 'Confirmar entrega') + '</button></div>';
+      '<div class="err-msg center">' + esc(e.msg || '') + '</div><div class="xs muted mt8">¿El cliente no tiene el código a mano? Puede tocar <b>Ya lo recibí</b> en su app.</div></div></div></div>' +
+      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="entregaDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Revisando…' : ic('check', 20) + 'Entregado') + '</button></div>';
   }
 
   // ---------- Promoter ----------
@@ -2528,13 +2541,28 @@
         el.disabled = true;
         CLOUD.deliver(o.dbId, v, true).then(function (res) {
           el.disabled = false;
-          if (res === 'ok' || res === 'ya_entregado') { deliver(o); sheet(null); ui.rtab = 'hechos'; render(); toast('Pedido #' + o.id + ' entregado'); sync(); return; }
+          if (res === 'ok' || res === 'ya_entregado') { deliver(o, 'negocio'); sheet(null); ui.rtab = 'hechos'; render(); toast('Pedido #' + o.id + ' entregado'); sync(); return; }
           var e = document.getElementById('pinErr'); if (e) e.textContent = PIN_TXT[res] || 'No se pudo confirmar.';
         }, function (err) { el.disabled = false; toast(errTxt(err)); });
         return;
       }
       if (v !== o.pin) { document.getElementById('pinErr').textContent = 'Código incorrecto. Revisa con el cliente.'; return; }
-      deliver(o); sheet(null); ui.rtab = 'hechos'; render(); toast('Pedido #' + o.id + ' entregado');
+      deliver(o, 'negocio'); sheet(null); ui.rtab = 'hechos'; render(); toast('Pedido #' + o.id + ' entregado');
+    },
+    gotIt: function (el) {
+      sheet('<div class="t-h2">¿Ya tienes tu pedido?</div><div class="muted mt8">Toca solo si ya lo tienes en la mano. Así ' + esc(R((order(el.dataset.id) || {}).restId).short || 'el negocio') + ' sabe que llegó bien.</div>' +
+        '<button class="btn btn-green btn-block mt16" data-a="gotItDo" data-id="' + el.dataset.id + '">' + ic('check', 18) + ' Sí, ya lo recibí</button><button class="btn btn-ghost btn-block mt8" data-a="closeSheet">Todavía no</button>');
+    },
+    gotItDo: function (el) {
+      var o = order(el.dataset.id); if (!o || ui.busy) return;
+      var done = function () { deliver(o, 'cliente'); save(); sheet(null); go('/calificar/' + o.id); };
+      if (!ONLINE) { done(); return; }
+      ui.busy = true; el.disabled = true;
+      CLOUD.confirmReceived(o.dbId).then(function (res) {
+        ui.busy = false;
+        if (res === 'ok' || res === 'ya_entregado') { done(); sync(); return; }
+        el.disabled = false; toast(res === 'cerrado' ? 'Este pedido todavía no ha salido.' : 'No se pudo confirmar.');
+      }, function (err) { ui.busy = false; el.disabled = false; toast(/confirm_received|function/i.test(String(err && err.message)) ? 'Falta un paso en la base de datos (014-entrega.sql).' : errTxt(err)); });
     },
     addRiderForm: function () {
       sheet('<div class="t-h2">Guardar un domiciliario</div><div class="small muted mt4">Alguien de confianza que te hace domicilios. Solo tú ves esta lista.</div>' +
@@ -2686,11 +2714,22 @@
       if (!e || ui.busy) return;
       if (!/^\d{4}$/.test(v)) { e.msg = 'Escribe los 4 números.'; render(); return; }
       ui.busy = true; render();
-      CLOUD.deliver(+e.id, v, false).then(function (res) {
+      CLOUD.deliver(e.id, v, false).then(function (res) {
         ui.busy = false;
         if (res === 'ok' || res === 'ya_entregado') { e.done = true; e.msg = ''; } else e.msg = PIN_TXT[res] || 'No se pudo confirmar.';
         render();
       }, function (err) { ui.busy = false; e.msg = errTxt(err); render(); });
+    },
+    entregaPick: function () {
+      var e = ui.ent;
+      if (!e || ui.busy) return;
+      ui.busy = true; render();
+      CLOUD.riderPicked(e.id, e.key).then(function (res) {
+        ui.busy = false;
+        if (res === 'ok' && e.info) { e.info.picked_at = new Date().toISOString(); e.info.status = 'en_camino'; e.msg = ''; toast('Listo. Buen viaje.'); }
+        else e.msg = PIN_TXT[res] || 'No se pudo guardar.';
+        render();
+      }, function (err) { ui.busy = false; e.msg = /rider_picked|function/i.test(String(err && err.message)) ? 'Falta un paso en la base de datos (014-entrega.sql).' : errTxt(err); render(); });
     },
     copyLink: function () {
       var link = promoLink(S.promo.restId);
@@ -2775,19 +2814,23 @@
       toast(res === 'cerrado' ? 'Este pedido ya no está esperando (¿lo cancelaron?).' : res === 'monto' ? 'Revisa el valor.' : 'No se pudo aceptar.'); sync(true);
     }, function (e) { ui.busy = false; toast(/price_order|function/i.test(String(e && e.message)) ? 'Falta un paso en la base de datos (004-tiendas.sql).' : errTxt(e)); });
   }
-  function deliver(o) {
-    o.status = 'entregado'; o.deliveredAt = now();
+  // by: 'cliente' (Ya lo recibí), 'domiciliario' (enlace + código) o 'negocio' (panel + código).
+  function deliver(o, by) {
+    o.status = 'entregado'; o.deliveredAt = now(); o.deliveredBy = by || o.deliveredBy || '';
+  }
+  function porTxt(o) {
+    return { cliente: 'lo confirmó el cliente', domiciliario: 'lo confirmó el domiciliario con el código', negocio: 'lo confirmaste con el código' }[o.deliveredBy] || '';
   }
   function waReply(id, text) {
     var o = order(id); if (!o) return;
     var chat = S.chats[id] = S.chats[id] || [];
     chat.push({ out: true, text: text, t: now() });
     var m = text.match(/^\s*entregado\s*#?\s*(\d{4})\s*$/i);
-    if (/^voy en camino$/i.test(text.trim())) {
-      o.onWay = true; chat.push({ text: 'Listo, le avisamos a ' + first(o.customer.name) + ' que vas en camino.', t: now() });
+    if (/^(voy en camino|recogido|ya lo recog[ií])$/i.test(text.trim())) {
+      o.onWay = true; o.pickedAt = o.pickedAt || now(); chat.push({ text: 'Listo, le avisamos a ' + first(o.customer.name) + ' que vas en camino.', t: now() });
     } else if (m) {
       if (o.status !== 'en_camino') chat.push({ text: 'Este pedido ya estaba cerrado.', t: now() });
-      else if (m[1] === o.pin) { deliver(o); chat.push({ ok: true, text: 'Código correcto. Pedido #' + o.id + ' entregado. ¡Gracias, ' + callName(rider(o.riderId) ? rider(o.riderId).name : '') + '!', t: now() }); }
+      else if (m[1] === o.pin) { deliver(o, 'domiciliario'); chat.push({ ok: true, text: 'Código correcto. Pedido #' + o.id + ' entregado. ¡Gracias, ' + callName(rider(o.riderId) ? rider(o.riderId).name : '') + '!', t: now() }); }
       else chat.push({ text: 'Código incorrecto. Pídele al cliente el código de 4 números y escribe: ENTREGADO + código.', t: now() });
     } else if (/^entregado/i.test(text)) {
       chat.push({ text: 'Falta el código. Escribe por ejemplo: ENTREGADO 1234', t: now() });

@@ -51,7 +51,8 @@
       pin: pin || '', status: o.status, etaMin: o.eta_min, rejectReason: o.reject_reason, riderId: o.rider_id, rider: o.rider,
       discount: o.discount || 0, paidClaimAt: ms(o.paid_claim_at),
       geo: o.geo, ref: o.ref_slug ? { slug: o.ref_slug } : null, rating: o.rating, tags: o.tags || [], wish: o.wish || '', wishImg: o.wish_img || '',
-      scheduledFor: ms(o.scheduled_for), createdAt: ms(o.created_at), acceptedAt: ms(o.accepted_at), sentAt: ms(o.sent_at), deliveredAt: ms(o.delivered_at)
+      scheduledFor: ms(o.scheduled_for), createdAt: ms(o.created_at), acceptedAt: ms(o.accepted_at), sentAt: ms(o.sent_at), deliveredAt: ms(o.delivered_at),
+      riderKey: o.rider_key || '', pickedAt: ms(o.picked_at), deliveredBy: o.delivered_by || ''
     };
   }
   function mapRider(r) {
@@ -117,7 +118,11 @@
     if (asRest && restUid) return check(await rest.rpc('deliver_order', { p_id: dbId, p_pin: pin }));
     await ensureCust(); return check(await cust.rpc('deliver_order', { p_id: dbId, p_pin: pin }));
   }
-  async function orderForRider(dbId) { await ensureCust(); return check(await cust.rpc('order_for_rider', { p_id: dbId })); }
+  // Enlace del domiciliario: #/entrega/<id>-<clave> (014-entrega.sql).
+  async function orderForRider(dbId, key) { await ensureCust(); return check(await cust.rpc('order_for_rider', { p_id: dbId, p_key: key || '' })); }
+  async function riderPicked(dbId, key) { await ensureCust(); return check(await cust.rpc('rider_picked', { p_id: dbId, p_key: key || '' })); }
+  // El cliente confirma "Ya lo recibí".
+  async function confirmReceived(dbId) { await ensureCust(); return check(await cust.rpc('confirm_received', { p_id: dbId })); }
 
   // ---------- restaurant ----------
   async function restLogin(phone, pass) {
@@ -222,7 +227,7 @@
 
   window.PYI_CLOUD = {
     fetchAll: fetchAll, placeOrder: placeOrder, orderContact: orderContact, markPaid: markPaid, cancelOrder: cancelOrder, rateOrder: rateOrder,
-    deliver: deliver, orderForRider: orderForRider,
+    deliver: deliver, orderForRider: orderForRider, riderPicked: riderPicked, confirmReceived: confirmReceived,
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
     saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, restMonth: restMonth, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
