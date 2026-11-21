@@ -75,6 +75,9 @@
     myRest = restUid ? ((check(res[3])[0] || {}).id || null) : null;
     out.myRest = myRest;
 
+    // Promociones aprobadas (null si todavía no se pegó supabase/011-promociones.sql).
+    var hoy = new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
+    try { var pr = await cust.from('promos').select('*').eq('estado', 'aprobado').gt('fin', hoy).limit(100); if (!pr.error) out.promos = pr.data || []; } catch (e) {}
     // Premio "cada 5º pedido" (null si todavía no se pegó supabase/006-clientes-fieles.sql).
     try { var rw = await cust.rpc('my_reward'); if (!rw.error && rw.data) out.reward = rw.data; } catch (e) {}
 
@@ -96,6 +99,7 @@
         var ct = await rest.from('rest_contact').select('phone,nequi').eq('rest_id', myRest).maybeSingle();
         if (!ct.error && ct.data) out.restaurants.forEach(function (r) { if (r.id === myRest) { r.phone = ct.data.phone || r.phone; r.nequi = ct.data.nequi || ct.data.phone || r.nequi; } });
       } catch (e) {}
+      try { var mp = await rest.from('promos').select('*').eq('rest_id', myRest).order('created_at', { ascending: false }).limit(20); if (!mp.error) out.myPromos = mp.data || []; } catch (e) {}
       var missing = out.myRiders.filter(function (id) { return !out.riders[id]; });
       if (missing.length) check(await rest.from('riders').select('*').in('id', missing)).forEach(function (r) { out.riders[r.id] = mapRider(r); });
     }
@@ -201,6 +205,13 @@
   async function bizCounts() { await ensureCust(); return check(await cust.rpc('pronto_counts')) || []; }
   // Resumen del mes del negocio (supabase/010-resumen-mes.sql). ym = 'AAAA-MM'.
   async function restMonth(ym) { if (!restUid) throw new Error('no_rest'); return check(await rest.rpc('rest_resumen_mes', { p_mes: ym })); }
+  // Promociones pagadas (supabase/011-promociones.sql)
+  async function promoRequest(f) { if (!restUid) throw new Error('no_rest'); return check(await rest.rpc('promo_solicitar', { p_tipo: f.tipo, p_titulo: f.titulo, p_texto: f.texto, p_img: f.img, p_inicio: f.inicio, p_dias: f.dias })); }
+  async function promoFree(tipo, inicio, dias) { if (!restUid) throw new Error('no_rest'); return check(await rest.rpc('promo_disponible', { p_tipo: tipo, p_inicio: inicio, p_dias: dias })); }
+  async function promoPaid(id) { return check(await rest.rpc('promo_pagado', { p_id: id })); }
+  async function promoCancel(id) { return check(await rest.rpc('promo_cancelar', { p_id: id })); }
+  async function promoSeen(ids) { await ensureCust(); return check(await cust.rpc('promo_visto', { p_ids: ids })); }
+  async function promoTap(id) { await ensureCust(); return check(await cust.rpc('promo_toque', { p_id: id })); }
   async function promoOrders() { await ensureCust(); return check(await cust.rpc('promo_orders')); }
 
   // ---------- live updates ----------
@@ -225,6 +236,7 @@
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
     saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, restMonth: restMonth, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
+    promoRequest: promoRequest, promoFree: promoFree, promoPaid: promoPaid, promoCancel: promoCancel, promoSeen: promoSeen, promoTap: promoTap,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
   };
 })();
