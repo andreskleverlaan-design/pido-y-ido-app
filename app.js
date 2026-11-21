@@ -1208,15 +1208,17 @@
   }
 
   // ---------- Customer ----------
-  function restCard(r) {
+  function restCard(r, promo) {
     var open = S.open[r.id];
-    return '<a class="rest-card' + (open ? '' : ' closed') + '" href="#/r/' + r.id + '"><div style="position:relative">' + cover(r, '', 'height:168px;width:100%') +
+    return '<a class="rest-card' + (open ? '' : ' closed') + (promo ? ' sponsored' : '') + '" href="#/r/' + r.id + '"' + (promo && promo.id ? ' data-promo="' + promo.id + '"' : '') + '><div style="position:relative">' + cover(r, '', 'height:168px;width:100%') +
+      (promo ? '<span class="over promo-over">Patrocinado</span>' : '') +
       (isShop(r) ? '<span class="over kind-over">' + ic(kindOf(r).icon, 14, { sw: 2.2 }) + kindOf(r).t + '</span>' : '') +
       (r.fee === 0 ? '<span class="over" style="left:12px;top:12px;background:var(--green);color:#fff">Domicilio gratis</span>' : '') +
       '<span class="over" style="right:12px;bottom:12px;background:#fff">' + r.eta + '</span>' +
       (open ? '' : '<div class="closed-veil"><span>' + (progOn() ? 'Cerrado · puedes programar' : 'Cerrado ahora') + '</span></div>') +
       '</div><div style="padding:12px 14px"><div class="row between"><div class="t-h3 ellipsis">' + r.name + '</div><div class="small b" style="flex:none"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + '</div></div>' +
-      '<div class="small muted mt4">' + esc(r.sub || kindOf(r).t) + (r.min && !isShop(r) ? ' · Mín. ' + fmt(r.min) : '') + (r.fee ? ' · Domicilio ' + fmt(r.fee) : '') + '</div></div></a>';
+      '<div class="small muted mt4">' + esc(r.sub || kindOf(r).t) + (r.min && !isShop(r) ? ' · Mín. ' + fmt(r.min) : '') + (r.fee ? ' · Domicilio ' + fmt(r.fee) : '') + '</div>' +
+      (promo ? '<div class="promo-strip">' + ic('fire', 15) + '<span><b>' + esc(promo.titulo || 'Tu oferta aquí') + '</b>' + (promo.texto ? ' · ' + esc(promo.texto) : '') + '</span></div>' : '') + '</div></a>';
   }
   function cartBar(above) {
     var n = cartCount(); if (!n) return '';
@@ -1231,7 +1233,8 @@
     var base = shown().filter(function (r) { return isShop(r) === !!tiendas; });
     var list = base.filter(function (r) { return tiendas ? (!ui.kind || r.kind === ui.kind) : (!ui.cat || r.cats.indexOf(ui.cat) >= 0); });
     var openN = base.filter(function (r) { return S.open[r.id]; }).length;
-    list.sort(function (a, b) { return (S.open[b.id] ? 1 : 0) - (S.open[a.id] ? 1 : 0); });
+    var spon = {}; promosNow('lista', tiendas).forEach(function (p) { if (!spon[p.rest_id]) spon[p.rest_id] = p; });
+    list.sort(function (a, b) { return (S.open[b.id] ? 1 : 0) - (S.open[a.id] ? 1 : 0) || (spon[b.id] ? 1 : 0) - (spon[a.id] ? 1 : 0); });
     var h = '<div class="screen has-tabs' + (cartCount() ? ' has-cta' : '') + '">' +
       '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + (S.user.address ? esc(S.user.address.split(',')[0]) + ', ' + LIVE_TOWN : LIVE_TOWN + ' · Agrega tu dirección') + '</span>' + ic('down', 16) + '</div></button>' +
       '<a class="icon-btn" href="#/confirmar" aria-label="Carrito" style="position:relative">' + ic('bag', 20) + (cartCount() ? '<span style="position:absolute;top:-2px;right:-2px;background:var(--cta);color:#fff;border-radius:999px;min-width:18px;height:18px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">' + cartCount() + '</span>' : '') + '</a></div>' +
@@ -1241,6 +1244,7 @@
     if (active) {
       h += '<a class="card mt16 row" href="#/pedido/' + active.id + '" style="border:2px solid var(--green)"><span class="pulse"></span><div class="grow"><div class="b">Pedido #' + active.id + ' · ' + R(active.restId).short + '</div><div class="small muted">' + statusLine(active) + '</div></div>' + ic('right', 20) + '</a>';
     }
+    if (!ui.cat && !ui.kind) h += promoBanners(tiendas);
     if (!ui.cat && !tiendas) h += stampCard('mt16');
     if (tiendas) {
       var kinds = KINDS.filter(function (k) { return shops.concat(prShops).some(function (r) { return r.kind === k.id; }); });
@@ -1257,7 +1261,7 @@
     var filt = tiendas ? ui.kind && kindOf({ kind: ui.kind }).t : ui.cat;
     h += '<div class="row between mt24"><div class="t-h2">' + (filt || (tiendas ? 'Tiendas cerca' : 'Cerca de ti')) + '</div><div class="small muted">' + (filt ? '<button class="link" data-a="' + (tiendas ? 'kindPick' : 'cat') + '" data-v="">Ver todos</button>' : openN + ' abiertos') + '</div></div><div class="mt12">' +
       (tiendas ? '<div class="note green row" style="gap:10px;margin-bottom:12px">' + ic('list', 18) + '<span>Escribe tu lista o mándale una foto. La tienda te confirma el precio.</span></div>' : '') +
-      (list.length ? list.map(restCard).join('') : '<div class="empty">' + (ui.cat && !tiendas ? 'Todavía no hay restaurantes con ' + ui.cat + '.' : ONLINE && !ui.synced ? 'Cargando restaurantes…' : tiendas ? 'Todavía no hay tiendas en Pido y Ido.' : 'Pronto vas a ver aquí los restaurantes de Villanueva.') + '</div>') + '</div>' +
+      (list.length ? list.map(function (r) { return restCard(r, spon[r.id]); }).join('') : '<div class="empty">' + (ui.cat && !tiendas ? 'Todavía no hay restaurantes con ' + ui.cat + '.' : ONLINE && !ui.synced ? 'Cargando restaurantes…' : tiendas ? 'Todavía no hay tiendas en Pido y Ido.' : 'Pronto vas a ver aquí los restaurantes de Villanueva.') + '</div>') + '</div>' +
       prontoSection(pr.filter(function (p) { return tiendas ? isShop(p) && (!ui.kind || p.kind === ui.kind) : !isShop(p) && (!ui.cat || p.cats.indexOf(ui.cat) >= 0); }), tiendas) + '</div>';
     return h + cartBar(true) + tabs('cliente', 'inicio');
   }
@@ -1644,7 +1648,7 @@
       '<div class="stats mt16"><div class="stat"><div class="xs muted">Hoy</div><div class="v">' + (base[0] + today.length) + '</div><div class="xs muted">pedidos</div></div>' +
       '<div class="stat"><div class="xs muted">Ventas</div><div class="v">$' + Math.round((base[1] + today.reduce(function (a, o) { return a + o.total; }, 0)) / 1000) + 'k</div><div class="xs muted">COP</div></div>' +
       '<div class="stat"><div class="xs muted">Promedio</div><div class="v">' + avgMin + '</div><div class="xs muted">min</div></div></div>' +
-      '<a class="card mt12 row mes-link" href="#/rest/mes">' + '<span class="mes-ic">' + ic('chart', 20) + '</span><div class="grow"><div class="b">Tu mes con Pido y Ido</div><div class="xs muted">Clientes nuevos, ventas y comisión de ' + ymTxt(ymOf(now())) + '</div></div>' + ic('right', 18) + '</a>' +
+      '<a class="card mt12 row mes-link" href="#/rest/mes">' + '<span class="mes-ic">' + ic('chart', 20) + '</span><div class="grow"><div class="b">Tu mes con Pido y Ido</div><div class="xs muted">Clientes nuevos, ventas y comisión de ' + ymTxt(ymOf(now())) + '</div></div>' + ic('right', 18) + '</a>' + restPromoLink(r) +
       (ONLINE ? setupCard(r) : '') +
       (S.open[r.id] || (ONLINE && !setupDone(r)) ? '' : '<div class="note amber mt12"><b>Estás cerrado.</b> ' + (ONLINE ? 'Cuando quieras recibir pedidos, toca <b>Abierto</b> arriba.' : 'Los clientes ven tu menú, pero no pueden pedir.') + '</div>') +
       '<div class="chips scroll mt16">' + [['nuevos', 'Nuevos'], ['preparando', 'Preparando'], ['camino', 'En camino'], ['hechos', 'Entregados']].map(function (t) {
@@ -1727,6 +1731,178 @@
     if (!prev) return '';
     var d = Math.round((cur - prev) / prev * 100);
     return '<span class="trend ' + (d >= 0 ? 'up' : 'down') + '">' + (d >= 0 ? '▲ ' : '▼ ') + Math.abs(d) + '%</span> <span class="xs muted">vs. ' + unit + '</span>';
+  }
+  // ---------- Promociones pagadas ("Patrocinado") ----------
+  // Un negocio compra un espacio por días en su pueblo: banner arriba en Inicio o primero en la lista.
+  // Paga por Nequi, toca "Ya pagué" y Pido y Ido la aprueba (supabase/011-promociones.sql). Precios iguales en promo_precio().
+  var PROMO_T = {
+    banner: { t: 'Banner en Inicio', s: 'Tu foto grande arriba en Inicio. Es lo primero que ven todos al abrir la app.', cupos: 3, p: { 7: 30000, 14: 55000, 30: 100000 } },
+    lista: { t: 'Primero en la lista', s: 'Tu negocio sale de primero en “Cerca de ti”, con tu oferta en naranja.', cupos: 2, p: { 7: 15000, 14: 28000, 30: 50000 } }
+  };
+  var PROMO_DUR = [[7, '1 semana'], [14, '2 semanas'], [30, '1 mes']];
+  var DIAS_C = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'], MES_C = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  function coDay(t) { return new Date((t == null ? now() : t) - CO_OFF).toISOString().slice(0, 10); }
+  function addDay(ymd, n) { var d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function dayDiff(a, b) { return Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 86400000); }
+  function dayTxt(ymd, rel) {
+    var hoy = coDay(), d = new Date(ymd + 'T12:00:00Z');
+    if (rel && ymd === hoy) return 'hoy';
+    if (rel && ymd === addDay(hoy, 1)) return 'mañana';
+    return DIAS_C[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MES_C[d.getUTCMonth()];
+  }
+  function pagoNequi() { return String((window.PYI_CONFIG || {}).pagoNequi || '').replace(/\D/g, ''); }
+  function demoPromos() {
+    var h = coDay();
+    function p(id, rest, tipo, tit, txt, img, ini, dias, v, k) { return { id: id, rest_id: rest, town: 'Villanueva', tipo: tipo, titulo: tit, texto: txt, img: img, inicio: addDay(h, ini), dias: dias, fin: addDay(h, ini + dias), precio: PROMO_T[tipo].p[dias], estado: 'aprobado', pagado_at: 1, nota_admin: '', vistas: v, toques: k, created_at: now() }; }
+    return [
+      p(1, 'plaza', 'banner', '2x1 en pizzas medianas', 'Martes y jueves, solo pidiendo por Pido y Ido', IMG.pizza2, -2, 7, 412, 57),
+      p(2, 'rosa', 'lista', 'Picada para 2 a $25.000', '', '', -1, 14, 233, 31),
+      p(3, 'llanero', 'banner', 'Medio pollo + jugo a $24.000', 'Todo el fin de semana', IMG.pollo, -21, 14, 1310, 164),
+      p(4, 'salud', 'banner', 'Domicilio gratis toda la semana', 'Droguería, aseo y bebé', '', -3, 7, 188, 22)
+    ];
+  }
+  if (!ONLINE && !S.promos) { S.promos = demoPromos(); save(); }
+  function promoActive(p) { var h = coDay(); return p.estado === 'aprobado' && p.inicio <= h && h < p.fin; }
+  // Las que ven los clientes ahora en su pueblo.
+  function promosNow(tipo, tiendas) {
+    var ok = {}; shown().forEach(function (r) { ok[r.id] = r; });
+    return (S.promos || []).filter(function (p) { var r = ok[p.rest_id]; return r && p.tipo === tipo && (p.town || LIVE_TOWN) === myTown() && promoActive(p) && isShop(r) === !!tiendas; })
+      .sort(function (a, b) { return a.id - b.id; });
+  }
+  function myPromos() {
+    var list = ONLINE ? (S.myPromos || []) : (S.promos || []).filter(function (p) { return p.rest_id === S.restId; });
+    return list.slice().sort(function (a, b) { return (b.created_at > a.created_at ? 1 : -1); });
+  }
+  function promoBanner(p, still) {
+    var r = R(p.rest_id), img = p.img || r.img, tag = still ? 'div' : 'a';
+    return '<' + tag + ' class="promo-ban"' + (still ? '' : ' href="#/r/' + r.id + '" data-promo="' + p.id + '"') + '>' +
+      (img ? photo(img, '', 'position:absolute;inset:0;width:100%;height:100%') : cover(r, '', 'position:absolute;inset:0;width:100%;height:100%')) +
+      '<span class="promo-tag">Patrocinado</span><div class="promo-txt"><div class="promo-biz">' + esc(r.short || r.name) + '</div><div class="promo-t">' + esc(p.titulo || 'Tu oferta aquí') + '</div>' +
+      (p.texto ? '<div class="promo-s">' + esc(p.texto) + '</div>' : '') + '</div></' + tag + '>';
+  }
+  function promoBanners(tiendas) {
+    var b = promosNow('banner', tiendas); if (!b.length) return '';
+    return '<div class="promo-row mt16' + (b.length > 1 ? ' multi' : '') + '">' + b.map(function (p) { return promoBanner(p); }).join('') + '</div>';
+  }
+  // Cuenta vistas una vez por sesión (y toques en el click).
+  function promoSeen() {
+    var els = document.querySelectorAll('[data-promo]'); if (!els.length) return;
+    ui.pSeen = ui.pSeen || {};
+    var ids = []; for (var i = 0; i < els.length; i++) { var id = +els[i].dataset.promo; if (!ui.pSeen[id]) { ui.pSeen[id] = 1; ids.push(id); } }
+    if (!ids.length) return;
+    if (ONLINE) { CLOUD.promoSeen(ids).catch(function () {}); return; }
+    (S.promos || []).forEach(function (p) { if (ids.indexOf(p.id) >= 0) p.vistas = (p.vistas || 0) + 1; }); save();
+  }
+  function promoTap(id) {
+    if (ONLINE) { CLOUD.promoTap(id).catch(function () {}); return; }
+    (S.promos || []).forEach(function (p) { if (p.id === id) p.toques = (p.toques || 0) + 1; }); save();
+  }
+  // Espacios libres (demo: se cuentan en este celular; en línea: lo dice la base de datos).
+  function promoFree(tipo, inicio, dias) {
+    if (!ONLINE) {
+      var mx = 0;
+      for (var i = 0; i < dias; i++) {
+        var d = addDay(inicio, i);
+        var n = (S.promos || []).filter(function (p) { return p.tipo === tipo && d >= p.inicio && d < p.fin && (p.estado === 'aprobado' || p.estado === 'pendiente'); }).length;
+        if (n > mx) mx = n;
+      }
+      return Math.max(PROMO_T[tipo].cupos - mx, 0);
+    }
+    ui.pfFree = ui.pfFree || {};
+    var key = tipo + inicio + dias, c = ui.pfFree[key];
+    if (c && (c.v != null || c.err) && now() - c.at < 30000) return c.v;
+    if (!c || !c.loading) {
+      ui.pfFree[key] = { loading: true, at: now(), v: c ? c.v : null };
+      CLOUD.promoFree(tipo, inicio, dias).then(function (v) { ui.pfFree[key] = { v: v, at: now() }; safeRender(); }, function () { ui.pfFree[key] = { v: null, err: true, at: now() }; });
+    }
+    return c ? c.v : null;
+  }
+  function promoState(p) {
+    var h = coDay();
+    if (p.estado === 'cancelado') return ['grey', 'Cancelada'];
+    if (p.estado === 'rechazado') return ['red', 'No aprobada'];
+    if (p.estado === 'pendiente') return p.pagado_at ? ['amber', 'Revisando tu pago'] : ['orange', 'Falta el pago'];
+    if (h < p.inicio) return ['green', 'Aprobada · empieza ' + dayTxt(p.inicio, true)];
+    if (h < p.fin) { var q = dayDiff(h, p.fin); return ['green', 'Activa · ' + (q === 1 ? 'último día' : 'quedan ' + q + ' días')]; }
+    return ['grey', 'Terminó'];
+  }
+  function promoItem(p) {
+    var st = promoState(p), r = R(p.rest_id), h = '<div class="card mt12 promo-item">';
+    h += '<div class="row" style="gap:12px;align-items:flex-start">' + (p.tipo === 'banner' && (p.img || r.img) ? photo(p.img || r.img, 'thumb s44') : '<span class="mes-ic promo-ic">' + ic(p.tipo === 'banner' ? 'star' : 'list', 20) + '</span>') +
+      '<div class="grow"><span class="badge ' + st[0] + '">' + st[1] + '</span><div class="b mt8">' + esc(p.titulo) + '</div>' +
+      '<div class="xs muted mt4">' + PROMO_T[p.tipo].t + ' · ' + dayTxt(p.inicio) + ' – ' + dayTxt(addDay(p.fin, -1)) + ' · ' + fmt(p.precio) + '</div></div></div>';
+    if (p.estado === 'aprobado' && p.inicio <= coDay()) {
+      var ctr = p.vistas ? Math.round(p.toques / p.vistas * 100) : 0;
+      h += '<div class="stats mt12"><div class="stat"><div class="xs muted">La vieron</div><div class="v">' + (p.vistas || 0) + '</div><div class="xs muted">veces</div></div>' +
+        '<div class="stat"><div class="xs muted">La tocaron</div><div class="v green">' + (p.toques || 0) + '</div><div class="xs muted">veces</div></div>' +
+        '<div class="stat"><div class="xs muted">De cada 100</div><div class="v">' + ctr + '</div><div class="xs muted">entraron</div></div></div>';
+    }
+    if (p.estado === 'pendiente' && !p.pagado_at) {
+      var nq = pagoNequi();
+      h += '<div class="note amber mt12 pay-box">' + (nq ? 'Paga <b>' + fmt(p.precio) + '</b> por Nequi al <b>' + nq.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3') + '</b> (Pido y Ido). En el mensaje escribe <b>PROMO ' + p.id + '</b>.' :
+        'Pido y Ido te escribe por WhatsApp con los datos para pagar <b>' + fmt(p.precio) + '</b> por Nequi. Referencia: <b>PROMO ' + p.id + '</b>.') +
+        '<div class="xs mt8">Te guardamos el espacio 48 horas.</div></div>' +
+        '<div class="row mt12" style="gap:8px">' + (nq ? '<button class="btn btn-outline" data-a="copyTxt" data-v="' + nq + '">' + ic('copy', 16) + 'Copiar Nequi</button>' : '') +
+        '<button class="btn btn-primary grow" data-a="promoPaid" data-id="' + p.id + '">Ya pagué</button></div>' +
+        '<button class="btn btn-ghost btn-block mt8" data-a="promoCancel" data-id="' + p.id + '">Cancelar esta promoción</button>';
+    } else if (p.estado === 'pendiente') {
+      h += '<div class="note grey mt12">Estamos revisando tu pago. Casi siempre la aprobamos el mismo día y sale sola en la fecha que elegiste.</div>' +
+        (ONLINE ? '' : '<button class="btn btn-outline btn-block mt8" data-a="promoDemoOk" data-id="' + p.id + '">Aprobar (solo en la demo)</button>');
+    } else if (p.estado === 'rechazado') {
+      h += '<div class="note red mt12">' + (p.nota_admin ? esc(p.nota_admin) : 'No pudimos publicarla. Si ya pagaste, te devolvemos el dinero por Nequi.') + '</div>';
+    }
+    return h + '</div>';
+  }
+  function pfDefault(r) {
+    return { tipo: 'banner', titulo: '', texto: '', img: r.img || '', inicio: coDay(), dias: 7 };
+  }
+  function pfPreview(r) {
+    var f = ui.pf, fake = { id: 0, rest_id: r.id, tipo: f.tipo, titulo: f.titulo, texto: f.texto, img: f.img };
+    return f.tipo === 'banner' ? promoBanner(fake, true) : '<div class="still">' + restCard(r, fake) + '</div>';
+  }
+  function promoPhotos(r) {
+    var seen = {}, out = [];
+    [r.img].concat(r.dishes.map(function (d) { return d.img; })).forEach(function (u) { if (u && !seen[u]) { seen[u] = 1; out.push(u); } });
+    return out.slice(0, 8);
+  }
+  function scrRestPromo() {
+    var r = R(S.restId);
+    if (!ui.pf || ui.pf.restId !== r.id) { ui.pf = pfDefault(r); ui.pf.restId = r.id; }
+    var f = ui.pf, mine = myPromos().filter(function (p) { return p.estado !== 'cancelado'; }).slice(0, 8);
+    var h = '<div class="screen has-tabs">' + topbar('Promociona tu negocio', '/rest', r.name);
+    if (mine.length) h += '<div class="t-h2 mt8">Tus promociones</div>' + mine.map(promoItem).join('');
+    h += '<div class="t-h2 mt24">' + (mine.length ? 'Nueva promoción' : 'Sal de primero en Pido y Ido') + '</div>' +
+      '<div class="small muted mt4">Todos en ' + esc(r.town || LIVE_TOWN) + ' ven tu oferta al abrir la app, con la etiqueta “Patrocinado”.</div>';
+    h += '<div class="promo-opts mt12">' + ['banner', 'lista'].map(function (k) {
+      var t = PROMO_T[k];
+      return '<button class="promo-opt' + (f.tipo === k ? ' on' : '') + '" data-a="pfSet" data-k="tipo" data-v="' + k + '"><span class="po-ic">' + ic(k === 'banner' ? 'star' : 'list', 18) + '</span><span class="b">' + t.t + '</span><span class="xs muted">' + t.s + '</span><span class="po-p">desde ' + fmt(t.p[7]) + '<span class="xs muted"> / semana</span></span></button>';
+    }).join('') + '</div>';
+    h += '<div class="card mt12"><label class="label">Tu oferta</label><input class="input" maxlength="40" placeholder="Ej.: 2x1 en hamburguesas los jueves" value="' + esc(f.titulo) + '" data-m="ui.pf.titulo" data-pf="1" id="pfTit">' +
+      '<label class="label mt12">Detalle (opcional)</label><input class="input" maxlength="80" placeholder="Ej.: Solo pidiendo por Pido y Ido, hasta las 9 p. m." value="' + esc(f.texto) + '" data-m="ui.pf.texto" data-pf="1" id="pfTxt">';
+    if (f.tipo === 'banner') {
+      var ph = promoPhotos(r);
+      h += '<label class="label mt12">Foto</label>' + (ph.length ? '<div class="pf-photos">' + ph.map(function (u) { return '<button class="pf-ph' + (f.img === u ? ' on' : '') + '" data-a="pfSet" data-k="img" data-v="' + esc(u) + '">' + photo(u, 'thumb') + '</button>'; }).join('') + '</div>' :
+        '<div class="note grey">Todavía no tienes fotos. Súbelas en <a class="b" href="#/rest/menu">' + (isShop(r) ? 'Mi tienda' : 'Menú') + '</a>; mientras tanto usamos tu logo.</div>');
+    }
+    h += '</div>';
+    h += '<div class="label mt16">Así se ve en Inicio</div><div id="pfPrev">' + pfPreview(r) + '</div>';
+    var hoy = coDay(), days = []; for (var i = 0; i < 8; i++) days.push(addDay(hoy, i));
+    h += '<div class="label mt16">Desde</div><div class="chips scroll">' + days.map(function (d) { return '<button class="chip' + (f.inicio === d ? ' on' : '') + '" data-a="pfSet" data-k="inicio" data-v="' + d + '">' + capi(dayTxt(d, true)) + '</button>'; }).join('') + '</div>';
+    h += '<div class="label mt16">Por cuánto tiempo</div><div class="chips scroll">' + PROMO_DUR.map(function (d) { return '<button class="chip' + (f.dias === d[0] ? ' on' : '') + '" data-a="pfSet" data-k="dias" data-v="' + d[0] + '">' + d[1] + ' · ' + fmt(PROMO_T[f.tipo].p[d[0]]) + '</button>'; }).join('') + '</div>';
+    var libres = promoFree(f.tipo, f.inicio, f.dias), cup = PROMO_T[f.tipo].cupos, precio = PROMO_T[f.tipo].p[f.dias];
+    h += '<div class="small mt12 ' + (libres === 0 ? 'note red' : 'muted') + '">' + (libres == null ? 'Mirando espacios libres…' : libres === 0 ? 'Esas fechas ya están llenas. Prueba otro día o la otra opción.' :
+      'Quedan <b>' + libres + ' de ' + cup + '</b> espacios para ' + dayTxt(f.inicio) + ' – ' + dayTxt(addDay(f.inicio, f.dias - 1)) + '.') + '</div>';
+    h += '<div class="card mt16 promo-total"><div class="row between"><div><div class="xs muted">' + PROMO_T[f.tipo].t + ' · ' + PROMO_DUR.filter(function (d) { return d[0] === f.dias; })[0][1] + '</div><div class="t-h2">' + fmt(precio) + '</div></div>' +
+      (f.dias > 7 ? '<span class="badge green">Ahorras ' + fmt(PROMO_T[f.tipo].p[7] * f.dias / 7 - precio) + '</span>' : '') + '</div>' +
+      '<div class="xs muted mt8">Pagas por Nequi después de pedirla. Sale cuando confirmamos el pago. Te mostramos cuántas personas la vieron y la tocaron.</div>' +
+      '<button class="btn btn-primary btn-block mt12" data-a="promoReq"' + (libres === 0 || ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Enviando…' : 'Pedir esta promoción') + '</button></div>';
+    h += '<div class="xs muted mt12 center">Máx. 3 banners y 2 “primero en la lista” a la vez por pueblo, para que todos se vean bien. Pido y Ido revisa cada promoción antes de publicarla.</div>';
+    return h + '</div>' + tabs('rest', 'pedidos');
+  }
+  function restPromoLink(r) {
+    var act = myPromos().filter(promoActive)[0], pend = myPromos().filter(function (p) { return p.estado === 'pendiente'; })[0];
+    var sub = act ? 'Activa: ' + esc(act.titulo) + ' · ' + (act.vistas || 0) + ' vistas' : pend ? (pend.pagado_at ? 'Revisando tu pago' : 'Falta el pago de tu promoción') : 'Sal de primero en Inicio · desde ' + fmt(PROMO_T.lista.p[7]) + ' por semana';
+    return '<a class="card mt12 row mes-link" href="#/rest/promo"><span class="mes-ic promo-ic">' + ic('star', 20) + '</span><div class="grow"><div class="b">Promociona tu negocio</div><div class="xs muted">' + sub + '</div></div>' + (pend && !pend.pagado_at ? '<span class="dot-o"></span>' : '') + ic('right', 18) + '</a>';
   }
   function scrRestMes(query) {
     var r = R(S.restId), cur = ymOf(now()), ym = query && /^\d{4}-\d{2}$/.test(query.m || '') && query.m <= cur ? query.m : cur;
@@ -2188,6 +2364,7 @@
         if (ONLINE && p[1] === 'menu') return scrRestMenu();
         if (p[1] === 'enviar') return scrEnviar(p[2]);
         if (p[1] === 'mes') return scrRestMes(rt.query);
+        if (p[1] === 'promo') return scrRestPromo();
         if (p[1] === 'domiciliarios') return scrMisRiders();
         if (p[1] === 'bolsa') return scrBolsa(true);
         return scrRest(rt.query);
@@ -2208,6 +2385,7 @@
     if (same) window.scrollTo(0, y); else { window.scrollTo(0, 0); sheet(null); }
     ui.lastRoute = key;
     if (rt.parts[0] === 'promo' && !rt.parts[1]) drawQR();
+    if (rt.parts[0] === 'inicio') setTimeout(promoSeen, 600);
     if (rt.parts[0] === 'wa') { setTimeout(function () { window.scrollTo(0, document.body.scrollHeight); }, 30); }
     if (rt.parts[0] === 'buscar' && !same) { var q = document.getElementById('q'); if (q && !('ontouchstart' in window)) q.focus(); }
     if (same && active) { var el = document.getElementById(active); if (el && el.tagName === 'INPUT' && el.type !== 'file') { el.focus(); try { var v = el.value.length; el.setSelectionRange(v, v); } catch (e) {} } }
@@ -2270,8 +2448,42 @@
     S.cart.items[dishId] = (S.cart.items[dishId] || 0) + 1;
     save(); render();
   }
+  function promoById(id) { return (S.promos || []).concat(S.myPromos || []).filter(function (p) { return p.id === id; })[0]; }
   var A = {
     closeSheet: function () { sheet(null); },
+    copyTxt: function (el) { var v = el.dataset.v; try { navigator.clipboard.writeText(v).then(function () { toast('Copiado: ' + v); }, function () { toast(v); }); } catch (e) { toast(v); } },
+    pfSet: function (el) {
+      var k = el.dataset.k, v = el.dataset.v; ui.pf[k] = k === 'dias' ? +v : v;
+      if (k === 'tipo' && !PROMO_T[v].p[ui.pf.dias]) ui.pf.dias = 7;
+      render();
+    },
+    promoReq: function () {
+      var f = ui.pf, r = R(S.restId); if (!f || ui.busy) return;
+      f.titulo = String(f.titulo || '').trim(); f.texto = String(f.texto || '').trim();
+      if (f.titulo.length < 3) { var i = document.getElementById('pfTit'); if (i) { i.classList.add('err'); i.focus(); } toast('Escribe tu oferta (por ejemplo: 2x1 en hamburguesas)'); return; }
+      var img = f.tipo === 'banner' ? (f.img || r.img || '') : '';
+      if (!ONLINE) {
+        var id = (S.promos || []).reduce(function (m, p) { return Math.max(m, p.id); }, 0) + 1;
+        S.promos.push({ id: id, rest_id: r.id, town: LIVE_TOWN, tipo: f.tipo, titulo: f.titulo, texto: f.texto, img: img, inicio: f.inicio, dias: f.dias, fin: addDay(f.inicio, f.dias), precio: PROMO_T[f.tipo].p[f.dias], estado: 'pendiente', pagado_at: null, nota_admin: '', vistas: 0, toques: 0, created_at: new Date().toISOString() });
+        save(); ui.pf = null; window.scrollTo(0, 0); render(); toast('¡Listo! Ahora paga por Nequi para activarla.');
+        return;
+      }
+      ui.busy = true; render();
+      CLOUD.promoRequest({ tipo: f.tipo, titulo: f.titulo, texto: f.texto, img: img, inicio: f.inicio, dias: f.dias }).then(function () {
+        ui.busy = false; ui.pf = null; ui.pfFree = {}; return sync(true);
+      }).then(function () { window.scrollTo(0, 0); render(); toast('¡Listo! Ahora paga por Nequi para activarla.'); }, function (e) { ui.busy = false; ui.pfFree = {}; render(); toast(errTxt(e)); });
+    },
+    promoPaid: function (el) {
+      var id = +el.dataset.id;
+      if (!ONLINE) { var p = promoById(id); if (p) { p.pagado_at = new Date().toISOString(); save(); render(); } toast('Gracias. Revisamos tu pago y la activamos.'); return; }
+      CLOUD.promoPaid(id).then(function () { return sync(true); }).then(function () { toast('Gracias. Revisamos tu pago y la activamos.'); }, function (e) { toast(errTxt(e)); });
+    },
+    promoCancel: function (el) {
+      var id = +el.dataset.id;
+      if (!ONLINE) { var p = promoById(id); if (p) { p.estado = 'cancelado'; save(); render(); } toast('Promoción cancelada'); return; }
+      CLOUD.promoCancel(id).then(function () { return sync(true); }).then(function () { toast('Promoción cancelada'); }, function (e) { toast(errTxt(e)); });
+    },
+    promoDemoOk: function (el) { var p = promoById(+el.dataset.id); if (p) { p.estado = 'aprobado'; save(); render(); toast('Aprobada. Mírala en Inicio como cliente.'); } },
     cat: function (el) { ui.cat = el.dataset.v || null; if (ui.cat === ui._lastCat) ui.cat = null; ui._lastCat = ui.cat; render(); },
     qset: function (el) { ui.q = el.dataset.v; render(); },
     add: function (el) { addToCart(el.dataset.r, el.dataset.d); },
@@ -2731,6 +2943,11 @@
     if (/below_min/.test(m)) return 'No alcanza el pedido mínimo.';
     if (/too_soon|too_late|out_of_hours/.test(m)) return 'Esa hora ya no se puede programar. Elige otra.';
     if (/too_far/.test(m)) return 'Estás fuera de la zona de entrega. Elige Recoger.';
+    if (/sin_cupo/.test(m)) return 'Esas fechas se acaban de llenar. Prueba otro día.';
+    if (/too_many/.test(m)) return 'Ya tienes 3 promociones sin pagar. Paga o cancela una primero.';
+    if (/bad_date/.test(m)) return 'Elige una fecha de hoy en adelante.';
+    if (/bad_title/.test(m)) return 'Escribe tu oferta.';
+    if (/promo_solicitar|promo_disponible|promos/.test(m)) return 'Las promociones se activan muy pronto.';
     if (/no_geo/.test(m)) return 'Marca tu casa en el mapa.';
     if (/dish_gone/.test(m)) return 'Un plato ya no está en el menú. Revisa tu carrito.';
     if (/already registered|already_exists|duplicate key.*users/i.test(m)) return 'Ese número ya tiene cuenta. Inicia sesión.';
@@ -2780,6 +2997,8 @@
     S.myRiders = {}; if (d.myRest) S.myRiders[d.myRest] = d.myRiders;
     S.myProfile = d.myProfile;
     S.reward = d.reward || null;
+    S.promos = d.promos || [];
+    S.myPromos = d.myPromos || [];
     S.restId = d.myRest;
     save();
     // new order sound for the restaurant
@@ -2824,10 +3043,12 @@
   });
   document.addEventListener('click', function (ev) {
     var v = ev.target.closest('[data-vote]'); if (v) { vote(v.dataset.vote); setTimeout(safeRender, 400); }
+    var pr = ev.target.closest('[data-promo]'); if (pr && +pr.dataset.promo) promoTap(+pr.dataset.promo);
   });
   document.addEventListener('input', function (ev) {
     var t = ev.target;
     if (t.dataset.m) { setPath(t.dataset.m, t.value); t.classList.remove('err'); }
+    if (t.dataset.pf) { var pv = document.getElementById('pfPrev'); if (pv) pv.innerHTML = pfPreview(R(S.restId)); }
     if (t.dataset.pin) { t.value = t.value.replace(/\D/g, '').slice(0, 4); var bx = t.parentNode.querySelectorAll('.pin-boxes i'); for (var k = 0; k < bx.length; k++) { bx[k].textContent = t.value[k] || ''; bx[k].className = k === t.value.length ? 'cur' : ''; } }
     if (t.dataset.price) { ui.choose['p' + t.dataset.price] = t.value.replace(/\D/g, ''); t.classList.remove('err'); }
     if (t.dataset.wish) {
