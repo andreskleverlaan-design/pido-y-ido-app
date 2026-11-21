@@ -17,13 +17,14 @@
 const GRAPH = "https://graph.facebook.com/v23.0";
 
 type Order = {
-  id: number; rest_id: string; status: string; total: number; eta_min: number | null; wish: string | null;
+  id: number; rest_id: string; status: string; total: number; eta_min: number | null; wish: string | null; scheduled_for?: string | null;
   customer: { name?: string; phone?: string; wa?: boolean };
 };
 
 const pad = (id: number) => String(id).padStart(4, "0");
 const money = (n: number) => "$" + Math.round(n || 0).toLocaleString("es-CO");
 const first = (s = "") => s.trim().split(/\s+/)[0] || "cliente";
+const horaCo = (t: string) => new Date(t).toLocaleString("es-CO", { timeZone: "America/Bogota", weekday: "short", hour: "numeric", minute: "2-digit" });
 const intl = (p = "") => { const d = p.replace(/\D/g, ""); return d.length === 10 ? "57" + d : d; };
 
 async function db(path: string) {
@@ -65,7 +66,7 @@ Deno.serve(async (req) => {
 
   if (ev.type === "INSERT") {
     const r = await restInfo(o.rest_id);
-    res.push(await send(r.phone, "pyi_pedido_nuevo", [pad(o.id), first(o.customer?.name), o.wish ? "por confirmar" : money(o.total)]));
+    res.push(await send(r.phone, "pyi_pedido_nuevo", [pad(o.id), first(o.customer?.name), (o.wish ? "por confirmar" : money(o.total)) + (o.scheduled_for ? " · PROGRAMADO " + horaCo(o.scheduled_for) : "")]));
   } else if (ev.type === "UPDATE" && old && old.status !== o.status && wantsWa) {
     const r = await restInfo(o.rest_id);
     const to = o.customer?.phone || "";

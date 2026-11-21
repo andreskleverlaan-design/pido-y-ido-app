@@ -55,6 +55,12 @@ Database: plak `supabase/006-clientes-fieles.sql` in Supabase > SQL Editor (eenm
 - **"Ya transferí":** de klant meldt de betaling in de app in plaats van het bewijs naar de WhatsApp van de zaak te sturen.
 - **"Pedir lo mismo otra vez":** bestond al (Inicio > Pedir de nuevo > Repetir).
 
+## Bestelling plannen (009)
+Database: plak `supabase/009-programar.sql` in Supabase > SQL Editor (eenmalig, mag vaker). Zonder deze stap verbergt de app de keuze "Para más tarde".
+- **Klant:** bij afrekenen "Lo antes posible" of "Para más tarde": vandaag of morgen, elk half uur, binnen de openingstijden en minstens 1 uur vooruit. Ook als de zaak nu dicht is (bijv. 's avonds de lunch van morgen bestellen). Gratis voor iedereen.
+- **Zaak:** ziet "Pedido programado · Para mañana a la 1:00 p. m." en accepteert met één knop. In *Preparando* staan bestellingen op volgorde van tijd. Openingstijden instellen in *Menú > Horario* (standaard restaurant 11:00–21:00, winkel 08:00–20:00, Colombiaanse tijd).
+- De server controleert de tijd ook (`place_order`: minstens 40 min vooruit, max. 2 dagen, binnen de openingstijden).
+
 ## WhatsApp-meldingen namens Pido y Ido (voorbereid, nog uit)
 Code: `supabase/functions/avisos-whatsapp/index.ts` (Supabase Edge Function, WhatsApp Business Cloud API van Meta).
 - Restaurant krijgt "nuevo pedido" vanaf het Pido y Ido-nummer. Klant krijgt "aceptado", "en camino" en "rechazado", alleen als die "Avísame por WhatsApp" heeft aangevinkt.
