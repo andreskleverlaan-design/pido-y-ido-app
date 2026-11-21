@@ -1059,6 +1059,40 @@
       '<div class="xs muted mt8">' + (rw.ready ? 'Se aplica solo al pagar, en pedidos desde ' + fmt(rw.min) + '.' : 'Llevas ' + n + ' de 4 sellos. Cada pedido entregado por la app suma uno.') + ' Solo pidiendo por Pido y Ido.</div></div>';
   }
   // WhatsApp avisos desde el número de Pido y Ido (cuando esté activado en config.js).
+  // ---------- Pedir de nuevo y favoritos ----------
+  // Pedidos entregados de este cliente, sin repetir el mismo pedido (mismo negocio y mismos platos), del más reciente al más viejo.
+  function orderSig(o) { return o.restId + '|' + (o.wish ? 'w:' + o.wish : o.items.map(function (i) { return i.id + 'x' + i.qty; }).sort().join(',')); }
+  function againList(max) {
+    var seen = {}, out = [];
+    S.orders.forEach(function (o) {
+      if (!o.mine || o.status !== 'entregado' || out.length >= (max || 6)) return;
+      var r = R(o.restId); if (!r.id || shown().indexOf(r) < 0) return;
+      var k = orderSig(o); if (seen[k]) return; seen[k] = 1; out.push(o);
+    });
+    return out;
+  }
+  // Lo que cuesta hoy repetir ese pedido (precios del menú actual) y qué ya no está en el menú.
+  function againCheck(o) {
+    var r = R(o.restId), ok = [], gone = [], sub = 0;
+    if (o.wish) return { ok: [], gone: [], sub: 0, total: 0, changed: false };
+    o.items.forEach(function (i) {
+      var d = r.dishes.filter(function (x) { return x.id === i.id; })[0];
+      if (d) { ok.push({ id: d.id, qty: i.qty, name: d.name, img: d.img }); sub += d.price * i.qty; } else gone.push(i.name);
+    });
+    var fee = o.mode === 'dom' ? r.fee || 0 : 0, old = o.items.reduce(function (a, i) { return a + i.price * i.qty; }, 0);
+    return { ok: ok, gone: gone, sub: sub, total: sub + fee, changed: !gone.length && sub !== old };
+  }
+  function againCard(o) {
+    var r = R(o.restId), c = againCheck(o), d = c.ok[0];
+    var pic = o.wish ? cover(r, 'again-ph') : photo(d && d.img ? d.img : r.img, 'again-ph');
+    var what = o.wish ? (o.wish === '(Ver la foto)' ? 'Tu lista en foto' : String(o.wish).replace(/\s*\n+\s*/g, ', ')) : o.items.map(function (i) { return i.qty + '× ' + i.name; }).join(', ');
+    var off = !o.wish && !c.ok.length;
+    return '<div class="again">' + pic + '<div class="again-b"><div class="b ellipsis">' + esc(r.short || r.name) + '</div><div class="xs muted again-what">' + esc(what) + '</div>' +
+      '<div class="row between mt8" style="gap:6px"><span class="small b">' + (o.wish ? 'Precio al confirmar' : fmt(c.total)) + '</span>' +
+      '<button class="btn btn-primary btn-xs" data-a="reorder" data-id="' + o.id + '"' + (off ? ' disabled' : '') + '>' + ic('refresh', 15, { sw: 2.4 }) + 'Pedir</button></div></div></div>';
+  }
+  function isFav(id) { return !!(S.favs && S.favs[id]); }
+  function favBtn(r) { var on = isFav(r.id); return '<button class="icon-btn fav' + (on ? ' on' : '') + '" data-a="fav" data-id="' + esc(r.id) + '" aria-pressed="' + on + '" aria-label="' + (on ? 'Quitar de favoritos' : 'Guardar en favoritos') + '">' + ic('heart', 20, { fill: on }) + '</button>'; }
   function waOn() { return !ONLINE || !!(window.PYI_CONFIG || {}).whatsappAvisos; }
   // Nequi del negocio para este pedido (online: solo después de que aceptan) y su teléfono si lo lleva el mismo negocio.
   function contactFor(o) {
@@ -1192,7 +1226,6 @@
   function scrInicio() {
     if (!hasTown()) return scrPueblo(true);
     if (myTown() !== LIVE_TOWN) return scrInicioPronto();
-    var last = S.orders.filter(function (o) { return o.mine && o.status === 'entregado'; })[0];
     var active = S.orders.filter(function (o) { return o.mine && ['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0; })[0];
     var shops = shown().filter(isShop), pr = prontoHere(), prShops = pr.filter(isShop), tiendas = (shops.length || prShops.length) && ui.home === 'tiendas';
     var base = shown().filter(function (r) { return isShop(r) === !!tiendas; });
@@ -1215,10 +1248,11 @@
     } else h += '<div class="cats mt16">' + CATS.map(function (c) {
       return '<button class="cat' + (ui.cat === c[0] ? ' on' : '') + '" data-a="cat" data-v="' + c[0] + '">' + photo(c[1]) + '<span>' + c[0] + '</span></button>';
     }).join('') + '</div>';
-    if (last && !ui.cat && !tiendas && R(last.restId).id && !isShop(R(last.restId))) {
-      h += '<div class="t-h2 mt20">Pedir de nuevo</div><div class="card mt12 row">' + photo(last.items[0] && R(last.restId).dishes.filter(function (d) { return d.id === last.items[0].id; })[0] ? R(last.restId).dishes.filter(function (d) { return d.id === last.items[0].id; })[0].img : R(last.restId).img, 'thumb') +
-        '<div class="grow"><div class="b ellipsis">' + R(last.restId).name + '</div><div class="small muted ellipsis">' + last.items.map(function (i) { return i.name; }).join(' + ') + ' · ' + fmt(last.total) + '</div></div>' +
-        '<button class="btn btn-soft btn-sm" data-a="reorder" data-id="' + last.id + '">Repetir</button></div>';
+    if (!ui.cat && !ui.kind) {
+      var again = againList(6).filter(function (o) { return isShop(R(o.restId)) === !!tiendas; });
+      if (again.length) h += '<div class="row between mt20"><div class="t-h2">Pedir de nuevo</div><a class="small muted" href="#/pedidos">Ver todos</a></div><div class="again-row mt12">' + again.map(againCard).join('') + '</div>';
+      var favs = shown().filter(function (r) { return isFav(r.id) && isShop(r) === !!tiendas; });
+      if (favs.length) h += '<div class="t-h2 mt20">Tus favoritos</div><div class="chips scroll mt12">' + favs.map(function (r) { return '<a class="chip fav-chip" href="#/r/' + r.id + '">' + cover(r, 'fav-ph') + esc(r.short || r.name) + (S.open[r.id] ? '' : ' <span class="xs muted">· cerrado</span>') + '</a>'; }).join('') + '</div>';
     }
     var filt = tiendas ? ui.kind && kindOf({ kind: ui.kind }).t : ui.cat;
     h += '<div class="row between mt24"><div class="t-h2">' + (filt || (tiendas ? 'Tiendas cerca' : 'Cerca de ti')) + '</div><div class="small muted">' + (filt ? '<button class="link" data-a="' + (tiendas ? 'kindPick' : 'cat') + '" data-v="">Ver todos</button>' : openN + ' abiertos') + '</div></div><div class="mt12">' +
@@ -1254,7 +1288,7 @@
     var open = S.open[r.id];
     var mode = S.cart.restId === r.id ? S.cart.mode : 'dom';
     var h = '<div class="screen flush' + (cartCount() ? ' has-cta' : '') + '"><div class="hero">' + photo(r.img, '', 'height:232px;width:100%') +
-      '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a><button class="icon-btn fav" data-a="fav" aria-label="Favorito">' + ic('heart', 20) + '</button></div>' +
+      '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a>' + favBtn(r) + '</div>' +
       '<div class="card raised info-card"><h1 class="t-title" style="font-size:24px">' + r.name + '</h1><div class="small muted mt4"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + ' · ' + r.eta + ' · Mín. ' + fmt(r.min) + '</div>' +
       '<div class="seg mt12"><button class="' + (mode === 'dom' ? 'on' : '') + '" data-a="mode" data-v="dom" data-r="' + r.id + '">Domicilio · ' + (r.fee ? fmt(r.fee) : 'gratis') + '</button><button class="' + (mode === 'rec' ? 'on' : '') + '" data-a="mode" data-v="rec" data-r="' + r.id + '">Recoger · ' + r.pickup + '</button></div>' +
       (progOn() ? '<div class="xs muted mt8 row" style="gap:5px">' + ic('clock', 13) + 'Horario: ' + horarioTxt(r) + '</div>' : '') +
@@ -1299,7 +1333,7 @@
     var wish = mine ? (S.cart.wish || '') : '', img = mine ? S.cart.wishImg : '';
     var prev = img ? wishUrl(img, false) : '';
     var h = '<div class="screen flush has-cta"><div class="hero">' + cover(r, '', 'height:232px;width:100%') +
-      '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a><button class="icon-btn fav" data-a="fav" aria-label="Favorito">' + ic('heart', 20) + '</button></div>' +
+      '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a>' + favBtn(r) + '</div>' +
       '<div class="card raised info-card"><span class="badge green">' + ic(k.icon, 13, { sw: 2.4 }) + ' ' + k.t + '</span><h1 class="t-title mt8" style="font-size:24px">' + esc(r.name) + '</h1><div class="small muted mt4"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + ' · ' + r.eta + (r.sub ? ' · ' + esc(r.sub) : '') + '</div>' +
       '<div class="seg mt12"><button class="' + (mode === 'dom' ? 'on' : '') + '" data-a="mode" data-v="dom" data-r="' + r.id + '">Domicilio · ' + (r.fee ? fmt(r.fee) : 'gratis') + '</button><button class="' + (mode === 'rec' ? 'on' : '') + '" data-a="mode" data-v="rec" data-r="' + r.id + '">Recoger · ' + r.pickup + '</button></div>' +
       (open ? '' : '<div class="note amber mt12"><b>Cerrado ahora.</b> ' + (progOn() ? 'Puedes enviar tu lista y programarla para más tarde (horario: ' + horarioTxt(r) + ').' : 'No recibe pedidos en este momento.') + '</div>') +
@@ -1371,6 +1405,9 @@
     if (co.cash !== 'exact' && cashVal <= total) { co.cash = 'exact'; cashVal = total; }
     var far = S.cart.mode === 'dom' && tooFar(r, co.geo);
     var h = '<div class="screen has-cta">' + topbar('Confirmar pedido', '/r/' + r.id, r.name);
+    var ag = ui.again && ui.again.rest === r.id && !ui.again.shop ? ui.again : null;
+    if (ag) h += '<div class="note green row mb12" style="gap:10px;align-items:flex-start">' + ic('refresh', 18, { sw: 2.4 }) + '<span><b>Repetimos tu pedido.</b> Con la misma dirección y forma de pago. Revisa y toca el botón naranja.' +
+      (ag.gone && ag.gone.length ? '<br><b>Ya no está en el menú:</b> ' + esc(ag.gone.join(', ')) + '.' : '') + (ag.changed ? '<br>Algunos precios cambiaron desde la última vez.' : '') + '</span></div>';
     if (S.cart.mode === 'dom') {
       h += '<div class="card"><div class="row b" style="gap:8px"><span class="orange">' + ic('pin', 18) + '</span>¿Dónde te lo llevamos?</div>' +
         '<textarea class="input mt12" id="addr" data-m="user.address" rows="2" placeholder="Barrio, calle y cómo llegar (ej.: dos casas después de la iglesia, puerta azul)">' + esc(S.user.address) + '</textarea>' +
@@ -1497,7 +1534,7 @@
     if (o.status === 'entregado') {
       h += o.rating ? '<div class="card mt12 center"><div class="small muted">Tu calificación</div><div style="color:var(--orange);font-size:24px;letter-spacing:2px">' + '★★★★★'.slice(0, o.rating) + '<span style="color:#E9E3DB">' + '★★★★★'.slice(o.rating) + '</span></div></div>'
         : '<a class="btn btn-primary btn-block mt12" href="#/calificar/' + o.id + '">Calificar pedido</a>';
-      h += '<button class="btn btn-outline btn-block mt12" data-a="reorder" data-id="' + o.id + '">Pedir lo mismo otra vez</button>' + stampCard('mt12');
+      h += '<button class="btn btn-outline btn-block mt12" data-a="reorder" data-id="' + o.id + '">' + ic('refresh', 18, { sw: 2.4 }) + ' Pedir lo mismo otra vez</button>' + stampCard('mt12');
     }
     // demo helper
     if (['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0) {
@@ -1534,7 +1571,7 @@
     var past = mine.filter(function (o) { return act.indexOf(o) < 0; });
     return '<div class="screen has-tabs">' + topbar('Mis pedidos') +
       (act.length ? '<div class="t-h3">En curso</div><div class="card mt8" style="padding:4px 14px">' + act.map(function (o) { return orderRow(o, '#/pedido/' + o.id); }).join('') + '</div>' : '') +
-      '<div class="t-h3 mt20">Anteriores</div>' + (past.length ? '<div class="card mt8" style="padding:4px 14px">' + past.map(function (o) { return orderRow(o, '#/pedido/' + o.id); }).join('') + '</div>' : '<div class="empty">Aún no tienes pedidos anteriores.</div>') +
+      '<div class="t-h3 mt20">Anteriores</div>' + (past.length ? '<div class="card mt8" style="padding:4px 14px">' + past.map(function (o) { return o.status === 'entregado' && R(o.restId).id ? '<div class="past-row">' + orderRow(o, '#/pedido/' + o.id) + '<button class="btn btn-soft btn-xs" data-a="reorder" data-id="' + o.id + '">' + ic('refresh', 15, { sw: 2.4 }) + 'Repetir</button></div>' : orderRow(o, '#/pedido/' + o.id); }).join('') + '</div>' : '<div class="empty">Aún no tienes pedidos anteriores.</div>') +
       '</div>' + tabs('cliente', 'pedidos');
   }
   function scrPerfil() {
@@ -1607,6 +1644,7 @@
       '<div class="stats mt16"><div class="stat"><div class="xs muted">Hoy</div><div class="v">' + (base[0] + today.length) + '</div><div class="xs muted">pedidos</div></div>' +
       '<div class="stat"><div class="xs muted">Ventas</div><div class="v">$' + Math.round((base[1] + today.reduce(function (a, o) { return a + o.total; }, 0)) / 1000) + 'k</div><div class="xs muted">COP</div></div>' +
       '<div class="stat"><div class="xs muted">Promedio</div><div class="v">' + avgMin + '</div><div class="xs muted">min</div></div></div>' +
+      '<a class="card mt12 row mes-link" href="#/rest/mes">' + '<span class="mes-ic">' + ic('chart', 20) + '</span><div class="grow"><div class="b">Tu mes con Pido y Ido</div><div class="xs muted">Clientes nuevos, ventas y comisión de ' + ymTxt(ymOf(now())) + '</div></div>' + ic('right', 18) + '</a>' +
       (ONLINE ? setupCard(r) : '') +
       (S.open[r.id] || (ONLINE && !setupDone(r)) ? '' : '<div class="note amber mt12"><b>Estás cerrado.</b> ' + (ONLINE ? 'Cuando quieras recibir pedidos, toca <b>Abierto</b> arriba.' : 'Los clientes ven tu menú, pero no pueden pedir.') + '</div>') +
       '<div class="chips scroll mt16">' + [['nuevos', 'Nuevos'], ['preparando', 'Preparando'], ['camino', 'En camino'], ['hechos', 'Entregados']].map(function (t) {
@@ -1622,6 +1660,116 @@
     }
     h += list.map(function (o) { return restOrderCard(o); }).join('');
     return h + '</div></div>' + tabs('rest', 'pedidos');
+  }
+  // ---------- Resumen del mes (lo que Pido y Ido le trajo al negocio) ----------
+  var MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  var COMISION = 5, OTRA_APP = 25;
+  function ymOf(t) { var d = new Date(t - CO_OFF); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
+  function ymShift(ym, n) { var y = +ym.slice(0, 4), m = +ym.slice(5) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); }
+  function ymTxt(ym) { return MESES[+ym.slice(5) - 1]; }
+  function ymDays(ym) { return new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5), 0)).getUTCDate(); }
+  // Misma cuenta que el servidor (supabase/010-resumen-mes.sql): demo, y respaldo si ese paso aún no está pegado.
+  function monthStats(list, ym, pct) {
+    var del = list.filter(function (o) { return o.status === 'entregado' && o.createdAt; }).sort(function (a, b) { return a.createdAt - b.createdAt; });
+    var who = function (o) { var p = String((o.customer || {}).phone || '').replace(/\D/g, '').slice(-10); return p || 'n:' + (o.customer || {}).name; };
+    var firstAt = {}; del.forEach(function (o) { var k = who(o); if (!firstAt[k]) firstAt[k] = ymOf(o.createdAt); });
+    var mes = del.filter(function (o) { return ymOf(o.createdAt) === ym; }), prevYm = ymShift(ym, -1), prev = del.filter(function (o) { return ymOf(o.createdAt) === prevYm; });
+    var per = {}, top = {}, dias = {};
+    mes.forEach(function (o) {
+      var k = who(o); per[k] = (per[k] || 0) + 1;
+      (o.items || []).forEach(function (i) { top[i.name] = (top[i.name] || 0) + (i.qty || 1); });
+      var d = new Date(o.createdAt - CO_OFF).getUTCDate(); dias[d] = (dias[d] || 0) + 1;
+    });
+    var ks = Object.keys(per), sum = function (a, f) { return a.reduce(function (x, o) { return x + (o[f] || 0); }, 0); };
+    return {
+      mes: ym, comision_pct: pct == null ? COMISION : pct, pedidos: mes.length, ventas: sum(mes, 'subtotal'), domicilios: sum(mes, 'fee'), premios: sum(mes, 'discount'),
+      clientes: ks.length, nuevos: ks.filter(function (k) { return firstAt[k] === ym; }).length,
+      pedidos_nuevos: mes.filter(function (o) { return firstAt[who(o)] === ym; }).length,
+      repiten: ks.filter(function (k) { return per[k] > 1; }).length, volvieron: ks.filter(function (k) { return firstAt[k] !== ym; }).length,
+      top: Object.keys(top).sort(function (a, b) { return top[b] - top[a] || (a < b ? -1 : 1); }).slice(0, 3).map(function (n) { return { name: n, qty: top[n] }; }),
+      dias: dias, antes: { pedidos: prev.length, ventas: sum(prev, 'subtotal') }
+    };
+  }
+  // Demo: historia inventada (pero fija) de los últimos meses, para ver cómo se ve el resumen.
+  function demoHistory(r) {
+    if (ui.demoHist && ui.demoHist[r.id]) return ui.demoHist[r.id];
+    var seedN = 0; String(r.id).split('').forEach(function (c) { seedN = (seedN * 31 + c.charCodeAt(0)) % 2147483647; });
+    var rnd = function () { seedN = (seedN * 16807) % 2147483647; return (seedN - 1) / 2147483646; };
+    var dishes = r.dishes.length ? r.dishes : [{ id: 'x', name: 'Pedido', price: 25000 }], out = [], t0 = now(), pool = 0;
+    for (var day = 92; day >= 1; day--) {
+      var growth = 1 + (92 - day) / 40, n = Math.round((2 + rnd() * 4) * growth);
+      for (var j = 0; j < n; j++) {
+        var back = pool && rnd() < Math.min(.62, .2 + pool / 160), c = back ? Math.floor(rnd() * pool) : pool++;
+        var items = [], k = 1 + Math.floor(rnd() * 2);
+        for (var q = 0; q < k; q++) { var d = dishes[Math.floor(rnd() * dishes.length)]; items.push({ id: d.id, name: d.name, price: d.price, qty: 1 + (rnd() < .25 ? 1 : 0) }); }
+        var sub = items.reduce(function (a, i) { return a + i.price * i.qty; }, 0), at = t0 - day * 86400000 + (11 + rnd() * 9) * 3600000;
+        if (at > t0) continue;
+        out.push({ status: 'entregado', restId: r.id, createdAt: at, subtotal: sub, fee: r.fee || 0, discount: rnd() < .08 ? 2000 : 0, items: items, customer: { phone: '3' + String(100000000 + c * 7919).slice(0, 9) } });
+      }
+    }
+    ui.demoHist = ui.demoHist || {}; ui.demoHist[r.id] = out;
+    return out;
+  }
+  function restMonth(r, ym) {
+    if (!ONLINE) return monthStats(demoHistory(r).concat(S.orders.filter(function (o) { return o.restId === r.id; })), ym);
+    ui.mes = ui.mes || {};
+    var key = r.id + ym, c = ui.mes[key];
+    if (c && (c.data || c.err) && now() - c.at < 60000) return c.data || c.err;
+    if (!c || !c.loading) {
+      ui.mes[key] = { loading: true, at: now(), data: c && c.data };
+      CLOUD.restMonth(ym).then(function (d) { ui.mes[key] = { data: d, at: now() }; render(); },
+        function () { ui.mes[key] = { data: Object.assign(monthStats(S.orders.filter(function (o) { return o.restId === r.id; }), ym), { parcial: true }), at: now() }; render(); });
+    }
+    return c && c.data ? c.data : null;
+  }
+  function pctTxt(p) { return String(+p).replace('.', ',') + '%'; }
+  function trendTxt(cur, prev, unit) {
+    if (!prev) return '';
+    var d = Math.round((cur - prev) / prev * 100);
+    return '<span class="trend ' + (d >= 0 ? 'up' : 'down') + '">' + (d >= 0 ? '▲ ' : '▼ ') + Math.abs(d) + '%</span> <span class="xs muted">vs. ' + unit + '</span>';
+  }
+  function scrRestMes(query) {
+    var r = R(S.restId), cur = ymOf(now()), ym = query && /^\d{4}-\d{2}$/.test(query.m || '') && query.m <= cur ? query.m : cur;
+    var h = '<div class="screen has-tabs">' + topbar('Tu mes con Pido y Ido', '/rest', r.name) +
+      '<div class="chips scroll">' + [0, -1, -2].map(function (n) { var m = ymShift(cur, n); return '<a class="chip' + (m === ym ? ' on' : '') + '" href="#/rest/mes?m=' + m + '">' + capi(ymTxt(m)) + (n === 0 ? ' (va)' : '') + '</a>'; }).join('') + '</div>';
+    var st = restMonth(r, ym);
+    if (!st) return h + '<div class="empty">' + ic('chart', 26) + '<div class="mt8">Sumando tus pedidos…</div></div></div>' + tabs('rest', 'pedidos');
+    var pct = +st.comision_pct, com = Math.round(st.ventas * pct / 100), net = Math.max(com - st.premios, 0), queda = st.ventas - com;
+    var otra = Math.round(st.ventas * OTRA_APP / 100), ticket = st.pedidos ? Math.round(st.ventas / st.pedidos) : 0, enCurso = ym === cur;
+    var mesTxt = ymTxt(ym), antes = ymTxt(ymShift(ym, -1));
+    h += '<div class="mes-hero mt16"><div class="xs" style="opacity:.8">' + (enCurso ? 'En ' + mesTxt + ', hasta hoy' : 'En ' + mesTxt) + ' Pido y Ido te trajo</div>' +
+      '<div class="row mt8" style="gap:18px;align-items:flex-end"><div><div class="mes-big">' + st.pedidos + '</div><div class="small">pedidos entregados</div></div><div><div class="mes-big">' + fmt(st.ventas) + '</div><div class="small">en ventas</div></div></div>' +
+      (st.antes && st.antes.pedidos && !enCurso ? '<div class="mt8 small">' + trendTxt(st.pedidos, st.antes.pedidos, antes).replace('xs muted', 'xs') + '</div>' : '') + '</div>';
+    if (!st.pedidos) {
+      h += '<div class="empty">' + (enCurso ? 'Todavía no hay pedidos entregados este mes. Aquí vas a ver cuántos clientes nuevos te trae la app.' : 'En ' + mesTxt + ' no hubo pedidos entregados por la app.') + '</div>';
+      return h + '</div>' + tabs('rest', 'pedidos');
+    }
+    h += '<div class="stats mt12"><div class="stat"><div class="xs muted">Clientes nuevos</div><div class="v green">' + st.nuevos + '</div><div class="xs muted">primera vez</div></div>' +
+      '<div class="stat"><div class="xs muted">Volvieron</div><div class="v">' + st.volvieron + '</div><div class="xs muted">ya te conocían</div></div>' +
+      '<div class="stat"><div class="xs muted">Promedio</div><div class="v">$' + Math.round(ticket / 1000) + 'k</div><div class="xs muted">por pedido</div></div></div>';
+    h += '<div class="note green mt12 row" style="gap:10px;align-items:flex-start">' + ic('users', 18) + '<span><b>' + st.nuevos + (st.nuevos === 1 ? ' cliente nuevo</b> te pidió' : ' clientes nuevos</b> te pidieron') + ' por primera vez por la app' + (st.pedidos_nuevos ? ' (' + st.pedidos_nuevos + ' pedidos)' : '') + '.' +
+      (st.repiten ? ' <b>' + st.repiten + '</b> ' + (st.repiten === 1 ? 'cliente pidió' : 'clientes pidieron') + ' más de una vez este mes.' : '') + '</span></div>';
+    // Pedidos por semana
+    var days = ymDays(ym), weeks = [], dias = st.dias || {};
+    var hoyD = enCurso ? new Date(now() - CO_OFF).getUTCDate() : 99;
+    for (var w = 0; w * 7 < days && w * 7 + 1 <= hoyD; w++) { var n = 0; for (var d = w * 7 + 1; d <= Math.min(days, w * 7 + 7); d++) n += +(dias[d] || dias[String(d)] || 0); weeks.push([w * 7 + 1, Math.min(days, w * 7 + 7), n]); }
+    var mx = Math.max.apply(null, weeks.map(function (x) { return x[2]; }).concat([1]));
+    h += '<div class="card mt12"><div class="t-h3">Pedidos por semana</div><div class="wk-bars mt12">' + weeks.map(function (x) {
+      return '<div class="wk-col"><div class="wk-n">' + x[2] + '</div><div class="wk-bar" style="height:' + Math.max(4, Math.round(x[2] / mx * 90)) + 'px"></div><div class="xs muted">' + x[0] + '–' + x[1] + '</div></div>';
+    }).join('') + '</div></div>';
+    // La cuenta
+    h += '<div class="card mt12"><div class="t-h3">La cuenta del mes</div>' +
+      '<div class="row between small mt12"><span>Ventas por la app</span><span class="b">' + fmt(st.ventas) + '</span></div>' +
+      '<div class="row between small mt8"><span>Comisión Pido y Ido (' + pctTxt(pct) + ')</span><span>−' + fmt(com) + '</span></div>' +
+      '<div class="divider dashed"></div><div class="row between"><span class="t-h3">Te queda</span><span class="num" style="font-size:18px">' + fmt(queda) + '</span></div>' +
+      (st.premios ? '<div class="note green mt12 row" style="gap:8px;align-items:flex-start">' + ic('gift', 16) + '<span>Tus clientes recibieron ' + fmt(st.premios) + ' en premios (cada 5º pedido). Ese descuento lo paga Pido y Ido: se resta de la comisión, así que nos pagas ' + fmt(net) + '.</span></div>' : '') +
+      '<div class="xs muted mt8">Los domicilios (' + fmt(st.domicilios) + ') no pagan comisión: son todos tuyos.</div></div>';
+    h += '<div class="card mt12 compare"><div class="row" style="gap:10px;align-items:flex-start"><span class="orange">' + ic('wallet', 20) + '</span><div class="grow"><div class="b">Con una app grande pagarías ' + fmt(otra) + '</div>' +
+      '<div class="small muted mt4">Las apps grandes cobran ' + OTRA_APP + '% o más. Con Pido y Ido ' + (pct ? 'son ' + fmt(com) : 'no pagas nada este mes') + ', o sea <b class="green">' + fmt(otra - com) + ' más para ti</b>.</div></div></div></div>';
+    if (st.top && st.top.length) h += '<div class="card mt12"><div class="t-h3">' + (isShop(r) ? 'Lo que más piden' : 'Tus platos más pedidos') + '</div>' + st.top.map(function (t, i) {
+      return '<div class="row between small mt8"><span><b class="orange">' + (i + 1) + '.</b> ' + esc(t.name) + '</span><span class="muted">' + t.qty + '×</span></div>'; }).join('') + '</div>';
+    h += '<div class="xs muted mt12 center">Solo cuenta pedidos entregados por la app. Un cliente es nuevo si ese mes te pidió por primera vez por Pido y Ido.' + (st.parcial ? ' (Cuenta aproximada con tus últimos 100 pedidos.)' : '') + (ONLINE ? '' : ' En la demo los números son de ejemplo.') + '</div>';
+    return h + '</div>' + tabs('rest', 'pedidos');
   }
   function due(o) { return o.scheduledFor || (o.acceptedAt || o.createdAt || 0) + (o.etaMin || 30) * 60000; }
   function restPayNotes(o) {
@@ -2039,6 +2187,7 @@
         if (ONLINE && !S.restId) return scrRestRegistro();
         if (ONLINE && p[1] === 'menu') return scrRestMenu();
         if (p[1] === 'enviar') return scrEnviar(p[2]);
+        if (p[1] === 'mes') return scrRestMes(rt.query);
         if (p[1] === 'domiciliarios') return scrMisRiders();
         if (p[1] === 'bolsa') return scrBolsa(true);
         return scrRest(rt.query);
@@ -2129,7 +2278,12 @@
     dec: function (el) { var d = el.dataset.d; S.cart.items[d] = Math.max(0, (S.cart.items[d] || 0) - 1); if (!S.cart.items[d]) delete S.cart.items[d]; if (!cartCount()) S.cart.restId = null; save(); render(); },
     newCart: function (el) { S.cart = { restId: el.dataset.r, items: {}, mode: 'dom' }; sheet(null); addToCart(el.dataset.r, el.dataset.d); },
     mode: function (el) { if (S.cart.restId !== el.dataset.r) { if (cartCount()) { toast('Primero termina o vacía tu carrito actual'); return; } S.cart = { restId: el.dataset.r, items: {}, mode: el.dataset.v }; } else S.cart.mode = el.dataset.v; save(); render(); },
-    fav: function () { toast('Guardado en tus favoritos'); },
+    fav: function (el) {
+      var id = el.dataset.id; if (!id) return;
+      S.favs = S.favs || {};
+      if (S.favs[id]) { delete S.favs[id]; toast('Quitado de tus favoritos'); } else { S.favs[id] = now(); toast('Guardado en tus favoritos. Lo ves en Inicio.'); }
+      save(); render();
+    },
     pay: function (el) { S.co.pay = el.dataset.v; save(); render(); },
     waOk: function () { S.user.waOk = !S.user.waOk; save(); render(); },
     markPaid: function (el) {
@@ -2142,7 +2296,7 @@
     whenLater: function () { S.co.later = true; save(); render(); },
     whenDay: function (el) { S.co.day = +el.dataset.v; S.co.when = null; save(); render(); },
     whenPick: function (el) { S.co.when = +el.dataset.v; S.co.later = true; save(); render(); },
-    clearCart: function () { S.cart = { restId: null, items: {}, mode: 'dom' }; save(); go('/inicio'); },
+    clearCart: function () { ui.again = null; S.cart = { restId: null, items: {}, mode: 'dom' }; save(); go('/inicio'); },
     geo: function () {
       if (ONLINE) {
         var r = R(S.cart.restId);
@@ -2180,7 +2334,7 @@
       };
       if (shop) { o.wish = String(S.cart.wish || '').trim().slice(0, 1000) || '(Ver la foto)'; o.wishImg = S.cart.wishImg || ''; }
       var finish = function () {
-        S.orders.unshift(o);
+        S.orders.unshift(o); ui.again = null;
         S.cart = { restId: null, items: {}, mode: 'dom' }; S.co.note = ''; S.co.cash = 'exact'; S.co.later = false; S.co.when = null; S.co.day = 0; if (!ONLINE) S.co.geo = null;
         save(); go('/pedido/' + o.id); toast(when ? '¡Pedido programado para ' + cuandoCo(when) + '!' : '¡Pedido enviado a ' + r.short + '!');
       };
@@ -2195,9 +2349,17 @@
     cancelOrder: function (el) { var o = order(el.dataset.id); if (o && (o.status === 'recibido' || (o.wish && o.status === 'preparando'))) { o.status = 'cancelado'; save(); go('/pedidos'); toast('Pedido cancelado'); if (ONLINE) push(CLOUD.cancelOrder(o.dbId)); } },
     reorder: function (el) {
       var o = order(el.dataset.id); if (!o) return;
-      if (o.wish) { S.cart = { restId: o.restId, items: {}, mode: o.mode || 'dom', wish: o.wish === '(Ver la foto)' ? '' : o.wish, wishImg: '' }; save(); go('/r/' + o.restId); return; }
+      var r = R(o.restId), c = againCheck(o);
+      // Mismos datos de la vez pasada: dirección, pin en el mapa, forma de pago y nota.
+      if (o.mode === 'dom' && o.customer && o.customer.address && o.customer.address !== 'Recoge en el local') S.user.address = o.customer.address;
+      if (o.mode === 'dom' && o.geo) S.co.geo = o.geo;
+      if (o.pay) S.co.pay = o.pay;
+      S.co.note = o.note || ''; S.co.cash = 'exact'; S.co.later = false; S.co.when = null;
+      if (o.wish) { S.cart = { restId: o.restId, items: {}, mode: o.mode || 'dom', wish: o.wish === '(Ver la foto)' ? '' : o.wish, wishImg: '' }; ui.again = { id: o.id, rest: o.restId, shop: true }; save(); go('/r/' + o.restId); return; }
+      if (!c.ok.length) { toast('Esos platos ya no están en el menú de ' + r.short); go('/r/' + o.restId); return; }
       S.cart = { restId: o.restId, items: {}, mode: o.mode || 'dom' };
-      o.items.forEach(function (i) { S.cart.items[i.id] = i.qty; });
+      c.ok.forEach(function (i) { S.cart.items[i.id] = i.qty; });
+      ui.again = { id: o.id, rest: o.restId, gone: c.gone, changed: c.changed, at: o.createdAt };
       save(); go('/confirmar');
     },
     star: function (el) { ui.rate.stars = +el.dataset.v; render(); },

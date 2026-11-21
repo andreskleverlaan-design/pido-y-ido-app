@@ -199,6 +199,8 @@
   async function suggestBiz(x) { await ensureCust(); return check(await cust.rpc('suggest_biz', { p_slug: x.slug, p_name: x.name, p_kind: x.kind, p_town: x.town, p_note: x.note || '' })); }
   async function bizExtra() { await ensureCust(); return check(await cust.rpc('pronto_extra')) || []; }
   async function bizCounts() { await ensureCust(); return check(await cust.rpc('pronto_counts')) || []; }
+  // Resumen del mes del negocio (supabase/010-resumen-mes.sql). ym = 'AAAA-MM'.
+  async function restMonth(ym) { if (!restUid) throw new Error('no_rest'); return check(await rest.rpc('rest_resumen_mes', { p_mes: ym })); }
   async function promoOrders() { await ensureCust(); return check(await cust.rpc('promo_orders')); }
 
   // ---------- live updates ----------
@@ -222,7 +224,7 @@
     deliver: deliver, orderForRider: orderForRider,
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
-    saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
+    saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, restMonth: restMonth, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
   };
 })();
