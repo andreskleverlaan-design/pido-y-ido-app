@@ -158,16 +158,55 @@
   function isShop(r) { return !!r && !!r.kind && r.kind !== 'restaurante'; }
   function abreDe(r) { return (r && r.abre) || (isShop(r) ? '08:00' : '11:00'); }
   function cierraDe(r) { return (r && r.cierra) || (isShop(r) ? '20:00' : '21:00'); }
-  function horarioTxt(r) { return hmTxt(abreDe(r)) + ' – ' + hmTxt(cierraDe(r)); }
-  // Horas para programar: cada 30 min, desde 30 min después de abrir hasta la hora de cerrar, y al menos 1 hora desde ahora.
+  // ---------- Horario por día (r.horario = 7 días desde el domingo; cada día ['11:00','21:00'] o null = cerrado) ----------
+  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  function dowCo(t) { return new Date(t - CO_OFF).getUTCDay(); }
+  function minCo(t) { var d = new Date(t - CO_OFF); return d.getUTCHours() * 60 + d.getUTCMinutes(); }
+  function diaHoras(r, dow) { return r && r.horario ? (r.horario[dow] || null) : [abreDe(r), cierraDe(r)]; }
+  function rangoTxt(d) { return d ? hmTxt(d[0]) + ' – ' + hmTxt(d[1]) : 'Cerrado'; }
+  function horarioTxt(r, dow) { var d = diaHoras(r, dow == null ? dowCo(now()) : dow); return d ? rangoTxt(d) : 'cerrado ese día'; }
+  // Dentro del horario ahora (sin horario puesto: siempre, como antes, solo cuenta el botón Abierto/Cerrado).
+  function enHorario(r, t) { if (!r || !r.horario) return true; var d = diaHoras(r, dowCo(t)), m = minCo(t); return !!d && m >= hm(d[0]) && m < hm(d[1]); }
+  function abierto(r) { return !!r && !!S.open[r.id] && enHorario(r, now()); }
+  // Próxima vez que abre (hoy más tarde, mañana, o el día que toque), o null.
+  function proxAbre(r) {
+    if (!r || !r.horario) return null;
+    for (var k = 0; k < 8; k++) {
+      var day = coDay(now()) + k, d = diaHoras(r, new Date(day * 86400000).getUTCDay());
+      if (d) { var t = day * 86400000 + CO_OFF + hm(d[0]) * 60000; if (t > now()) return t; }
+    }
+    return null;
+  }
+  // Lo que ve el cliente: "Abierto hasta las 9:00 p. m." / "Cerrado · abre mañana a las 11:00 a. m."
+  function estadoTxt(r) {
+    if (!r.horario) return abierto(r) ? 'Abierto' : 'Cerrado ahora';
+    if (abierto(r)) return 'Abierto hasta ' + (hm(diaHoras(r, dowCo(now()))[1]) >= 13 * 60 ? 'las ' : 'la ') + hmTxt(diaHoras(r, dowCo(now()))[1]);
+    var t = S.open[r.id] ? proxAbre(r) : null;
+    return t ? 'Cerrado · abre ' + cuandoCo(t) : 'Cerrado ahora';
+  }
+  // Semana completa, empezando el lunes, para mostrar en la página del negocio.
+  function semanaHtml(r) {
+    var hoy = dowCo(now());
+    return '<div class="hor-week">' + [1, 2, 3, 4, 5, 6, 0].map(function (i) {
+      return '<div class="row between' + (i === hoy ? ' b' : '') + '"><span>' + capi(DIAS[i]) + (i === hoy ? ' (hoy)' : '') + '</span><span' + (diaHoras(r, i) ? '' : ' class="muted"') + '>' + rangoTxt(diaHoras(r, i)) + '</span></div>';
+    }).join('') + '</div>';
+  }
+  // Línea de horario en la página del negocio; con horario por día se abre la semana completa.
+  function horarioLine(r) {
+    if (r.horario) return '<details class="hor-line mt8"><summary class="xs row" style="gap:5px"><span class="' + (abierto(r) ? 'open-line' : 'muted') + ' row" style="gap:5px">' + ic('clock', 13) + estadoTxt(r) + '</span><span class="muted">· Ver horario</span>' + ic('down', 13) + '</summary>' + semanaHtml(r) + '</details>';
+    return progOn() ? '<div class="xs muted mt8 row" style="gap:5px">' + ic('clock', 13) + 'Horario: ' + horarioTxt(r) + '</div>' : '';
+  }
+  // Horas para programar: cada 30 min, desde 30 min después de abrir hasta la hora de cerrar de ese día, y al menos 1 hora desde ahora.
   function slotsDe(r, dayOff) {
-    var base = (coDay(now()) + dayOff) * 86400000 + CO_OFF, out = [], min = now() + 60 * 60000;
-    for (var m = Math.ceil((hm(abreDe(r)) + 30) / 30) * 30; m <= hm(cierraDe(r)); m += 30) { var t = base + m * 60000; if (t >= min) out.push(t); }
+    var day = coDay(now()) + dayOff, base = day * 86400000 + CO_OFF, out = [], min = now() + 60 * 60000;
+    var d = diaHoras(r, new Date(day * 86400000).getUTCDay());
+    if (!d) return out;
+    for (var m = Math.ceil((hm(d[0]) + 30) / 30) * 30; m <= hm(d[1]); m += 30) { var t = base + m * 60000; if (t >= min) out.push(t); }
     return out;
   }
   // Programar solo cuando la base de datos ya tiene el paso 009-programar.sql (si no, el pedido saldría como "lo antes posible").
   function progOn() { return !ONLINE || RESTAURANTS.some(function (r) { return r.progOk; }); }
-  function wantsLater(r) { return progOn() && (!S.open[r.id] || !!S.co.later); }
+  function wantsLater(r) { return progOn() && (!abierto(r) || !!S.co.later); }
   function progTag(o) { return o.scheduledFor && ['recibido', 'preparando', 'listo'].indexOf(o.status) >= 0 ? '<span class="badge prog">' + ic('clock', 12, { sw: 2.4 }) + capi(cuandoCo(o.scheduledFor)) + '</span>' : ''; }
   function bizWord(r) { return isShop(r) ? 'la tienda' : 'el restaurante'; }
   // Cover for a business: its photo, or (shops without a photo yet) a branded tile with the kind's icon.
@@ -199,6 +238,8 @@
       ] },
     { id: 'rosa', name: 'Piqueteadero Doña Rosa', short: 'Doña Rosa', img: IMG.pincho, rating: 4.8, count: 54, eta: '20–30 min', pickup: '10 min', min: 12000, fee: 0,
       cats: ['Asados', 'Empanadas', 'Arepas'], sub: 'Picadas · Chorizo · Pinchos', address: 'Calle 8 # 6-40, Barrio Libertadores', phone: '3100000003', nequi: '310 000 0003',
+      // Demo del horario por día: abre por la tarde; los lunes no abre.
+      horario: [['12:00', '22:00'], null, ['16:00', '23:00'], ['16:00', '23:00'], ['16:00', '23:00'], ['16:00', '23:30'], ['12:00', '23:30']],
       dishes: [
         { id: 'picada', name: 'Picada para dos', desc: 'Carne, chorizo, morcilla, papa criolla y arepa', price: 38000, img: IMG.pincho, top: true },
         { id: 'pincho', name: 'Pincho de res', desc: 'Con papa salada y ají', price: 9000, img: IMG.carne },
@@ -1209,14 +1250,15 @@
 
   // ---------- Customer ----------
   function restCard(r) {
-    var open = S.open[r.id];
+    var open = abierto(r);
     return '<a class="rest-card' + (open ? '' : ' closed') + '" href="#/r/' + r.id + '"><div style="position:relative">' + cover(r, '', 'height:168px;width:100%') +
       (isShop(r) ? '<span class="over kind-over">' + ic(kindOf(r).icon, 14, { sw: 2.2 }) + kindOf(r).t + '</span>' : '') +
       (r.fee === 0 ? '<span class="over" style="left:12px;top:12px;background:var(--green);color:#fff">Domicilio gratis</span>' : '') +
       '<span class="over" style="right:12px;bottom:12px;background:#fff">' + r.eta + '</span>' +
-      (open ? '' : '<div class="closed-veil"><span>' + (progOn() ? 'Cerrado · puedes programar' : 'Cerrado ahora') + '</span></div>') +
+      (open ? '' : '<div class="closed-veil"><span>' + (estadoTxt(r).indexOf('abre ') > 0 ? capi(estadoTxt(r).replace('Cerrado · ', '')) : progOn() ? 'Cerrado · puedes programar' : 'Cerrado ahora') + '</span></div>') +
       '</div><div style="padding:12px 14px"><div class="row between"><div class="t-h3 ellipsis">' + r.name + '</div><div class="small b" style="flex:none"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + '</div></div>' +
-      '<div class="small muted mt4">' + esc(r.sub || kindOf(r).t) + (r.min && !isShop(r) ? ' · Mín. ' + fmt(r.min) : '') + (r.fee ? ' · Domicilio ' + fmt(r.fee) : '') + '</div></div></a>';
+      '<div class="small muted mt4">' + esc(r.sub || kindOf(r).t) + (r.min && !isShop(r) ? ' · Mín. ' + fmt(r.min) : '') + (r.fee ? ' · Domicilio ' + fmt(r.fee) : '') + '</div>' +
+      (r.horario && open ? '<div class="xs mt4 row open-line" style="gap:5px">' + ic('clock', 12) + estadoTxt(r) + '</div>' : '') + '</div></a>';
   }
   function cartBar(above) {
     var n = cartCount(); if (!n) return '';
@@ -1230,8 +1272,8 @@
     var shops = shown().filter(isShop), pr = prontoHere(), prShops = pr.filter(isShop), tiendas = (shops.length || prShops.length) && ui.home === 'tiendas';
     var base = shown().filter(function (r) { return isShop(r) === !!tiendas; });
     var list = base.filter(function (r) { return tiendas ? (!ui.kind || r.kind === ui.kind) : (!ui.cat || r.cats.indexOf(ui.cat) >= 0); });
-    var openN = base.filter(function (r) { return S.open[r.id]; }).length;
-    list.sort(function (a, b) { return (S.open[b.id] ? 1 : 0) - (S.open[a.id] ? 1 : 0); });
+    var openN = base.filter(abierto).length;
+    list.sort(function (a, b) { return (abierto(b) ? 1 : 0) - (abierto(a) ? 1 : 0); });
     var h = '<div class="screen has-tabs' + (cartCount() ? ' has-cta' : '') + '">' +
       '<div class="row">' + logo(40, 'mark') + '<button class="grow" style="text-align:left" data-a="editAddress"><div class="xs muted">Entregar en</div><div class="b row" style="gap:4px;font-size:15px"><span class="ellipsis">' + (S.user.address ? esc(S.user.address.split(',')[0]) + ', ' + LIVE_TOWN : LIVE_TOWN + ' · Agrega tu dirección') + '</span>' + ic('down', 16) + '</div></button>' +
       '<a class="icon-btn" href="#/confirmar" aria-label="Carrito" style="position:relative">' + ic('bag', 20) + (cartCount() ? '<span style="position:absolute;top:-2px;right:-2px;background:var(--cta);color:#fff;border-radius:999px;min-width:18px;height:18px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">' + cartCount() + '</span>' : '') + '</a></div>' +
@@ -1252,7 +1294,7 @@
       var again = againList(6).filter(function (o) { return isShop(R(o.restId)) === !!tiendas; });
       if (again.length) h += '<div class="row between mt20"><div class="t-h2">Pedir de nuevo</div><a class="small muted" href="#/pedidos">Ver todos</a></div><div class="again-row mt12">' + again.map(againCard).join('') + '</div>';
       var favs = shown().filter(function (r) { return isFav(r.id) && isShop(r) === !!tiendas; });
-      if (favs.length) h += '<div class="t-h2 mt20">Tus favoritos</div><div class="chips scroll mt12">' + favs.map(function (r) { return '<a class="chip fav-chip" href="#/r/' + r.id + '">' + cover(r, 'fav-ph') + esc(r.short || r.name) + (S.open[r.id] ? '' : ' <span class="xs muted">· cerrado</span>') + '</a>'; }).join('') + '</div>';
+      if (favs.length) h += '<div class="t-h2 mt20">Tus favoritos</div><div class="chips scroll mt12">' + favs.map(function (r) { return '<a class="chip fav-chip" href="#/r/' + r.id + '">' + cover(r, 'fav-ph') + esc(r.short || r.name) + (abierto(r) ? '' : ' <span class="xs muted">· cerrado</span>') + '</a>'; }).join('') + '</div>';
     }
     var filt = tiendas ? ui.kind && kindOf({ kind: ui.kind }).t : ui.cat;
     h += '<div class="row between mt24"><div class="t-h2">' + (filt || (tiendas ? 'Tiendas cerca' : 'Cerca de ti')) + '</div><div class="small muted">' + (filt ? '<button class="link" data-a="' + (tiendas ? 'kindPick' : 'cat') + '" data-v="">Ver todos</button>' : openN + ' abiertos') + '</div></div><div class="mt12">' +
@@ -1285,14 +1327,14 @@
     if (ONLINE && !r.id) return ui.synced ? '<div class="screen">' + topbar('Restaurante', '/inicio') + '<div class="empty">No encontramos este restaurante.</div></div>' : scrLoading('Restaurante');
     if (query && query.p) { S.ref = { slug: query.p, restId: id, at: now() }; save(); }
     if (isShop(r)) return scrShop(r);
-    var open = S.open[r.id];
+    var open = abierto(r);
     var mode = S.cart.restId === r.id ? S.cart.mode : 'dom';
     var h = '<div class="screen flush' + (cartCount() ? ' has-cta' : '') + '"><div class="hero">' + photo(r.img, '', 'height:232px;width:100%') +
       '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a>' + favBtn(r) + '</div>' +
       '<div class="card raised info-card"><h1 class="t-title" style="font-size:24px">' + r.name + '</h1><div class="small muted mt4"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + ' · ' + r.eta + ' · Mín. ' + fmt(r.min) + '</div>' +
       '<div class="seg mt12"><button class="' + (mode === 'dom' ? 'on' : '') + '" data-a="mode" data-v="dom" data-r="' + r.id + '">Domicilio · ' + (r.fee ? fmt(r.fee) : 'gratis') + '</button><button class="' + (mode === 'rec' ? 'on' : '') + '" data-a="mode" data-v="rec" data-r="' + r.id + '">Recoger · ' + r.pickup + '</button></div>' +
-      (progOn() ? '<div class="xs muted mt8 row" style="gap:5px">' + ic('clock', 13) + 'Horario: ' + horarioTxt(r) + '</div>' : '') +
-      (open ? '' : '<div class="note amber mt12"><b>Cerrado ahora.</b> ' + (progOn() ? 'Puedes pedir y programarlo para más tarde.' : 'Puedes mirar el menú, pero no recibe pedidos.') + '</div>') +
+      horarioLine(r) +
+      (open ? '' : '<div class="note amber mt12"><b>' + estadoTxt(r) + '.</b> ' + (progOn() ? 'Puedes pedir y programarlo para más tarde.' : 'Puedes mirar el menú, pero no recibe pedidos.') + '</div>') +
       (S.ref && S.ref.restId === r.id ? '<div class="note green mt12">Llegaste con el enlace de un vecino que recomienda este restaurante.</div>' : '') +
       '</div><div class="pad"><div class="t-h2 mt20">Lo más pedido</div><div class="mt12">';
     h += r.dishes.map(function (d) {
@@ -1327,7 +1369,7 @@
     return '<a class="wish-pic"' + (link ? ' href="' + esc(u) + '" target="_blank" rel="noopener"' : '') + ' aria-label="Foto de la lista">' + (u ? '<img src="' + esc(u) + '" alt="">' : ic('camera', 22)) + '</a>';
   }
   function scrShop(r) {
-    var open = S.open[r.id], k = kindOf(r), mine = S.cart.restId === r.id;
+    var open = abierto(r), k = kindOf(r), mine = S.cart.restId === r.id;
     var mode = mine ? S.cart.mode : 'dom';
     var other = S.cart.restId && !mine && cartCount() ? R(S.cart.restId) : null;
     var wish = mine ? (S.cart.wish || '') : '', img = mine ? S.cart.wishImg : '';
@@ -1336,7 +1378,8 @@
       '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a>' + favBtn(r) + '</div>' +
       '<div class="card raised info-card"><span class="badge green">' + ic(k.icon, 13, { sw: 2.4 }) + ' ' + k.t + '</span><h1 class="t-title mt8" style="font-size:24px">' + esc(r.name) + '</h1><div class="small muted mt4"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + ' · ' + r.eta + (r.sub ? ' · ' + esc(r.sub) : '') + '</div>' +
       '<div class="seg mt12"><button class="' + (mode === 'dom' ? 'on' : '') + '" data-a="mode" data-v="dom" data-r="' + r.id + '">Domicilio · ' + (r.fee ? fmt(r.fee) : 'gratis') + '</button><button class="' + (mode === 'rec' ? 'on' : '') + '" data-a="mode" data-v="rec" data-r="' + r.id + '">Recoger · ' + r.pickup + '</button></div>' +
-      (open ? '' : '<div class="note amber mt12"><b>Cerrado ahora.</b> ' + (progOn() ? 'Puedes enviar tu lista y programarla para más tarde (horario: ' + horarioTxt(r) + ').' : 'No recibe pedidos en este momento.') + '</div>') +
+      horarioLine(r) +
+      (open ? '' : '<div class="note amber mt12"><b>' + estadoTxt(r) + '.</b> ' + (progOn() ? 'Puedes enviar tu lista y programarla para más tarde.' : 'No recibe pedidos en este momento.') + '</div>') +
       (S.ref && S.ref.restId === r.id ? '<div class="note green mt12">Llegaste con el enlace de un vecino que recomienda esta tienda.</div>' : '') +
       '</div><div class="pad"><div class="card mt20"><div class="row" style="gap:12px"><span class="pi">' + ic('list', 18) + '</span><div class="grow"><div class="t-h3">¿Qué necesitas?</div><div class="small muted">Escribe tu pedido, una cosa por línea.</div></div></div>' +
       (other ? '<div class="note amber mt12">Tienes un carrito de <b>' + esc(other.short) + '</b>. Si escribes aquí, ese carrito se vacía.</div>' : '') +
@@ -1373,18 +1416,18 @@
   // "¿Para cuándo?": lo antes posible o programado (hoy / mañana, dentro del horario del negocio).
   function whenCard(r) {
     if (!progOn()) return '';
-    var co = S.co, open = !!S.open[r.id], s0 = slotsDe(r, 0), s1 = slotsDe(r, 1), all = s0.concat(s1);
+    var co = S.co, open = abierto(r), s0 = slotsDe(r, 0), s1 = slotsDe(r, 1), all = s0.concat(s1);
     if (co.when && all.indexOf(co.when) < 0) co.when = null;
-    var later = wantsLater(r), day = co.day === 1 || !s0.length ? 1 : 0, list = day ? s1 : s0;
+    var later = wantsLater(r), day = (co.day === 1 && s1.length) || !s0.length ? 1 : 0, list = day ? s1 : s0;
     var rec = S.cart.mode === 'rec';
     var h = '<div class="card mt12"><div class="row b" style="gap:8px;margin-bottom:12px"><span class="orange">' + ic('clock', 18) + '</span>¿Para cuándo?</div>' +
-      '<button class="radio-row' + (later ? '' : ' on') + (open ? '' : ' off') + '" data-a="whenNow"' + (open ? '' : ' disabled') + '><span class="ring"></span><span class="grow"><span class="b" style="display:block">Lo antes posible</span><span class="small muted">' + (open ? (rec ? 'Listo en ' + esc(r.pickup) : 'Llega en ' + esc(r.eta)) : 'Ahora está cerrado') + '</span></span></button>' +
+      '<button class="radio-row' + (later ? '' : ' on') + (open ? '' : ' off') + '" data-a="whenNow"' + (open ? '' : ' disabled') + '><span class="ring"></span><span class="grow"><span class="b" style="display:block">Lo antes posible</span><span class="small muted">' + (open ? (rec ? 'Listo en ' + esc(r.pickup) : 'Llega en ' + esc(r.eta)) : (r.horario ? estadoTxt(r) : 'Ahora está cerrado')) + '</span></span></button>' +
       '<button class="radio-row' + (later ? ' on' : '') + '" data-a="whenLater"><span class="ring"></span><span class="grow"><span class="b" style="display:block">Para más tarde</span><span class="small muted">' + (later && co.when ? capi(cuandoCo(co.when)) : 'Elige día y hora') + '</span></span></button>';
     if (later) {
-      if (!all.length) return h + '<div class="note amber mt8">No quedan horas para programar hoy ni mañana. Horario: ' + horarioTxt(r) + '.</div></div>';
-      h += '<div class="seg mt8">' + (s0.length ? '<button class="' + (day === 0 ? 'on' : '') + '" data-a="whenDay" data-v="0">Hoy</button>' : '') + '<button class="' + (day === 1 ? 'on' : '') + '" data-a="whenDay" data-v="1">Mañana</button></div>' +
+      if (!all.length) return h + '<div class="note amber mt8">No quedan horas para programar hoy ni mañana.' + (r.horario ? ' ' + estadoTxt(r) + '.' : ' Horario: ' + horarioTxt(r) + '.') + '</div></div>';
+      h += '<div class="seg mt8">' + (s0.length ? '<button class="' + (day === 0 ? 'on' : '') + '" data-a="whenDay" data-v="0">Hoy</button>' : '') + (s1.length ? '<button class="' + (day === 1 ? 'on' : '') + '" data-a="whenDay" data-v="1">Mañana</button>' : '') + '</div>' +
         '<div class="chips scroll mt12">' + list.map(function (t) { return '<button class="chip sm' + (co.when === t ? ' on' : '') + '" data-a="whenPick" data-v="' + t + '">' + horaCo(t) + '</button>'; }).join('') + '</div>' +
-        '<div class="xs muted mt8">' + (rec ? 'Hora para recoger' : 'Hora de entrega aproximada') + '. Horario de ' + esc(r.short) + ': ' + horarioTxt(r) + '.' + (open ? '' : ' ' + esc(r.short) + ' ve tu pedido cuando abra y lo acepta.') + '</div>';
+        '<div class="xs muted mt8">' + (rec ? 'Hora para recoger' : 'Hora de entrega aproximada') + '. Horario de ' + esc(r.short) + (day ? ' mañana: ' : ' hoy: ') + horarioTxt(r, dowCo(now() + day * 86400000)) + '.' + (open ? '' : ' ' + esc(r.short) + ' ve tu pedido cuando abra y lo acepta.') + '</div>';
     }
     return h + '</div>';
   }
@@ -1393,7 +1436,7 @@
     if (wantsLater(r)) return S.co.when ? 'Programar · ' + capi(cuandoCo(S.co.when)) : 'Elige la hora';
     return ok;
   }
-  function ctaOff(r) { return wantsLater(r) ? !S.co.when : !S.open[r.id]; }
+  function ctaOff(r) { return wantsLater(r) ? !S.co.when : !abierto(r); }
   function scrConfirmar() {
     var lines = cartLines(), shop = cartShop();
     if (!lines.length && !wishHas()) {
@@ -1646,6 +1689,7 @@
       '<div class="stat"><div class="xs muted">Promedio</div><div class="v">' + avgMin + '</div><div class="xs muted">min</div></div></div>' +
       '<a class="card mt12 row mes-link" href="#/rest/mes">' + '<span class="mes-ic">' + ic('chart', 20) + '</span><div class="grow"><div class="b">Tu mes con Pido y Ido</div><div class="xs muted">Clientes nuevos, ventas y comisión de ' + ymTxt(ymOf(now())) + '</div></div>' + ic('right', 18) + '</a>' +
       (ONLINE ? setupCard(r) : '') +
+      (S.open[r.id] && r.horario && !enHorario(r, now()) ? '<div class="note grey mt12"><b style="color:var(--text)">Fuera de tu horario.</b> Los clientes ven: «' + estadoTxt(r) + '». Pueden programar pedidos para cuando abras. <a href="#/rest/menu" class="b orange">Cambiar horario</a></div>' : '') +
       (S.open[r.id] || (ONLINE && !setupDone(r)) ? '' : '<div class="note amber mt12"><b>Estás cerrado.</b> ' + (ONLINE ? 'Cuando quieras recibir pedidos, toca <b>Abierto</b> arriba.' : 'Los clientes ven tu menú, pero no pueden pedir.') + '</div>') +
       '<div class="chips scroll mt16">' + [['nuevos', 'Nuevos'], ['preparando', 'Preparando'], ['camino', 'En camino'], ['hechos', 'Entregados']].map(function (t) {
         var n = groups[t[0]].length;
@@ -2001,17 +2045,32 @@
     if (kind === 'dish') { var w = document.getElementById('dishPh'); if (w) w.innerHTML = photoPick(ui.dish.img, 'dishImg', 'dish'); }
     else render();
   }
-  var RM_KEYS = ['name', 'sub', 'address', 'phone', 'nequi', 'fee', 'min', 'eta', 'img', 'cats', 'lat', 'lng', 'radius', 'kind', 'abre', 'cierra'];
-  function rmVal(r, k) { var v = k === 'radius' ? (r.radius || 3) : k === 'kind' ? (r.kind || 'restaurante') : k === 'abre' ? abreDe(r) : k === 'cierra' ? cierraDe(r) : r[k]; return JSON.stringify(v == null ? '' : v); }
+  var RM_KEYS = ['name', 'sub', 'address', 'phone', 'nequi', 'fee', 'min', 'eta', 'img', 'cats', 'lat', 'lng', 'radius', 'kind', 'abre', 'cierra', 'hor'];
+  // Horario por día solo cuando la base de datos ya tiene el paso 012-horario.sql.
+  function horOn() { return !ONLINE || RESTAURANTS.some(function (r) { return r.horOk; }); }
+  function horDe(r) { return r.hor !== undefined ? r.hor : r.horario ? JSON.parse(JSON.stringify(r.horario)) : DIAS.map(function () { return [abreDe(r), cierraDe(r)]; }); }
+  function rmVal(r, k) { var v = k === 'radius' ? (r.radius || 3) : k === 'kind' ? (r.kind || 'restaurante') : k === 'abre' ? abreDe(r) : k === 'cierra' ? cierraDe(r) : k === 'hor' ? (horOn() ? horDe(r) : '') : r[k]; return JSON.stringify(v == null ? '' : v); }
   function rmDirty(r, f) { return RM_KEYS.some(function (k) { return rmVal(f, k) !== rmVal(r, k); }); }
   function hourSelect(id, path, cur, from, to) {
     var h = '<select class="input" id="' + id + '" data-m="' + path + '" data-dirty="1">';
     for (var m = from; m <= to; m += 30) { var v = (m < 600 ? '0' : '') + Math.floor(m / 60) + ':' + (m % 60 ? '30' : '00'); h += '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + hmTxt(v) + '</option>'; }
     return h + '</select>';
   }
+  // Editor del horario: una fila por día, empezando el lunes. Cada día abierto (abre / cierra) o cerrado.
+  function horEditor(f) {
+    var rows = [1, 2, 3, 4, 5, 6, 0].map(function (i) {
+      var d = f.hor[i];
+      return '<div class="hor-row' + (d ? '' : ' off') + '"><button class="hor-day" data-a="horDay" data-v="' + i + '" aria-pressed="' + !!d + '"><span class="tr-mini"></span>' + capi(DIAS[i]).slice(0, 3) + '</button>' +
+        (d ? '<div class="hor-sel">' + hourSelect('rmH' + i + 'a', 'ui.rm.hor.' + i + '.0', d[0], 5 * 60, 20 * 60) + '<span class="muted">a</span>' + hourSelect('rmH' + i + 'c', 'ui.rm.hor.' + i + '.1', d[1], 8 * 60, 23 * 60 + 30) + '</div>'
+          : '<div class="hor-closed muted">Cerrado todo el día</div>') + '</div>';
+    }).join('');
+    return '<h2 class="t-h2 mt24">Horario</h2><div class="card mt12 hor-card">' + rows +
+      '<button class="chip sm mt12" data-a="horCopy">' + ic('refresh', 14) + 'Copiar el lunes a los demás días</button>' +
+      '<div class="xs muted mt12">Los clientes ven <b>«Abierto hasta …»</b> o <b>«Cerrado · abre …»</b>. Fuera de este horario no te llegan pedidos para ya, solo <b>pedidos programados</b> para cuando abras. ¿Un día no abres o estás muy ocupado? Toca <b>Abierto</b> arriba para pausar.</div></div>';
+  }
   function scrRestMenu() {
     var r = R(S.restId);
-    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, kind: r.kind || 'restaurante', name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, img: r.img, cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3, abre: abreDe(r), cierra: cierraDe(r) });
+    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, kind: r.kind || 'restaurante', name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, img: r.img, cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3, abre: abreDe(r), cierra: cierraDe(r), hor: horOn() ? horDe(r) : undefined });
     var shop = isShop(f), k = kindOf(f), word = shop ? 'tienda' : 'restaurante';
     var chip = function (key, val, label) { return '<button class="chip sm' + (String(f[key]) === String(val) ? ' on' : '') + '" data-a="rmSet" data-k="' + key + '" data-v="' + esc(val) + '">' + label + '</button>'; };
     var dirty = rmDirty(r, f);
@@ -2036,8 +2095,8 @@
       '<div class="label mt16">Domicilio</div><div class="chips">' + [0, 2000, 3000, 4000, 5000].map(function (v) { return chip('fee', v, v ? fmt(v) : 'Gratis'); }).join('') + '</div>' +
       (shop ? '' : '<div class="label mt16">Pedido mínimo</div><div class="chips">' + [0, 10000, 15000, 20000].map(function (v) { return chip('min', v, v ? fmt(v) : 'Sin mínimo'); }).join('') + '</div>') +
       '<div class="label mt16">Tiempo de entrega</div><div class="chips">' + ['20–30 min', '30–40 min', '40–60 min'].map(function (v) { return chip('eta', v, v); }).join('') + '</div></div>' +
-      // opening hours (for scheduled orders)
-      (progOn() ? '<h2 class="t-h2 mt24">Horario</h2><div class="card mt12"><div class="row" style="gap:10px">' +
+      // opening hours: per weekday (012) or one range for every day (009)
+      (horOn() ? horEditor(f) : progOn() ? '<h2 class="t-h2 mt24">Horario</h2><div class="card mt12"><div class="row" style="gap:10px">' +
       '<div class="grow"><label class="label" for="rmAb">Abre</label>' + hourSelect('rmAb', 'ui.rm.abre', f.abre, 5 * 60, 14 * 60) + '</div>' +
       '<div class="grow"><label class="label" for="rmCi">Cierra</label>' + hourSelect('rmCi', 'ui.rm.cierra', f.cierra, 12 * 60, 23 * 60 + 30) + '</div></div>' +
       '<div class="xs muted mt8">Los clientes pueden <b>programar pedidos</b> para hoy o mañana dentro de este horario, también cuando estás cerrado. Tú los aceptas igual que los demás.</div></div>' : '') +
@@ -2571,18 +2630,32 @@
     rmSet: function (el) { var k = el.dataset.k; ui.rm[k] = (k === 'fee' || k === 'min' || k === 'radius') ? +el.dataset.v : el.dataset.v; render(); },
     rmCat: function (el) { var c = ui.rm.cats, i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else c.push(el.dataset.v); render(); },
     rmImg: function (el) { ui.rm.img = el.dataset.v; render(); },
+    horDay: function (el) {
+      var h = ui.rm.hor, i = +el.dataset.v;
+      if (h[i]) h[i] = null;
+      else { var prev = [1, 2, 3, 4, 5, 6, 0].map(function (j) { return h[j]; }).filter(function (d) { return d; })[0]; h[i] = prev ? prev.slice() : [abreDe(ui.rm), cierraDe(ui.rm)]; }
+      render();
+    },
+    horCopy: function () { var h = ui.rm.hor, mon = h[1] || [abreDe(ui.rm), cierraDe(ui.rm)]; for (var i = 0; i < 7; i++) if (h[i]) h[i] = mon.slice(); render(); toast('Mismo horario todos los días abiertos'); },
     rmSave: function () {
       var f = ui.rm; if (!f || ui.busy) return;
       if (!String(f.name || '').trim()) { toast('Escribe el nombre'); return; }
       var fields = { name: f.name.trim(), short: shortName(f.name), sub: String(f.sub || '').trim(), address: String(f.address || '').trim(),
         phone: String(f.phone || '').replace(/\D/g, ''), nequi: String(f.nequi || '').trim(), fee: +f.fee || 0, min: +f.min || 0, eta: f.eta, img: f.img, cats: f.cats.slice(), radius_km: +f.radius || 3 };
-      if (hm(f.cierra) < hm(f.abre) + 60) { toast('La hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
-      if (f.abre !== abreDe(R(S.restId)) || f.cierra !== cierraDe(R(S.restId))) { fields.abre = f.abre; fields.cierra = f.cierra; }
+      if (horOn()) {
+        var bad = [1, 2, 3, 4, 5, 6, 0].filter(function (i) { return f.hor[i] && hm(f.hor[i][1]) < hm(f.hor[i][0]) + 60; })[0];
+        if (bad != null) { toast(capi(DIAS[bad]) + ': la hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
+        if (!f.hor.some(function (d) { return d; })) { toast('Deja al menos un día abierto'); return; }
+        if (!R(S.restId).horario || JSON.stringify(f.hor) !== JSON.stringify(R(S.restId).horario)) fields.horario = f.hor;
+      } else {
+        if (hm(f.cierra) < hm(f.abre) + 60) { toast('La hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
+        if (f.abre !== abreDe(R(S.restId)) || f.cierra !== cierraDe(R(S.restId))) { fields.abre = f.abre; fields.cierra = f.cierra; }
+      }
       if (hasLoc(f)) { fields.lat = f.lat; fields.lng = f.lng; }
       if ((f.kind || 'restaurante') !== (R(S.restId).kind || 'restaurante')) fields.kind = f.kind;
       ui.busy = true; render();
       CLOUD.updateRest(fields).then(function () { ui.busy = false; Object.assign(R(S.restId), fields, { radius: fields.radius_km }); ui.rm = null; render(); toast('Datos guardados'); sync(); },
-        function (e) { ui.busy = false; render(); toast(/kind/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (004-tiendas.sql).' : /abre|cierra/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (009-programar.sql).' : errTxt(e)); });
+        function (e) { ui.busy = false; render(); toast(/kind/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (004-tiendas.sql).' : /horario/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (012-horario.sql).' : /abre|cierra/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (009-programar.sql).' : errTxt(e)); });
     },
     dishForm: function () {
       ui.dish = { img: IMG.asado };

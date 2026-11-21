@@ -512,3 +512,21 @@ select.input,select.input:focus{appearance:none;-webkit-appearance:none;backgrou
 .wk-bar{flex:none;width:100%;max-width:44px;background:var(--cta);border-radius:8px 8px 3px 3px}
 .wk-n{font-size:12px;font-weight:700}
 .compare{border:1.5px solid var(--border)}
+/* Horario por día */
+.open-line{color:var(--green);font-weight:600}
+.hor-line summary{list-style:none;cursor:pointer;flex-wrap:wrap}
+.hor-line summary::-webkit-details-marker{display:none}
+.hor-line[open] summary svg:last-child{transform:rotate(180deg)}
+.hor-week{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--input);font-size:13px;display:grid;gap:6px}
+.hor-card{padding-top:6px}
+.hor-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line, #EFEAE3);min-height:56px}
+.hor-row:last-of-type{border-bottom:0}
+.hor-day{display:flex;align-items:center;gap:8px;width:78px;flex:none;font-weight:700;font-size:14px;text-align:left}
+.tr-mini{width:30px;height:18px;border-radius:999px;background:var(--green);position:relative;flex:none;transition:background .2s}
+.tr-mini::after{content:"";position:absolute;top:2px;left:14px;width:14px;height:14px;border-radius:999px;background:#fff;transition:left .2s}
+.hor-row.off .tr-mini{background:#C9C1B7}
+.hor-row.off .tr-mini::after{left:2px}
+.hor-row.off .hor-day{color:var(--muted)}
+.hor-sel{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.hor-sel .input{flex:1;min-width:0;height:44px;padding:0 8px;font-size:14px}
+.hor-closed{flex:1;font-size:14px}
