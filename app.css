@@ -533,3 +533,6 @@ select.input,select.input:focus{appearance:none;-webkit-appearance:none;backgrou
 /* Pasos del enlace del domiciliario (014-entrega) */
 .step-n{width:28px;height:28px;border-radius:50%;background:var(--track);color:var(--text);display:grid;place-items:center;font-weight:700;font-size:14px;flex:none}
 .step-n.ok{background:var(--green);color:#fff}
+/* Nequi / Daviplata: el negocio confirma si llegó la plata (015) */
+.pay-check{background:#FFF7F2;border:1.5px solid #F7D3C0;border-radius:12px;padding:10px 12px}
+.pay-check .xs.b{color:var(--text)}
