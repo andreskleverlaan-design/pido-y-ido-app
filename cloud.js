@@ -53,7 +53,8 @@
       geo: o.geo, ref: o.ref_slug ? { slug: o.ref_slug } : null, rating: o.rating, tags: o.tags || [], wish: o.wish || '', wishImg: o.wish_img || '',
       scheduledFor: ms(o.scheduled_for), createdAt: ms(o.created_at), acceptedAt: ms(o.accepted_at), sentAt: ms(o.sent_at), deliveredAt: ms(o.delivered_at),
       riderKey: o.rider_key || '', pickedAt: ms(o.picked_at), deliveredBy: o.delivered_by || '',
-      readyAt: ms(o.ready_at), payOk: o.pay_ok == null ? null : !!o.pay_ok, flags: 0
+      readyAt: ms(o.ready_at), payOk: o.pay_ok == null ? null : !!o.pay_ok, flags: 0,
+      issue: o.issue || '', issueNote: o.issue_note || '', issueAt: ms(o.issue_at), issueDoneAt: ms(o.issue_done_at)
     };
   }
   function mapRider(r) {
@@ -137,6 +138,8 @@
   async function orderForRider(dbId, key) { await ensureCust(); return check(await cust.rpc('order_for_rider', { p_id: dbId, p_key: key || '' })); }
   async function riderPicked(dbId, key) { await ensureCust(); return check(await cust.rpc('rider_picked', { p_id: dbId, p_key: key || '' })); }
   // El cliente confirma "Ya lo recibí".
+  // "¿Algo salió mal?" (016-reclamo.sql).
+  async function reportIssue(dbId, kind, note) { await ensureCust(); return check(await cust.rpc('report_issue', { p_id: dbId, p_kind: kind, p_note: note || '' })); }
   async function confirmReceived(dbId) { await ensureCust(); return check(await cust.rpc('confirm_received', { p_id: dbId })); }
 
   // ---------- restaurant ----------
@@ -162,6 +165,7 @@
   async function updateOrder(dbId, fields) { return check(await rest.from('orders').update(fields).eq('id', dbId)); }
   // Nequi / Daviplata recibido o no, y cerrar sin entregar (015-cierre.sql).
   async function payOk(dbId, ok) { return check(await rest.rpc('rest_pay_ok', { p_id: dbId, p_ok: !!ok })); }
+  async function issueDone(dbId) { return check(await rest.rpc('rest_issue_done', { p_id: dbId })); }
   async function notDelivered(dbId, reason) { return check(await rest.rpc('rest_not_delivered', { p_id: dbId, p_reason: reason || '' })); }
   async function addMyRider(r) {
     var row = check(await rest.from('riders').insert({ owner: restUid, name: r.name, phone: r.phone, vehicle: r.vehicle, barrio: r.barrio || '', board: false }).select().single());
@@ -246,7 +250,7 @@
   window.PYI_CLOUD = {
     fetchAll: fetchAll, placeOrder: placeOrder, orderContact: orderContact, markPaid: markPaid, cancelOrder: cancelOrder, rateOrder: rateOrder,
     deliver: deliver, orderForRider: orderForRider, riderPicked: riderPicked, confirmReceived: confirmReceived,
-    restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder, payOk: payOk, notDelivered: notDelivered,
+    restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder, payOk: payOk, notDelivered: notDelivered, reportIssue: reportIssue, issueDone: issueDone,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
     saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, restMonth: restMonth, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
