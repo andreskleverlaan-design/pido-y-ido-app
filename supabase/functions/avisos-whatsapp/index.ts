@@ -72,7 +72,8 @@ Deno.serve(async (req) => {
     const to = o.customer?.phone || "";
     if (o.status === "preparando") res.push(await send(to, "pyi_pedido_aceptado", [r.name, pad(o.id), String(o.eta_min || 30)]));
     if (o.status === "en_camino") res.push(await send(to, "pyi_pedido_en_camino", [r.name, pad(o.id)]));
-    if (o.status === "rechazado") res.push(await send(to, "pyi_pedido_rechazado", [r.name, pad(o.id)]));
+    // sin_respuesta (015-cierre.sql): mismo aviso que rechazado, para que el cliente pida en otro lado.
+    if (o.status === "rechazado" || o.status === "sin_respuesta") res.push(await send(to, "pyi_pedido_rechazado", [r.name, pad(o.id)]));
   }
   return new Response(JSON.stringify({ ok: true, res }), { headers: { "Content-Type": "application/json" } });
 });

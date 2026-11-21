@@ -52,7 +52,8 @@
       discount: o.discount || 0, paidClaimAt: ms(o.paid_claim_at),
       geo: o.geo, ref: o.ref_slug ? { slug: o.ref_slug } : null, rating: o.rating, tags: o.tags || [], wish: o.wish || '', wishImg: o.wish_img || '',
       scheduledFor: ms(o.scheduled_for), createdAt: ms(o.created_at), acceptedAt: ms(o.accepted_at), sentAt: ms(o.sent_at), deliveredAt: ms(o.delivered_at),
-      riderKey: o.rider_key || '', pickedAt: ms(o.picked_at), deliveredBy: o.delivered_by || ''
+      riderKey: o.rider_key || '', pickedAt: ms(o.picked_at), deliveredBy: o.delivered_by || '',
+      readyAt: ms(o.ready_at), payOk: o.pay_ok == null ? null : !!o.pay_ok, flags: 0
     };
   }
   function mapRider(r) {
@@ -60,9 +61,17 @@
   }
 
   // Everything the app shows, in one go.
+  // Cerrar pedidos colgados (015-cierre.sql): como mucho una vez por minuto. Sin ese paso no pasa nada.
+  var staleAt = 0;
+  async function closeStale() {
+    if (Date.now() - staleAt < 60000) return;
+    staleAt = Date.now();
+    try { await cust.rpc('close_stale'); } catch (e) {}
+  }
   async function fetchAll() {
     await ensureCust();
     await restSession();
+    await closeStale();
     var out = { custUid: custUid, restUid: restUid, myRest: null, restaurants: [], orders: [], riders: {}, myRiders: [], myProfile: null, reward: null };
     var q = [
       cust.from('restaurants').select('*').order('created_at'),
@@ -92,6 +101,12 @@
         rest.from('rest_riders').select('rider_id').eq('rest_id', myRest).order('created_at')
       ]);
       check(r2[0]).forEach(function (o) { if (!byId[o.id]) byId[o.id] = mapOrder(o, false); });
+      // ¿Clientes con pedidos sin pagar o sin recibir? Solo para pedidos nuevos.
+      var nuevos = check(r2[0]).filter(function (o) { return o.status === 'recibido'; }).map(function (o) { return o.id; });
+      if (nuevos.length) try {
+        var fl = await rest.rpc('order_flags', { p_ids: nuevos });
+        if (!fl.error) (fl.data || []).forEach(function (x) { if (byId[x.order_id]) byId[x.order_id].flags = x.fallos || 0; });
+      } catch (e) {}
       out.myRiders = check(r2[1]).map(function (x) { return x.rider_id; });
       // Mi WhatsApp y Nequi: ya no son públicos, solo los ve el dueño (006-clientes-fieles.sql).
       try {
@@ -145,6 +160,9 @@
   async function restLogout() { await rest.auth.signOut(); restUid = null; myRest = null; }
   async function updateRest(fields) { return check(await rest.from('restaurants').update(fields).eq('id', myRest)); }
   async function updateOrder(dbId, fields) { return check(await rest.from('orders').update(fields).eq('id', dbId)); }
+  // Nequi / Daviplata recibido o no, y cerrar sin entregar (015-cierre.sql).
+  async function payOk(dbId, ok) { return check(await rest.rpc('rest_pay_ok', { p_id: dbId, p_ok: !!ok })); }
+  async function notDelivered(dbId, reason) { return check(await rest.rpc('rest_not_delivered', { p_id: dbId, p_reason: reason || '' })); }
   async function addMyRider(r) {
     var row = check(await rest.from('riders').insert({ owner: restUid, name: r.name, phone: r.phone, vehicle: r.vehicle, barrio: r.barrio || '', board: false }).select().single());
     check(await rest.from('rest_riders').insert({ rest_id: myRest, rider_id: row.id }));
@@ -228,7 +246,7 @@
   window.PYI_CLOUD = {
     fetchAll: fetchAll, placeOrder: placeOrder, orderContact: orderContact, markPaid: markPaid, cancelOrder: cancelOrder, rateOrder: rateOrder,
     deliver: deliver, orderForRider: orderForRider, riderPicked: riderPicked, confirmReceived: confirmReceived,
-    restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder,
+    restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder, payOk: payOk, notDelivered: notDelivered,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
     saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, restMonth: restMonth, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
