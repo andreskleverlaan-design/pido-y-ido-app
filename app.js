@@ -1038,25 +1038,90 @@
     if (o.pay === 'ef') return 'Efectivo ' + fmt(o.total) + (o.cashGiven > o.total ? ' · paga con ' + fmt(o.cashGiven) + ' · vueltas ' + fmt(o.cashGiven - o.total) : ' · exacto');
     return (o.pay === 'nequi' ? 'Nequi ' : 'Daviplata ') + fmt(o.total) + ' · transferencia';
   }
-  // ---------- Premio: cada 5º pedido por la app, $2.000 menos (lo paga Pido y Ido) ----------
-  // Online lo calcula el servidor (supabase/006-clientes-fieles.sql); sin ese paso, el premio no se muestra.
+  // ---------- Premio: tarjeta de sellos (hoy: cada 5º pedido por la app, $2.000 menos; lo paga Pido y Ido) ----------
+  // Online lo calcula el servidor (supabase/006-clientes-fieles.sql + 011-mis-premios.sql); sin ese paso, el premio no se muestra.
+  // La regla viene del servidor: every (cada cuántos pedidos), amount (monto fijo) o pct + max (porcentaje con tope), min (pedido mínimo).
+  // Si la regla cambia, solo se cambia reward_state en la base de datos; estas pantallas se adaptan solas.
   function reward() {
     if (ONLINE) return S.reward || null;
     var mine = S.orders.filter(function (o) { return o.mine; });
     var normal = mine.filter(function (o) { return o.status === 'entregado' && !o.discount; }).length;
-    var used = mine.filter(function (o) { return o.discount > 0 && o.status !== 'rechazado' && o.status !== 'cancelado'; }).length;
-    var st = Math.max(normal - used * 4, 0);
-    return { every: 5, amount: 2000, min: 10000, stamps: st, ready: st >= 4 };
+    var usedO = mine.filter(function (o) { return o.discount > 0 && o.status !== 'rechazado' && o.status !== 'cancelado'; });
+    var st = Math.max(normal - usedO.length * 4, 0), deliv = mine.filter(function (o) { return o.status === 'entregado'; });
+    return { every: 5, amount: 2000, min: 10000, stamps: st, ready: st >= 4,
+      delivered: deliv.length, used: usedO.length, earned: usedO.length + Math.floor(st / 4),
+      saved: usedO.reduce(function (s, o) { return s + o.discount; }, 0),
+      since: deliv.length ? Math.min.apply(null, deliv.map(function (o) { return o.createdAt; })) : null };
   }
-  function cartDiscount() { var rw = reward(); return rw && rw.ready && !cartShop() && cartSubtotal() >= rw.min ? rw.amount : 0; }
+  function rwPer(rw) { return Math.max((rw.every || 5) - 1, 1); }
+  // Cuánto vale el premio en un pedido de este subtotal (monto fijo, o porcentaje con tope).
+  function rwValue(rw, sub) {
+    if (rw.pct) { var v = Math.round((sub || 0) * rw.pct / 100); return rw.max ? Math.min(v, rw.max) : v; }
+    return rw.amount || 0;
+  }
+  // "$2.000 de descuento" o "1% de tu pedido (hasta $2.000)".
+  function rwPrize(rw) { return rw.pct ? String(rw.pct).replace('.', ',') + '% de tu pedido' + (rw.max ? ' (hasta ' + fmt(rw.max) + ')' : '') : fmt(rw.amount) + ' de descuento'; }
+  function rwShort(rw) { return rw.pct ? String(rw.pct).replace('.', ',') + '% menos' : fmt(rw.amount) + ' menos'; }
+  function cartDiscount() { var rw = reward(); return rw && rw.ready && !cartShop() && cartSubtotal() >= rw.min ? rwValue(rw, cartSubtotal()) : 0; }
+  function stampDots(rw, big) {
+    var per = rwPer(rw), n = Math.min(rw.stamps, per), dots = '';
+    for (var i = 0; i < per; i++) dots += '<i class="' + (i < n ? 'on' : '') + '">' + (i < n ? ic('check', big ? 18 : 16, { sw: 3 }) : i + 1) + '</i>';
+    return '<div class="stamps' + (big ? ' big' : '') + '">' + dots + '<i class="gift' + (rw.ready ? ' on' : '') + '">' + ic('gift', big ? 22 : 18) + '</i></div>';
+  }
   function stampCard(cls) {
     var rw = reward(); if (!rw) return '';
-    var n = Math.min(rw.stamps, 4), dots = '';
-    for (var i = 0; i < 4; i++) dots += '<i class="' + (i < n ? 'on' : '') + '">' + (i < n ? ic('check', 16, { sw: 3 }) : i + 1) + '</i>';
-    dots += '<i class="gift' + (rw.ready ? ' on' : '') + '">' + ic('gift', 18) + '</i>';
-    return '<div class="card stamp-card ' + (cls || '') + '"><div class="row between"><div class="b">' + (rw.ready ? '¡Tu próximo pedido tiene ' + fmt(rw.amount) + ' de descuento!' : 'Tu 5º pedido: ' + fmt(rw.amount) + ' menos') + '</div></div>' +
-      '<div class="stamps mt8">' + dots + '</div>' +
-      '<div class="xs muted mt8">' + (rw.ready ? 'Se aplica solo al pagar, en pedidos desde ' + fmt(rw.min) + '.' : 'Llevas ' + n + ' de 4 sellos. Cada pedido entregado por la app suma uno.') + ' Solo pidiendo por Pido y Ido.</div></div>';
+    var per = rwPer(rw), n = Math.min(rw.stamps, per);
+    return '<a class="card stamp-card ' + (cls || '') + '" href="#/premios" style="display:block"><div class="row between"><div class="b">' + (rw.ready ? '¡Tu próximo pedido tiene ' + rwPrize(rw) + '!' : 'Tu ' + rw.every + 'º pedido: ' + rwShort(rw)) + '</div><span class="xs b" style="color:var(--cta);white-space:nowrap">Ver ' + ic('right', 14, { sw: 2.6 }) + '</span></div>' +
+      '<div class="mt8">' + stampDots(rw) + '</div>' +
+      '<div class="xs muted mt8">' + (rw.ready ? 'Se aplica solo al pagar, en pedidos desde ' + fmt(rw.min) + '.' : 'Llevas ' + n + ' de ' + per + ' sellos. Cada pedido entregado por la app suma uno.') + ' Solo pidiendo por Pido y Ido.</div></a>';
+  }
+  // ---------- Mis premios: el estado de la tarjeta, los premios y el historial ----------
+  function fechaCorta(t) {
+    var d = new Date(t - CO_OFF), m = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][d.getUTCMonth()];
+    return d.getUTCDate() + ' ' + m + (d.getUTCFullYear() !== new Date(now() - CO_OFF).getUTCFullYear() ? ' ' + d.getUTCFullYear() : '');
+  }
+  function scrPremios() {
+    var rw = reward(), back = '/perfil';
+    if (!rw) return '<div class="screen has-tabs">' + topbar('Mis premios', back) + '<div class="empty">' + ic('gift', 26) + '<div class="mt8">' + (ONLINE && !ui.synced ? 'Cargando tu tarjeta…' : 'La tarjeta de sellos llega muy pronto.') + '</div></div></div>' + tabs('cliente', 'perfil');
+    var per = rwPer(rw), n = Math.min(rw.stamps, per), falta = per - n;
+    var mine = S.orders.filter(function (o) { return o.mine; });
+    var enCurso = mine.filter(function (o) { return ['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0; });
+    var cuenta = enCurso.filter(function (o) { return !o.discount; }).length;
+    var h = '<div class="screen has-tabs">' + topbar('Mis premios', back, 'Tarjeta de sellos');
+    // La tarjeta
+    h += '<div class="prize-card"><div class="row between"><div class="row" style="gap:10px">' + logo(34, 'white') + '<div><div class="b" style="font-size:16px">Tarjeta Pido y Ido</div><div class="xs" style="opacity:.8">Vale en todos los restaurantes con menú</div></div></div>' +
+      (rw.ready ? '<span class="badge green">Premio listo</span>' : '<span class="badge orange">' + n + ' de ' + per + '</span>') + '</div>' +
+      '<div class="mt16">' + stampDots(rw, true) + '</div>' +
+      '<div class="prize-msg mt16">' + (rw.ready
+        ? '<div class="b" style="font-size:18px">¡Tienes ' + rwPrize(rw) + '!</div><div class="small mt4" style="opacity:.85">Se descuenta solo en tu próximo pedido desde ' + fmt(rw.min) + '. No tienes que hacer nada.</div>'
+        : '<div class="b" style="font-size:18px">' + (falta === 1 ? '¡Te falta 1 pedido!' : 'Te faltan ' + falta + ' pedidos') + '</div><div class="small mt4" style="opacity:.85">Con el ' + rw.every + 'º pedido te damos ' + rwPrize(rw) + '.</div>') + '</div>' +
+      (cuenta ? '<div class="xs mt12 row" style="gap:6px;opacity:.9">' + ic('clock', 14) + (cuenta === 1 ? 'Tu pedido en curso suma un sello cuando llegue.' : 'Tus ' + cuenta + ' pedidos en curso suman sellos cuando lleguen.') + '</div>' : '') +
+      '</div>';
+    h += rw.ready ? '<a class="btn btn-primary btn-block mt16" href="#/inicio">Usar mi premio ahora</a>' : (falta <= 2 ? '<a class="btn btn-outline btn-block mt16" href="#/inicio">Pedir y sumar un sello</a>' : '');
+    // Números
+    var since = rw.since ? (typeof rw.since === 'number' ? rw.since : Date.parse(rw.since)) : null;
+    h += '<div class="prize-stats mt16">' +
+      '<div class="card"><div class="num">' + (rw.delivered || 0) + '</div><div class="xs muted">Pedidos por la app</div></div>' +
+      '<div class="card"><div class="num">' + (rw.earned || 0) + '</div><div class="xs muted">Premios ganados</div></div>' +
+      '<div class="card"><div class="num green">' + fmt(rw.saved || 0) + '</div><div class="xs muted">Ahorrado</div></div></div>' +
+      (since ? '<div class="xs muted center mt8">Pidiendo por Pido y Ido desde el ' + fechaCorta(since) + '</div>' : '');
+    // Historial: sellos y premios
+    var ev = mine.filter(function (o) { return o.status === 'entregado' || (o.discount > 0 && o.status !== 'rechazado' && o.status !== 'cancelado'); })
+      .sort(function (a, b) { return (b.deliveredAt || b.createdAt) - (a.deliveredAt || a.createdAt); }).slice(0, 15);
+    h += '<div class="t-h3 mt20">Tu historial</div>';
+    if (!ev.length) h += '<div class="card mt8 small muted">Aún no tienes sellos. Tu primer pedido entregado por la app suma el primero.</div>';
+    else h += '<div class="card mt8" style="padding:4px 14px">' + ev.map(function (o) {
+      var r = R(o.restId), prize = o.discount > 0;
+      return '<a class="list-row" href="#/pedido/' + o.id + '"><span class="ev-dot' + (prize ? ' prize' : '') + '">' + ic(prize ? 'gift' : 'check', 16, { sw: prize ? 2 : 3 }) + '</span><div class="grow"><div class="b">' + (prize ? 'Premio usado' : '+1 sello') + '</div><div class="xs muted ellipsis">' + esc(r.short || r.name || 'Pedido') + ' · #' + o.id + ' · ' + fechaCorta(o.deliveredAt || o.createdAt) + (prize && o.status !== 'entregado' ? ' · en curso' : '') + '</div></div>' +
+        (prize ? '<span class="b green">−' + fmt(o.discount) + '</span>' : '') + '</a>';
+    }).join('') + '</div>';
+    // Cómo funciona
+    h += '<div class="t-h3 mt20">Cómo funciona</div><div class="card mt8 prize-how">' +
+      '<div class="row"><span class="hn">1</span><div class="small">Pide por Pido y Ido. Cada pedido entregado te da <b>1 sello</b>.</div></div>' +
+      '<div class="row mt12"><span class="hn">2</span><div class="small">Con <b>' + per + ' sellos</b>, tu ' + rw.every + 'º pedido tiene <b>' + rwPrize(rw) + '</b>' + (rw.min ? ' (pedidos desde ' + fmt(rw.min) + ')' : '') + '.</div></div>' +
+      '<div class="row mt12"><span class="hn">3</span><div class="small">El descuento se pone solo al pagar. Si el pedido se cancela, el premio vuelve a tu tarjeta.</div></div>' +
+      '<div class="xs muted mt12">Los sellos solo cuentan en pedidos hechos en la app, no por WhatsApp ni por teléfono. Las tiendas sin menú (droguerías, minimercados) suman sello, pero el premio se usa en restaurantes con menú.</div></div>';
+    return h + '</div>' + tabs('cliente', 'perfil');
   }
   // WhatsApp avisos desde el número de Pido y Ido (cuando esté activado en config.js).
   // ---------- Pedir de nuevo y favoritos ----------
@@ -1450,9 +1515,9 @@
     }
     h += '</div><div class="card mt12">' + lines.map(function (l) { return '<div class="row between small" style="padding:3px 0"><span>' + l.qty + ' × ' + l.name + '</span><span>' + fmt(l.qty * l.price) + '</span></div>'; }).join('') +
       '<div class="row between small" style="padding:3px 0"><span class="' + (fee ? '' : 'green b') + '">' + (S.cart.mode === 'dom' ? 'Domicilio' : 'Recoges tú') + '</span><span class="' + (fee ? '' : 'green b') + '">' + (fee ? fmt(fee) : 'Gratis') + '</span></div>' +
-      (disc ? '<div class="row between small green b" style="padding:3px 0"><span class="row" style="gap:6px">' + ic('gift', 15) + 'Premio 5º pedido</span><span>−' + fmt(disc) + '</span></div>' : '') +
+      (disc ? '<div class="row between small green b" style="padding:3px 0"><span class="row" style="gap:6px">' + ic('gift', 15) + 'Premio de tu tarjeta</span><span>−' + fmt(disc) + '</span></div>' : '') +
       '<div class="divider dashed"></div><div class="row between"><span class="t-h3">Total</span><span class="num" style="font-size:18px">' + fmt(total) + '</span></div></div>' +
-      (!disc && rw && rw.ready && sub < rw.min ? '<div class="note green mt12">Tienes un premio de ' + fmt(rw.amount) + '. Se usa en pedidos desde ' + fmt(rw.min) + '.</div>' : '') +
+      (!disc && rw && rw.ready && sub < rw.min ? '<div class="note green mt12">Tienes un premio: ' + rwPrize(rw) + '. Se usa en pedidos desde ' + fmt(rw.min) + '.</div>' : '') +
       (short > 0 ? '<div class="note amber mt12">El pedido mínimo es ' + fmt(r.min) + '. Te faltan <b>' + fmt(short) + '</b>. <a class="b" href="#/r/' + r.id + '" style="text-decoration:underline">Agregar más</a></div>' : '') +
       '<button class="btn btn-ghost btn-block mt8" data-a="clearCart">Vaciar carrito</button>';
     h += '</div><div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="placeOrder"' + (short > 0 || ctaOff(r) || ui.busy || far ? ' disabled' : '') + '>' + ctaTxt(r, 'Hacer pedido · ' + fmt(total)) + '</button></div>';
@@ -1526,7 +1591,7 @@
               : '<button class="btn btn-green btn-sm btn-block mt12" data-a="markPaid" data-id="' + o.id + '">' + ic('check', 18) + ' Ya transferí</button>')
           : '<div class="small muted mt4">' + (ct.loading ? 'Cargando el número…' : 'Paga al recibir o pregúntale al domiciliario.') + '</div>') + '</div>';
     }
-    h += '<div class="card mt12 small">' + (o.discount ? '<div class="row between green b" style="padding:3px 0"><span>Premio 5º pedido (ya descontado)</span><span>−' + fmt(o.discount) + '</span></div>' : '') + (unpriced(o) ? '<div class="row between" style="padding:3px 0"><span class="muted">Total</span><span class="b">Por confirmar</span></div>' : o.pay === 'ef' ? '<div class="row between" style="padding:3px 0"><span class="muted">Pagas en efectivo</span><span class="b">' + fmt(o.total) + '</span></div>' +
+    h += '<div class="card mt12 small">' + (o.discount ? '<div class="row between green b" style="padding:3px 0"><span>Premio de tu tarjeta (ya descontado)</span><span>−' + fmt(o.discount) + '</span></div>' : '') + (unpriced(o) ? '<div class="row between" style="padding:3px 0"><span class="muted">Total</span><span class="b">Por confirmar</span></div>' : o.pay === 'ef' ? '<div class="row between" style="padding:3px 0"><span class="muted">Pagas en efectivo</span><span class="b">' + fmt(o.total) + '</span></div>' +
       (o.cashGiven > o.total ? '<div class="row between" style="padding:3px 0"><span class="muted">Ten listo</span><span class="b">' + fmt(o.cashGiven) + ' · vueltas ' + fmt(o.cashGiven - o.total) + '</span></div>' : '') : '<div class="row between" style="padding:3px 0"><span class="muted">Total</span><span class="b">' + fmt(o.total) + '</span></div>') +
       '<div class="row between" style="padding:3px 0"><span class="muted">' + (o.mode === 'rec' ? 'Recoges en' : 'Entrega') + '</span><span class="b" style="text-align:right;max-width:65%">' + esc(o.mode === 'rec' ? r.address : o.customer.address) + '</span></div>' +
       '<div class="row between" style="padding:3px 0"><span class="muted">Pediste</span><span style="text-align:right;max-width:65%' + (o.wish ? ';white-space:pre-line' : '') + '">' + esc(o.wish ? (o.wish === '(Ver la foto)' ? 'Lista en foto' : o.wish) : itemsTxt(o)) + '</span></div>' +
@@ -1574,10 +1639,15 @@
       '<div class="t-h3 mt20">Anteriores</div>' + (past.length ? '<div class="card mt8" style="padding:4px 14px">' + past.map(function (o) { return o.status === 'entregado' && R(o.restId).id ? '<div class="past-row">' + orderRow(o, '#/pedido/' + o.id) + '<button class="btn btn-soft btn-xs" data-a="reorder" data-id="' + o.id + '">' + ic('refresh', 15, { sw: 2.4 }) + 'Repetir</button></div>' : orderRow(o, '#/pedido/' + o.id); }).join('') + '</div>' : '<div class="empty">Aún no tienes pedidos anteriores.</div>') +
       '</div>' + tabs('cliente', 'pedidos');
   }
+  function premiosRow() {
+    var rw = reward(); if (!rw) return '';
+    var per = rwPer(rw), n = Math.min(rw.stamps, per);
+    return '<a class="card mt12 row stamp-card" href="#/premios" style="gap:12px"><span class="mi" style="background:' + (rw.ready ? 'var(--green)' : 'var(--orange)') + ';color:#fff">' + ic('gift', 20) + '</span><div class="grow"><div class="b">Mis premios</div><div class="small muted">' + (rw.ready ? '¡Tienes un premio listo para usar!' : n + ' de ' + per + ' sellos' + (rw.saved ? ' · ahorrado ' + fmt(rw.saved) : '')) + '</div></div>' + ic('right', 18) + '</a>';
+  }
   function scrPerfil() {
     var c = avColor('luz');
     return '<div class="screen has-tabs">' + topbar('Perfil') +
-      '<div class="card row"><div class="avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + initials(S.user.name) + '</div><div class="grow"><div class="t-h3">' + esc(S.user.name) + '</div><div class="small muted">' + (S.user.phone ? phoneFmt(S.user.phone) + ' · ' : '') + 'Villanueva</div></div></div>' +
+      '<div class="card row"><div class="avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + initials(S.user.name) + '</div><div class="grow"><div class="t-h3">' + esc(S.user.name) + '</div><div class="small muted">' + (S.user.phone ? phoneFmt(S.user.phone) + ' · ' : '') + 'Villanueva</div></div></div>' + premiosRow() +
       '<div class="card mt12"><div class="field"><label class="label" for="pn">Nombre</label><input class="input" id="pn" data-m="user.name" value="' + esc(S.user.name) + '"></div>' +
       '<div class="field"><label class="label" for="pp">Celular / WhatsApp</label><input class="input" id="pp" data-m="user.phone" inputmode="tel" value="' + esc(S.user.phone) + '"></div>' +
       '<div class="field"><label class="label" for="pa">Dirección</label><textarea class="input" id="pa" data-m="user.address" rows="2">' + esc(S.user.address) + '</textarea></div>' +
@@ -2170,6 +2240,7 @@
       case 'buscar': return scrBuscar();
       case 'pedidos': return scrPedidos();
       case 'perfil': return scrPerfil();
+      case 'premios': return scrPremios();
       case 'r': return scrMenu(p[1], rt.query);
       case 'negocio': return scrNegocio(p[1]);
       case 'sugerir': return scrSugerir(rt.query);

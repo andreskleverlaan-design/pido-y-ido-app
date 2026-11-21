@@ -512,3 +512,24 @@ select.input,select.input:focus{appearance:none;-webkit-appearance:none;backgrou
 .wk-bar{flex:none;width:100%;max-width:44px;background:var(--cta);border-radius:8px 8px 3px 3px}
 .wk-n{font-size:12px;font-weight:700}
 .compare{border:1.5px solid var(--border)}
+/* Mis premios (tarjeta de sellos) */
+a.stamp-card{color:inherit;text-decoration:none}
+.prize-card{background:linear-gradient(145deg,#1F4D3A 0%,#2C6A50 100%);color:#fff;border-radius:20px;padding:18px;box-shadow:0 10px 24px rgba(31,77,58,.25);position:relative;overflow:hidden}
+.prize-card::after{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:999px;background:rgba(255,107,44,.18)}
+.prize-card .stamps{flex-wrap:wrap}
+.prize-card .stamps i{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.45);color:rgba(255,255,255,.75)}
+.prize-card .stamps i.on{background:var(--orange);color:#fff}
+.prize-card .stamps i.gift{border-color:var(--orange);color:#FFB08C;background:rgba(255,107,44,.12)}
+.prize-card .stamps i.gift.on{background:var(--orange);border-color:#fff;color:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.2)}
+.prize-card .badge{position:relative;z-index:1}
+.prize-msg{background:rgba(255,255,255,.1);border-radius:14px;padding:12px 14px}
+.stamps.big{gap:10px}
+.stamps.big i{width:46px;height:46px;font-size:15px}
+.prize-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.prize-stats .card{padding:12px 10px;text-align:center}
+.prize-stats .num{font-size:20px}
+.prize-stats .num.green{color:var(--green)}
+.ev-dot{width:32px;height:32px;border-radius:999px;background:var(--tint);color:var(--cta);display:flex;align-items:center;justify-content:center;flex:none}
+.ev-dot.prize{background:var(--gtint);color:var(--green)}
+.prize-how .hn{width:26px;height:26px;border-radius:999px;background:var(--tint);color:var(--cta);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex:none;margin-right:10px}
+.stamp-card .mi{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none}
