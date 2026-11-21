@@ -40,7 +40,8 @@
       dishes: Array.isArray(r.dishes) ? r.dishes : [], open: r.open,
       rating: r.rating_count ? Number(r.rating_sum) / r.rating_count : 0, count: r.rating_count,
       lat: r.lat == null ? null : Number(r.lat), lng: r.lng == null ? null : Number(r.lng), radius: r.radius_km == null ? 3 : Number(r.radius_km),
-      abre: r.abre || null, cierra: r.cierra || null, progOk: Object.prototype.hasOwnProperty.call(r, 'abre')
+      abre: r.abre || null, cierra: r.cierra || null, progOk: Object.prototype.hasOwnProperty.call(r, 'abre'),
+      horario: Array.isArray(r.horario) && r.horario.length === 7 ? r.horario : null, horOk: Object.prototype.hasOwnProperty.call(r, 'horario')
     };
   }
   function mapOrder(o, mine, pin) {
