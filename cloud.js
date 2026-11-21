@@ -76,7 +76,12 @@
     out.myRest = myRest;
 
     // Premio "cada 5º pedido" (null si todavía no se pegó supabase/006-clientes-fieles.sql).
-    try { var rw = await cust.rpc('my_reward'); if (!rw.error && rw.data) out.reward = rw.data; } catch (e) {}
+    // Con 011-mis-premios.sql también llegan los totales para "Mis premios"; sin él, solo el estado de la tarjeta.
+    try {
+      var rw = await cust.rpc('my_reward_summary');
+      if (rw.error) rw = await cust.rpc('my_reward');
+      if (!rw.error && rw.data) out.reward = rw.data;
+    } catch (e) {}
 
     var pins = {};
     if (mineRows.length) {
