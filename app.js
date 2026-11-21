@@ -1535,6 +1535,15 @@
     if (o.status === 'entregado') return ['Entregado', 'A las ' + hora(o.deliveredAt)];
     return ['—', statusLine(o)];
   }
+  // ---------- "¿Algo salió mal?" (016-reclamo.sql): hasta 24 h después de la entrega, una vez por pedido ----------
+  var ISSUES = ['Faltó algo', 'Llegó frío o en mal estado', 'No era lo que pedí', 'Me cobraron mal', 'No me llegó', 'Otro problema'];
+  function issueOpen(o) { return o.status === 'entregado' && !o.issue && now() - (o.deliveredAt || o.createdAt || 0) < 24 * 3600000; }
+  function issueCard(o, r) {
+    if (o.issue) return '<div class="card mt12' + (o.issueDoneAt ? '' : ' issue-card') + '"><div class="b">' + (o.issueDoneAt ? ic('check', 16, { sw: 3 }) + ' ' + esc(r.short) + ' marcó tu reclamo como resuelto' : 'Le avisamos a ' + esc(r.short)) + '</div>' +
+      '<div class="small muted mt4">«' + esc(o.issue) + (o.issueNote ? ': ' + esc(o.issueNote) : '') + '»' + (o.issueDoneAt ? '' : ' · Te van a escribir por WhatsApp.') + '</div></div>';
+    if (!issueOpen(o)) return '';
+    return '<button class="btn btn-ghost btn-block mt8" data-a="issueAsk" data-id="' + o.id + '">' + ic('alert', 16) + ' ¿Algo salió mal?</button>';
+  }
   function scrPedido(id) {
     var o = order(id);
     if (!o) return '<div class="screen">' + topbar('Pedido', '/pedidos') + '<div class="empty">No encontramos este pedido.</div></div>';
@@ -1597,7 +1606,7 @@
     if (o.status === 'entregado') {
       h += o.rating ? '<div class="card mt12 center"><div class="small muted">Tu calificación</div><div style="color:var(--orange);font-size:24px;letter-spacing:2px">' + '★★★★★'.slice(0, o.rating) + '<span style="color:#E9E3DB">' + '★★★★★'.slice(o.rating) + '</span></div></div>'
         : '<a class="btn btn-primary btn-block mt12" href="#/calificar/' + o.id + '">Calificar pedido</a>';
-      h += '<button class="btn btn-outline btn-block mt12" data-a="reorder" data-id="' + o.id + '">' + ic('refresh', 18, { sw: 2.4 }) + ' Pedir lo mismo otra vez</button>' + stampCard('mt12');
+      h += '<button class="btn btn-outline btn-block mt12" data-a="reorder" data-id="' + o.id + '">' + ic('refresh', 18, { sw: 2.4 }) + ' Pedir lo mismo otra vez</button>' + issueCard(o, r) + stampCard('mt12');
     }
     // demo helper
     if (['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0) {
@@ -1712,7 +1721,7 @@
       (S.open[r.id] && r.horario && !enHorario(r, now()) ? '<div class="note grey mt12"><b style="color:var(--text)">Fuera de tu horario.</b> Los clientes ven: «' + estadoTxt(r) + '». Pueden programar pedidos para cuando abras. <a href="#/rest/menu" class="b orange">Cambiar horario</a></div>' : '') +
       (S.open[r.id] || (ONLINE && !setupDone(r)) ? '' : '<div class="note amber mt12"><b>Estás cerrado.</b> ' + (ONLINE ? 'Cuando quieras recibir pedidos, toca <b>Abierto</b> arriba.' : 'Los clientes ven tu menú, pero no pueden pedir.') + '</div>') +
       '<div class="chips scroll mt16">' + [['nuevos', 'Nuevos'], ['preparando', 'Preparando'], ['camino', 'En camino'], ['hechos', 'Terminados']].map(function (t) {
-        var n = groups[t[0]].length;
+        var n = t[0] === 'hechos' ? groups.hechos.filter(function (o) { return o.issue && !o.issueDoneAt; }).length : groups[t[0]].length;
         return '<button class="chip' + (ui.rtab === t[0] ? ' on' : '') + '" data-a="rtab" data-v="' + t[0] + '">' + t[1] + (n ? ' <span class="cnt">' + n + '</span>' : '') + '</button>';
       }).join('') + '</div><div class="mt12">';
     var list = groups[ui.rtab];
@@ -1891,7 +1900,15 @@
       return '<div class="order-card"><div class="ob">' + head + '<div class="small mt8">' + ic('bike', 14) + ' ' + (rd ? esc(rd.name) + (o.pickedAt ? ' · lo recogió a las ' + hora(o.pickedAt) : ' · enviado ' + ago(o.sentAt) + ', aún no marca recogido') : 'Lo lleva alguien del restaurante') + '</div>' + cust +
         '<div class="row mt12" style="gap:8px">' + (rd ? (ONLINE ? '<a class="btn btn-outline btn-sm" style="flex:1" target="_blank" rel="noopener" href="' + waLink(rd.phone, riderMsg(o)) + '">Reenviar</a>' : '<a class="btn btn-outline btn-sm" style="flex:1" href="#/wa/' + o.id + '">Ver chat</a>') : '') + '<button class="btn btn-green btn-sm" style="flex:1" data-a="pinAsk" data-id="' + o.id + '">Confirmar entrega</button></div>' + closeBits(o) + '</div></div>';
     }
-    return '<div class="order-card" style="opacity:' + (o.status === 'entregado' ? 1 : .6) + '"><div class="ob">' + head + (o.status === 'entregado' && o.deliveredAt ? '<div class="xs muted mt4">' + ic('check', 12, { sw: 3 }) + ' Entregado a las ' + hora(o.deliveredAt) + (porTxt(o) ? ' · ' + porTxt(o) : '') + '</div>' : '') + ((o.status === 'no_entregado' || o.status === 'sin_respuesta') && o.rejectReason ? '<div class="xs muted mt4">' + esc(o.rejectReason) + '</div>' : '') + (o.rating ? '<div class="small mt4"><span style="color:var(--orange)">' + '★★★★★'.slice(0, o.rating) + '</span> ' + esc((o.tags || []).join(', ')) + '</div>' : '') + '</div></div>';
+    return '<div class="order-card" style="opacity:' + (o.status === 'entregado' ? 1 : .6) + '"><div class="ob">' + head + (o.status === 'entregado' && o.deliveredAt ? '<div class="xs muted mt4">' + ic('check', 12, { sw: 3 }) + ' Entregado a las ' + hora(o.deliveredAt) + (porTxt(o) ? ' · ' + porTxt(o) : '') + '</div>' : '') + ((o.status === 'no_entregado' || o.status === 'sin_respuesta') && o.rejectReason ? '<div class="xs muted mt4">' + esc(o.rejectReason) + '</div>' : '') + restIssue(o) + (o.rating ? '<div class="small mt4"><span style="color:var(--orange)">' + '★★★★★'.slice(0, o.rating) + '</span> ' + esc((o.tags || []).join(', ')) + '</div>' : '') + '</div></div>';
+  }
+  function restIssue(o) {
+    if (!o.issue) return '';
+    if (o.issueDoneAt) return '<div class="xs muted mt8">' + ic('check', 12, { sw: 3 }) + ' Reclamo resuelto: ' + esc(o.issue) + '</div>';
+    var msg = 'Hola ' + first(o.customer.name) + ', somos ' + R(o.restId).name + '. Vimos tu mensaje sobre el pedido #' + o.id + ' («' + o.issue + '»). ';
+    return '<div class="issue-box mt8"><div class="xs b">' + ic('alert', 13) + ' El cliente avisó: ' + esc(o.issue) + '</div>' + (o.issueNote ? '<div class="xs mt4">«' + esc(o.issueNote) + '»</div>' : '') +
+      '<div class="row mt8" style="gap:8px"><a class="btn btn-green btn-xs" style="flex:1" target="_blank" rel="noopener" href="' + waLink(o.customer.phone, msg) + '">' + ic('msg', 14) + 'Escribirle</a>' +
+      '<button class="btn btn-outline btn-xs" style="flex:1" data-a="issueDone" data-id="' + o.id + '">' + ic('check', 14, { sw: 2.6 }) + 'Resuelto</button></div></div>';
   }
   function scrEnviar(id) {
     var o = order(id); if (!o) return scrRest();
@@ -2594,6 +2611,35 @@
       var ok = el.dataset.v === '1';
       o.payOk = ok; save(); render(); toast(ok ? 'Pago marcado como recibido' : 'Le avisamos al cliente que no ves el pago');
       if (ONLINE) push(CLOUD.payOk(o.dbId, ok));
+    },
+    issueAsk: function (el) {
+      var id = el.dataset.id; ui.issue = { id: id, kind: null };
+      sheet('<div class="t-h2">¿Qué salió mal?</div><div class="small muted mt4">Le avisamos al negocio para que lo arregle contigo.</div><div class="mt12" id="issueList">' + ISSUES.map(function (x) {
+        return '<button class="radio-row" data-a="issuePick" data-v="' + x + '"><span class="ring"></span><span class="grow">' + x + '</span></button>';
+      }).join('') + '</div><label class="label mt12" for="issueNote">Cuéntanos un poco más (opcional)</label><textarea class="input" id="issueNote" rows="2" maxlength="300" placeholder="Ej.: faltó el jugo de maracuyá"></textarea>' +
+        '<div class="err-msg" id="issueErr"></div><button class="btn btn-primary btn-block mt12" data-a="issueSend">Enviar</button><button class="btn btn-ghost btn-block mt8" data-a="closeSheet">Cancelar</button>');
+    },
+    issuePick: function (el) {
+      if (!ui.issue) return; ui.issue.kind = el.dataset.v;
+      var er = document.getElementById('issueErr'); if (er) er.textContent = '';
+      var rows = document.querySelectorAll('#issueList .radio-row'); for (var k = 0; k < rows.length; k++) rows[k].classList.toggle('on', rows[k] === el);
+    },
+    issueSend: function (el) {
+      var q = ui.issue, o = q && order(q.id); if (!o) return;
+      if (!q.kind) { document.getElementById('issueErr').textContent = 'Elige qué pasó.'; return; }
+      var note = (document.getElementById('issueNote').value || '').trim().slice(0, 300);
+      var done = function () { o.issue = q.kind; o.issueNote = note; o.issueAt = now(); ui.issue = null; save(); sheet(null); render(); toast('Listo, le avisamos a ' + R(o.restId).short); };
+      if (!ONLINE) { done(); return; }
+      el.disabled = true;
+      CLOUD.reportIssue(o.dbId, q.kind, note).then(function (res) {
+        if (res === 'ok' || res === 'ya') { done(); sync(); return; }
+        el.disabled = false; document.getElementById('issueErr').textContent = res === 'tarde' ? 'Ya pasaron más de 24 horas. Escríbele directamente al negocio.' : 'No se pudo enviar.';
+      }, function (err) { el.disabled = false; document.getElementById('issueErr').textContent = /report_issue|function/i.test(String(err && err.message)) ? 'Falta un paso en la base de datos (016-reclamo.sql).' : errTxt(err); });
+    },
+    issueDone: function (el) {
+      var o = order(el.dataset.id); if (!o) return;
+      o.issueDoneAt = now(); save(); render(); toast('Reclamo marcado como resuelto');
+      if (ONLINE) push(CLOUD.issueDone(o.dbId));
     },
     noEntAsk: function (el) {
       var id = el.dataset.id, o = order(id); if (!o) return;
