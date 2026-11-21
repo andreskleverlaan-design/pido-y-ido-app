@@ -184,6 +184,7 @@
     var t = S.open[r.id] ? proxAbre(r) : null;
     return t ? 'Cerrado · abre ' + cuandoCo(t) : 'Cerrado ahora';
   }
+  function punto(t) { return /\.$/.test(t) ? t : t + '.'; }
   // Semana completa, empezando el lunes, para mostrar en la página del negocio.
   function semanaHtml(r) {
     var hoy = dowCo(now());
@@ -1334,7 +1335,7 @@
       '<div class="card raised info-card"><h1 class="t-title" style="font-size:24px">' + r.name + '</h1><div class="small muted mt4"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + ' · ' + r.eta + ' · Mín. ' + fmt(r.min) + '</div>' +
       '<div class="seg mt12"><button class="' + (mode === 'dom' ? 'on' : '') + '" data-a="mode" data-v="dom" data-r="' + r.id + '">Domicilio · ' + (r.fee ? fmt(r.fee) : 'gratis') + '</button><button class="' + (mode === 'rec' ? 'on' : '') + '" data-a="mode" data-v="rec" data-r="' + r.id + '">Recoger · ' + r.pickup + '</button></div>' +
       horarioLine(r) +
-      (open ? '' : '<div class="note amber mt12"><b>' + estadoTxt(r) + '.</b> ' + (progOn() ? 'Puedes pedir y programarlo para más tarde.' : 'Puedes mirar el menú, pero no recibe pedidos.') + '</div>') +
+      (open ? '' : '<div class="note amber mt12"><b>' + punto(estadoTxt(r)) + '</b> ' + (progOn() ? 'Puedes pedir y programarlo para más tarde.' : 'Puedes mirar el menú, pero no recibe pedidos.') + '</div>') +
       (S.ref && S.ref.restId === r.id ? '<div class="note green mt12">Llegaste con el enlace de un vecino que recomienda este restaurante.</div>' : '') +
       '</div><div class="pad"><div class="t-h2 mt20">Lo más pedido</div><div class="mt12">';
     h += r.dishes.map(function (d) {
@@ -1379,7 +1380,7 @@
       '<div class="card raised info-card"><span class="badge green">' + ic(k.icon, 13, { sw: 2.4 }) + ' ' + k.t + '</span><h1 class="t-title mt8" style="font-size:24px">' + esc(r.name) + '</h1><div class="small muted mt4"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + ' · ' + r.eta + (r.sub ? ' · ' + esc(r.sub) : '') + '</div>' +
       '<div class="seg mt12"><button class="' + (mode === 'dom' ? 'on' : '') + '" data-a="mode" data-v="dom" data-r="' + r.id + '">Domicilio · ' + (r.fee ? fmt(r.fee) : 'gratis') + '</button><button class="' + (mode === 'rec' ? 'on' : '') + '" data-a="mode" data-v="rec" data-r="' + r.id + '">Recoger · ' + r.pickup + '</button></div>' +
       horarioLine(r) +
-      (open ? '' : '<div class="note amber mt12"><b>' + estadoTxt(r) + '.</b> ' + (progOn() ? 'Puedes enviar tu lista y programarla para más tarde.' : 'No recibe pedidos en este momento.') + '</div>') +
+      (open ? '' : '<div class="note amber mt12"><b>' + punto(estadoTxt(r)) + '</b> ' + (progOn() ? 'Puedes enviar tu lista y programarla para más tarde.' : 'No recibe pedidos en este momento.') + '</div>') +
       (S.ref && S.ref.restId === r.id ? '<div class="note green mt12">Llegaste con el enlace de un vecino que recomienda esta tienda.</div>' : '') +
       '</div><div class="pad"><div class="card mt20"><div class="row" style="gap:12px"><span class="pi">' + ic('list', 18) + '</span><div class="grow"><div class="t-h3">¿Qué necesitas?</div><div class="small muted">Escribe tu pedido, una cosa por línea.</div></div></div>' +
       (other ? '<div class="note amber mt12">Tienes un carrito de <b>' + esc(other.short) + '</b>. Si escribes aquí, ese carrito se vacía.</div>' : '') +
@@ -1424,7 +1425,7 @@
       '<button class="radio-row' + (later ? '' : ' on') + (open ? '' : ' off') + '" data-a="whenNow"' + (open ? '' : ' disabled') + '><span class="ring"></span><span class="grow"><span class="b" style="display:block">Lo antes posible</span><span class="small muted">' + (open ? (rec ? 'Listo en ' + esc(r.pickup) : 'Llega en ' + esc(r.eta)) : (r.horario ? estadoTxt(r) : 'Ahora está cerrado')) + '</span></span></button>' +
       '<button class="radio-row' + (later ? ' on' : '') + '" data-a="whenLater"><span class="ring"></span><span class="grow"><span class="b" style="display:block">Para más tarde</span><span class="small muted">' + (later && co.when ? capi(cuandoCo(co.when)) : 'Elige día y hora') + '</span></span></button>';
     if (later) {
-      if (!all.length) return h + '<div class="note amber mt8">No quedan horas para programar hoy ni mañana.' + (r.horario ? ' ' + estadoTxt(r) + '.' : ' Horario: ' + horarioTxt(r) + '.') + '</div></div>';
+      if (!all.length) return h + '<div class="note amber mt8">No quedan horas para programar hoy ni mañana.' + (r.horario ? ' ' + punto(estadoTxt(r)) : ' Horario: ' + horarioTxt(r) + '.') + '</div></div>';
       h += '<div class="seg mt8">' + (s0.length ? '<button class="' + (day === 0 ? 'on' : '') + '" data-a="whenDay" data-v="0">Hoy</button>' : '') + (s1.length ? '<button class="' + (day === 1 ? 'on' : '') + '" data-a="whenDay" data-v="1">Mañana</button>' : '') + '</div>' +
         '<div class="chips scroll mt12">' + list.map(function (t) { return '<button class="chip sm' + (co.when === t ? ' on' : '') + '" data-a="whenPick" data-v="' + t + '">' + horaCo(t) + '</button>'; }).join('') + '</div>' +
         '<div class="xs muted mt8">' + (rec ? 'Hora para recoger' : 'Hora de entrega aproximada') + '. Horario de ' + esc(r.short) + (day ? ' mañana: ' : ' hoy: ') + horarioTxt(r, dowCo(now() + day * 86400000)) + '.' + (open ? '' : ' ' + esc(r.short) + ' ve tu pedido cuando abra y lo acepta.') + '</div>';
