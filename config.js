@@ -6,5 +6,9 @@ window.PYI_CONFIG = {
   supabaseUrl: 'https://wzhedbeefiudwafxrynh.supabase.co',
   supabaseKey: 'sb_publishable_Y6Ua8mn7l0CPxAFsIN9G4A_eeX3dpbs',
   // Poner en true cuando los avisos de WhatsApp desde el número de Pido y Ido estén listos (supabase/functions/avisos-whatsapp).
-  whatsappAvisos: false
+  whatsappAvisos: false,
+  // WhatsApp de Pido y Ido para ayuda (clave olvidada, negocios nuevos). 10 números, ej. '3101234567'.
+  soporteWhatsapp: '',
+  // Quién responde por los datos (Ley 1581). Sale en "Tus datos y privacidad" y en "Términos".
+  legal: { responsable: '', documento: '', correo: '', direccion: '' }
 };
