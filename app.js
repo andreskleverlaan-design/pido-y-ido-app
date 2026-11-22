@@ -1272,6 +1272,36 @@
       '<div class="small center mt16"><a class="link" href="#/rest/clave">¿Olvidaste tu clave?</a></div></div></div>' +
       '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="restLoginDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Entrando…' : 'Entrar') + '</button></div>';
   }
+  // Página de Pido y Ido (#/admin/<clave>): ver todos los negocios y ocultar uno falso. 018-sin-revision.sql.
+  function scrAdmin(key) {
+    var A2 = ui.admin && ui.admin.key === key ? ui.admin : (ui.admin = { key: key, list: null, q: '', err: '' });
+    if (!A2.list && !A2.loading && !A2.err) {
+      A2.loading = true;
+      CLOUD.adminSettings(key).then(function (st) { A2.auto = !!(st && st.auto_visible); render(); }, function () {});
+      CLOUD.adminList(key).then(function (l) { A2.loading = false; A2.list = l || []; render(); },
+        function (e) { A2.loading = false; A2.err = /not_admin/.test(String(e && e.message)) ? 'Este enlace no es válido.' : errTxt(e); render(); });
+    }
+    var h = '<div class="screen">' + topbar('Negocios', '/', 'Pido y Ido · solo para ti');
+    if (A2.err) return h + '<div class="empty">' + esc(A2.err) + '</div></div>';
+    if (!A2.list) return h + '<div class="empty">Cargando…</div></div>';
+    var q = A2.q.toLowerCase(), list = A2.list.filter(function (r) { return !q || (r.name + ' ' + (r.town || '') + ' ' + (r.phone || '')).toLowerCase().indexOf(q) >= 0; });
+    var hid = A2.list.filter(function (r) { return !r.visible; }).length;
+    h += (A2.auto == null ? '' : '<div class="card row" style="gap:12px"><div class="grow"><div class="b">Negocios nuevos</div><div class="xs muted mt4">' +
+        (A2.auto ? 'Salen de una vez. Tú puedes ocultar uno después.' : 'Esperan a que tú toques «Mostrar».') + '</div></div>' +
+        '<button class="toggle" data-a="adminAuto" style="background:' + (A2.auto ? 'var(--gtint)' : 'var(--track)') + ';color:' + (A2.auto ? 'var(--green)' : 'var(--muted)') + '">' + (A2.auto ? 'Automático' : 'A mano') +
+        '<span class="tr" style="background:' + (A2.auto ? 'var(--green)' : '#C9C1B7') + ';--k:' + (A2.auto ? '19px' : '3px') + '"></span></button></div>') +
+      '<div class="small muted mt12">' + A2.list.length + ' negocios' + (hid ? ' · ' + hid + ' sin mostrar' : '') + '</div>' +
+      '<input class="input mt12" data-m="ui.admin.q" data-enter="adminFind" value="' + esc(A2.q) + '" placeholder="Buscar por nombre, pueblo o número">';
+    h += list.map(function (r) {
+      var k = KINDS.filter(function (x) { return x.id === r.kind; })[0] || KINDS[0];
+      return '<div class="card mt12' + (r.visible ? '' : ' adm-off') + '"><div class="row between" style="gap:10px;align-items:flex-start"><div class="grow"><div class="b">' + esc(r.name) + '</div>' +
+        '<div class="xs muted mt4">' + esc(k.t) + ' · ' + esc(r.town || '') + ' · desde ' + new Date(r.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + '</div>' +
+        '<div class="xs muted">' + r.dishes + ' platos · ' + r.pedidos + ' pedidos · ' + r.entregados + ' entregados' + (r.open ? ' · abierto' : '') + '</div></div>' +
+        '<button class="btn btn-sm ' + (r.visible ? 'btn-ghost' : 'btn-green') + '" data-a="adminToggle" data-v="' + esc(r.id) + '">' + (r.visible ? 'Ocultar' : 'Mostrar') + '</button></div>' +
+        (r.phone ? '<a class="link small mt8" style="display:inline-block" target="_blank" rel="noopener" href="' + waLink(r.phone) + '">' + ic('msg', 14) + ' ' + phoneFmt(r.phone) + '</a>' : '') + '</div>';
+    }).join('');
+    return h + '</div>';
+  }
   function supportWa() { return String((window.PYI_CONFIG || {}).soporteWhatsapp || '').replace(/\D/g, ''); }
   // Clave olvidada: WhatsApp + código de recuperación + clave nueva (017-lanzamiento.sql).
   function scrRestClave() {
@@ -1308,7 +1338,7 @@
         sec('Pagos', 'Pagas directo al negocio, en efectivo o por transferencia (Nequi u otra). Pido y Ido no recibe tu dinero. Revisa el total antes de pagar.') +
         sec('Cancelaciones', 'Puedes cancelar mientras el negocio no haya aceptado el pedido. Las tiendas te muestran el precio antes de preparar y puedes cancelar si no estás de acuerdo. Si el negocio no responde en 15 minutos, el pedido se cierra solo.') +
         sec('Uso correcto', 'No hagas pedidos falsos ni dejes de pagar pedidos entregados. Para evitar abusos hay un límite de pedidos abiertos por persona, y los negocios ven si un cliente tuvo pedidos sin pagar. Podemos bloquear a quien abuse.') +
-        sec('Para negocios', 'Registrarse es gratis. Pido y Ido revisa cada negocio antes de mostrarlo. La comisión es la acordada (hoy 5% de cada pedido entregado, sin el domicilio), se cobra fuera de la app y puede cambiar con aviso de 30 días. El negocio cuida su clave y su código de recuperación, mantiene su menú, precios y horario al día, y trata los datos de sus clientes solo para entregar los pedidos.') +
+        sec('Para negocios', 'Registrarse es gratis. Pido y Ido puede revisar los negocios nuevos antes de mostrarlos y ocultar un negocio con datos falsos, quejas repetidas o que no cumpla estos términos. La comisión es la acordada (hoy 5% de cada pedido entregado, sin el domicilio), se cobra fuera de la app y puede cambiar con aviso de 30 días. El negocio cuida su clave y su código de recuperación, mantiene su menú, precios y horario al día, y trata los datos de sus clientes solo para entregar los pedidos.') +
         sec('Cambios y contacto', 'Si cambiamos estos términos, lo avisamos en la app. Contacto: ' + contacto + '.') +
         '<div class="xs muted center mt16">Vigente desde el 22 de noviembre de 2026.</div>';
     }
@@ -1750,20 +1780,21 @@
       { ok: true, t: 'Cuenta creada', s: '' },
       { ok: !!String(r.sub || '').trim(), t: 'Cuenta qué vendes', s: 'Ej.: ' + kindOf(r).sub, href: '#/rest/menu' },
       { ok: hasLoc(r), t: 'Marca tu tienda en el mapa', s: 'Y hasta dónde entregas', href: '#/rest/menu' },
-      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' },
-      reviewStep(r)
+      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' }
     ];
     return [
       { ok: true, t: 'Cuenta creada', s: '' },
       { ok: r.dishes.length >= 3, t: 'Agrega tu menú', s: r.dishes.length ? r.dishes.length + ' de 3 platos o más' : 'Con precio y foto', href: '#/rest/menu' },
       { ok: !!r.img, t: 'Pon una foto de portada', s: own ? '' : 'Mejor una foto real de tu comida', href: '#/rest/menu' },
       { ok: hasLoc(r), t: 'Marca tu local en el mapa', s: 'Y hasta dónde entregas', href: '#/rest/menu' },
-      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' },
-      reviewStep(r)
+      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' }
     ];
   }
-  // 017-lanzamiento.sql: Pido y Ido confirma cada negocio nuevo antes de que los clientes lo vean.
-  function reviewStep(r) { return { ok: r.aprobado !== false, t: 'Pido y Ido confirma tu negocio', s: 'Te escribimos por WhatsApp. Mientras tanto los clientes todavía no te ven.', a: 'reviewInfo' }; }
+  // 018-sin-revision.sql: los negocios salen de una vez; Pido y Ido puede ocultar uno desde #/admin.
+  function hiddenCard(r) {
+    if (!ONLINE || r.aprobado !== false) return '';
+    return '<button class="note amber mt12" data-a="reviewInfo" style="width:100%;text-align:left"><b>Los clientes todavía no ven tu negocio.</b> Pido y Ido lo revisa. Toca aquí para escribirnos.</button>';
+  }
   function recoveryCard() {
     if (!ONLINE || S.hasRecovery !== false) return '';
     return '<div class="card mt12 row" style="gap:12px;align-items:flex-start"><span class="pi">' + ic('lock', 18) + '</span><div class="grow"><div class="b">Guarda tu código para recuperar la clave</div>' +
@@ -1806,7 +1837,7 @@
       '<div class="stat"><div class="xs muted">Ventas</div><div class="v">$' + Math.round((base[1] + today.reduce(function (a, o) { return a + o.total; }, 0)) / 1000) + 'k</div><div class="xs muted">COP</div></div>' +
       '<div class="stat"><div class="xs muted">Promedio</div><div class="v">' + avgMin + '</div><div class="xs muted">min</div></div></div>' +
       '<a class="card mt12 row mes-link" href="#/rest/mes">' + '<span class="mes-ic">' + ic('chart', 20) + '</span><div class="grow"><div class="b">Tu mes con Pido y Ido</div><div class="xs muted">Clientes nuevos, ventas y comisión de ' + ymTxt(ymOf(now())) + '</div></div>' + ic('right', 18) + '</a>' +
-      (ONLINE ? setupCard(r) : '') + recoveryCard() + notifCard() +
+      hiddenCard(r) + (ONLINE ? setupCard(r) : '') + recoveryCard() + notifCard() +
       (S.open[r.id] && r.horario && !enHorario(r, now()) ? '<div class="note grey mt12"><b style="color:var(--text)">Fuera de tu horario.</b> Los clientes ven: «' + estadoTxt(r) + '». Pueden programar pedidos para cuando abras. <a href="#/rest/menu" class="b orange">Cambiar horario</a></div>' : '') +
       (S.open[r.id] || (ONLINE && !setupDone(r)) ? '' : '<div class="note amber mt12"><b>Estás cerrado.</b> ' + (ONLINE ? 'Cuando quieras recibir pedidos, toca <b>Abierto</b> arriba.' : 'Los clientes ven tu menú, pero no pueden pedir.') + '</div>') +
       '<div class="chips scroll mt16">' + [['nuevos', 'Nuevos'], ['preparando', 'Preparando'], ['camino', 'En camino'], ['hechos', 'Terminados']].map(function (t) {
@@ -2442,6 +2473,7 @@
       case 'dom': return p[1] === 'perfil' ? scrDomPerfil() : scrDom();
       case 'wa': return scrWa(p[1]);
       case 'legal': return scrLegal(p[1]);
+      case 'admin': return ONLINE ? scrAdmin(p[1]) : scrStart();
       case 'promo': return p[1] === 'ganancias' ? scrGanancias() : scrPromo();
       default: return scrStart();
     }
@@ -2543,9 +2575,8 @@
     },
     reviewInfo: function () {
       var sup = supportWa();
-      sheet('<div class="t-h3">Pido y Ido confirma tu negocio</div><div class="small muted mt8">Antes de que los clientes te vean, te escribimos por WhatsApp para confirmar que el negocio y el número son tuyos. Casi siempre es el mismo día.</div>' +
-        '<div class="small muted mt8">Mientras tanto ya puedes subir tu menú, tus fotos y marcar tu local en el mapa.</div>' +
-        (sup ? '<a class="btn btn-green btn-block mt16" target="_blank" rel="noopener" href="' + waLink(sup, 'Hola, acabo de registrar mi negocio ' + (R(S.restId) || {}).name + ' en Pido y Ido.') + '">' + ic('msg', 18) + ' Escribirle a Pido y Ido</a>' : '') +
+      sheet('<div class="t-h3">Los clientes todavía no ven tu negocio</div><div class="small muted mt8">Pido y Ido revisa los negocios nuevos, o ocultó el tuyo por quejas o datos que no coinciden. Escríbenos y lo vemos contigo. Mientras tanto puedes seguir con tu menú, fotos y mapa.</div>' +
+        (sup ? '<a class="btn btn-green btn-block mt16" target="_blank" rel="noopener" href="' + waLink(sup, 'Hola, mi negocio ' + (R(S.restId) || {}).name + ' todavía no aparece en Pido y Ido.') + '">' + ic('msg', 18) + ' Escribirle a Pido y Ido</a>' : '') +
         '<button class="btn btn-ghost btn-block mt8" data-a="closeSheet">Entendido</button>');
     },
     recoveryNew: function () {
@@ -2558,6 +2589,20 @@
           '<button class="btn btn-primary btn-block mt16" data-a="closeSheet">Ya lo guardé</button>');
         render();
       }, function (e) { toast(/not_allowed/.test(String(e && e.message)) ? 'Inicia sesión con tu negocio.' : errTxt(e)); });
+    },
+    adminFind: function () { render(); },
+    adminAuto: function () {
+      var A2 = ui.admin; if (!A2 || ui.busy) return;
+      ui.busy = true;
+      CLOUD.adminSetAuto(A2.key, !A2.auto).then(function () { ui.busy = false; A2.auto = !A2.auto; render(); toast(A2.auto ? 'Los negocios nuevos salen de una vez' : 'Los negocios nuevos esperan tu aprobación'); },
+        function (e) { ui.busy = false; toast(errTxt(e)); });
+    },
+    adminToggle: function (el) {
+      var A2 = ui.admin, r = A2 && A2.list && A2.list.filter(function (x) { return x.id === el.dataset.v; })[0];
+      if (!r || ui.busy) return;
+      ui.busy = true;
+      CLOUD.adminSet(A2.key, r.id, !r.visible).then(function () { ui.busy = false; r.visible = !r.visible; render(); toast(r.visible ? r.name + ' se ve otra vez' : r.name + ' quedó oculto'); },
+        function (e) { ui.busy = false; toast(errTxt(e)); });
     },
     claveDo: function () {
       var f = ui.clave || {}, ph = String(f.phone || '').replace(/\D/g, '');

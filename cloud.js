@@ -176,6 +176,11 @@
     await ensureCust();
     return check(await cust.rpc('reset_clave', { p_phone: String(phone).replace(/\D/g, '').slice(-10), p_code: code, p_pass: pass }));
   }
+  // Administración de Pido y Ido (018-sin-revision.sql).
+  async function adminList(key) { await ensureCust(); return check(await cust.rpc('admin_list', { p_key: key })); }
+  async function adminSet(key, id, visible) { await ensureCust(); return check(await cust.rpc('admin_set_visible', { p_key: key, p_id: id, p_visible: visible })); }
+  async function adminSettings(key) { await ensureCust(); return check(await cust.rpc('admin_settings', { p_key: key })); }
+  async function adminSetAuto(key, on) { await ensureCust(); return check(await cust.rpc('admin_set_auto', { p_key: key, p_on: on })); }
   async function restLogout() { await rest.auth.signOut(); restUid = null; myRest = null; }
   async function updateRest(fields) { return check(await rest.from('restaurants').update(fields).eq('id', myRest)); }
   async function updateOrder(dbId, fields) { return check(await rest.from('orders').update(fields).eq('id', dbId)); }
@@ -269,7 +274,7 @@
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder, payOk: payOk, notDelivered: notDelivered, reportIssue: reportIssue, issueDone: issueDone,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
     saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, restMonth: restMonth, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
-    newRecoveryCode: newRecoveryCode, resetClave: resetClave,
+    newRecoveryCode: newRecoveryCode, resetClave: resetClave, adminList: adminList, adminSet: adminSet, adminSettings: adminSettings, adminSetAuto: adminSetAuto,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
   };
 })();
