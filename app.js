@@ -256,7 +256,7 @@
   var NO_REST = { id: '', name: 'Restaurante', short: 'Restaurante', img: '', rating: 0, count: 0, eta: '30–40 min', pickup: '15 min', min: 0, fee: 0, cats: [], sub: '', address: '', phone: '', nequi: '', dishes: [] };
   function R(id) { for (var i = 0; i < RESTAURANTS.length; i++) if (RESTAURANTS[i].id === id) return RESTAURANTS[i]; return ONLINE ? NO_REST : RESTAURANTS[0]; }
   // restaurants customers can order from (online: only those with a menu)
-  function shown() { return RESTAURANTS.filter(function (r) { return !ONLINE || (isShop(r) ? hasLoc(r) : r.dishes.length); }); }
+  function shown() { return RESTAURANTS.filter(function (r) { return !ONLINE || (r.aprobado !== false && (isShop(r) ? hasLoc(r) : r.dishes.length)); }); }
   // ---------- Not on Pido y Ido yet ----------
   // Real Villanueva businesses that have NOT joined. Shown greyed out under "Pronto en Pido y Ido" so customers can
   // ask them to join. Name + type only (no phone, address or photos: they did not sign up). Not orderable.
@@ -1189,7 +1189,8 @@
         return '<button class="role-card' + (on ? ' on' : '') + '" data-a="rolePick" data-v="' + r.id + '"><span class="ic">' + ic(r.icon, 22, { sw: 1.75 }) + '</span><span class="grow"><span class="rt">' + r.title + '</span><span class="rs">' + r.sub + (r.id === 'promo' ? ' ' + S.promo.pct + '%' : '') + '</span></span><span class="ring"></span></button>';
       }).join('') + '</div>' +
       '<div class="welcome-cta"><button class="btn btn-primary btn-block" style="height:58px;font-size:17px;font-weight:600" data-a="roleGo">' + cur.cta + '</button>' +
-      (ONLINE ? '<a class="welcome-login" href="#/rest/login">¿Tienes negocio? <b>Iniciar sesión</b></a>'
+      (ONLINE ? '<a class="welcome-login" href="#/rest/login">¿Tienes negocio? <b>Iniciar sesión</b></a>' +
+      '<div class="xs muted center"><a class="link" href="#/legal/terminos">Términos</a> · <a class="link" href="#/legal/privacidad">Privacidad</a></div>'
         : '<button class="welcome-login" data-a="login">¿Ya tienes cuenta? <b>Iniciar sesión</b></button>' +
       '<div class="xs muted center">Prototipo de demostración: los datos quedan solo en este celular.</div>') + '</div></div>';
   }
@@ -1238,6 +1239,7 @@
       fieldIc('rg3', 'Dirección', 'pin', '<input class="input' + (err.addr ? ' err' : '') + '" id="rg3" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro" autocomplete="street-address">') +
       (logged ? '' : fieldIc('rg4', 'Crea una clave', 'lock', '<input class="input' + (err.pass ? ' err' : '') + '" id="rg4" data-m="ui.reg.pass" type="password" autocomplete="new-password" value="' + esc(f.pass) + '" placeholder="Mínimo 6 letras o números">')) +
       (ui.regMsg ? '<div class="err-msg">' + esc(ui.regMsg) + '</div>' : '') + '</div>' +
+      legalCheck(!!f.legal, 'regLegal', 'Acepto los <a class="link" href="#/legal/terminos">términos para negocios</a> y la <a class="link" href="#/legal/privacidad">política de datos</a>.', err.legal) +
       (logged ? '' : '<div class="small muted center mt16">¿Ya tienes cuenta? <a class="link" href="#/rest/login">Inicia sesión</a></div>') + '</div></div>' +
       '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="regDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Un momento…' : logged ? 'Crear mi negocio' : 'Crear mi cuenta') + (ui.busy ? '' : ic('right', 20)) + '</button></div>';
   }
@@ -1249,8 +1251,50 @@
       fieldIc('lg2', 'Clave', 'lock', '<input class="input" id="lg2" data-m="ui.login.pass" type="password" autocomplete="current-password" data-enter="restLoginDo" value="' + esc(f.pass) + '" placeholder="Tu clave">') +
       (ui.loginMsg ? '<div class="err-msg">' + esc(ui.loginMsg) + '</div>' : '') + '</div>' +
       '<div class="card flat mt16 row"><span class="pi">' + ic('store', 18) + '</span><div class="grow small">¿Aún no estás en Pido y Ido?<br><a class="link" href="#/rest/registro">Registra tu negocio gratis</a></div></div>' +
-      '<div class="xs muted center mt16">¿Olvidaste tu clave? Escríbele a Pido y Ido y te ayudamos.</div></div></div>' +
+      '<div class="small center mt16"><a class="link" href="#/rest/clave">¿Olvidaste tu clave?</a></div></div></div>' +
       '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="restLoginDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Entrando…' : 'Entrar') + '</button></div>';
+  }
+  function supportWa() { return String((window.PYI_CONFIG || {}).soporteWhatsapp || '').replace(/\D/g, ''); }
+  // Clave olvidada: WhatsApp + código de recuperación + clave nueva (017-lanzamiento.sql).
+  function scrRestClave() {
+    var f = ui.clave || (ui.clave = { phone: (ui.login && ui.login.phone) || '', code: '', pass: '' }), sup = supportWa();
+    return '<div class="screen flush has-cta auth">' + authHero('Panel de tu negocio', 'Crea una clave nueva', '/rest/login', 'Negocios') +
+      '<div class="auth-body"><div class="card">' +
+      fieldIc('cl1', 'WhatsApp del negocio', 'msg', '<input class="input" id="cl1" data-m="ui.clave.phone" inputmode="tel" autocomplete="username" value="' + esc(f.phone) + '" placeholder="310 000 0000">', '', '+57') +
+      fieldIc('cl2', 'Código de recuperación', 'lock', '<input class="input" id="cl2" data-m="ui.clave.code" autocapitalize="characters" autocomplete="one-time-code" value="' + esc(f.code) + '" placeholder="Ej.: K7PQ2MXA">', 'Te lo mostramos cuando creaste tu cuenta.') +
+      fieldIc('cl3', 'Clave nueva', 'lock', '<input class="input" id="cl3" data-m="ui.clave.pass" type="password" autocomplete="new-password" data-enter="claveDo" value="' + esc(f.pass) + '" placeholder="Mínimo 6 letras o números">') +
+      (ui.claveMsg ? '<div class="err-msg">' + esc(ui.claveMsg) + '</div>' : '') + '</div>' +
+      '<div class="xs muted center mt16">¿No tienes el código? ' + (sup ? '<a class="link" target="_blank" rel="noopener" href="' + waLink(sup, 'Hola, olvidé la clave de mi negocio en Pido y Ido.') + '">Escríbele a Pido y Ido</a> y te ayudamos.' : 'Escríbele a Pido y Ido y te ayudamos.') + '</div></div></div>' +
+      '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="claveDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Un momento…' : 'Guardar clave nueva') + '</button></div>';
+  }
+  // Política de datos (Ley 1581 de 2012) y términos. Los datos del responsable vienen de config.js (legal).
+  function scrLegal(which) {
+    var L = (window.PYI_CONFIG || {}).legal || {}, sup = supportWa();
+    var quien = (L.responsable ? esc(L.responsable) : 'Pido y Ido') + (L.documento ? ', ' + esc(L.documento) : '') + (L.direccion ? ', ' + esc(L.direccion) : '');
+    var contacto = [L.correo ? 'correo <b>' + esc(L.correo) + '</b>' : '', sup ? 'WhatsApp <b>' + phoneFmt(sup.slice(-10)) + '</b>' : ''].filter(Boolean).join(' o ') || 'los canales de contacto de Pido y Ido';
+    var sec = function (t, body) { return '<div class="card mt12"><div class="t-h3">' + t + '</div><div class="small mt8 legal-txt">' + body + '</div></div>'; };
+    var priv = which !== 'terminos';
+    var h = '<div class="screen">' + topbar(priv ? 'Tus datos y privacidad' : 'Términos de uso', '/', 'Pido y Ido') +
+      '<div class="chips mt4"><a class="chip' + (priv ? ' on' : '') + '" href="#/legal/privacidad">Privacidad</a><a class="chip' + (priv ? '' : ' on') + '" href="#/legal/terminos">Términos</a></div>';
+    if (priv) {
+      h += sec('Quién trata tus datos', 'Responsable: ' + quien + '. Contacto para todo lo relacionado con tus datos: ' + contacto + '. Esta política cumple la Ley 1581 de 2012 y el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015).') +
+        sec('Qué datos guardamos', '<b>Clientes:</b> nombre, celular, dirección de entrega, el punto que marcas en el mapa, tus pedidos, calificaciones y reclamos. No pedimos cédula ni correo. No guardamos datos de tarjetas: el pago es en efectivo o por transferencia directa al negocio.<br><b>Negocios:</b> nombre, WhatsApp, dirección, ubicación, menú, fotos, horario, número de Nequi y sus domiciliarios (nombre y celular).<br><b>Domiciliarios en la bolsa:</b> lo que tú publicas (nombre, celular, barrio, vehículo, horario).') +
+        sec('Para qué los usamos', 'Solo para: (1) que el negocio reciba, prepare y entregue tu pedido; (2) mostrarte el estado del pedido y tu historial; (3) el premio de cliente fiel; (4) atender reclamos; (5) calcular la comisión de los negocios; (6) evitar fraudes y pedidos falsos. No vendemos tus datos ni te enviamos publicidad sin tu permiso.') +
+        sec('Quién más los ve', 'El negocio al que le pides ve tu nombre, celular, dirección y pedido. El domiciliario que el negocio elige ve tu nombre, dirección y el valor a cobrar. Los datos se guardan con proveedores de tecnología (Supabase, servidores en la Unión Europea, y GitHub para la página), que solo los guardan por encargo nuestro. Al aceptar, autorizas esa transmisión internacional.') +
+        sec('Tus derechos', 'Puedes conocer, actualizar, corregir y pedir que borremos tus datos, saber cómo los usamos, revocar tu autorización y quejarte ante la Superintendencia de Industria y Comercio (SIC). Escríbenos por ' + contacto + '. Respondemos consultas en máximo 10 días hábiles y reclamos en máximo 15 días hábiles.') +
+        sec('Cuánto tiempo', 'Mientras uses la app y hasta 5 años después del último pedido, por obligaciones contables y para atender reclamos. Después los borramos. La app no está dirigida a menores de 18 años.') +
+        '<div class="xs muted center mt16">Vigente desde el 22 de noviembre de 2026.</div>';
+    } else {
+      h += sec('Qué es Pido y Ido', 'Pido y Ido es una herramienta tecnológica que conecta a clientes con negocios de su pueblo. ' + quien + ' opera la app. <b>Pido y Ido no vende los productos, no fija precios y no contrata ni maneja domiciliarios.</b>') +
+        sec('El negocio responde por', 'Sus productos, precios, calidad, la factura cuando aplique, los tiempos y la entrega. El negocio elige y paga a sus propios domiciliarios. Ante cualquier problema con un pedido, usa «¿Algo salió mal?» o escríbele al negocio; el negocio debe responder según el Estatuto del Consumidor (Ley 1480 de 2011).') +
+        sec('Pagos', 'Pagas directo al negocio, en efectivo o por transferencia (Nequi u otra). Pido y Ido no recibe tu dinero. Revisa el total antes de pagar.') +
+        sec('Cancelaciones', 'Puedes cancelar mientras el negocio no haya aceptado el pedido. Las tiendas te muestran el precio antes de preparar y puedes cancelar si no estás de acuerdo. Si el negocio no responde en 15 minutos, el pedido se cierra solo.') +
+        sec('Uso correcto', 'No hagas pedidos falsos ni dejes de pagar pedidos entregados. Para evitar abusos hay un límite de pedidos abiertos por persona, y los negocios ven si un cliente tuvo pedidos sin pagar. Podemos bloquear a quien abuse.') +
+        sec('Para negocios', 'Registrarse es gratis. Pido y Ido revisa cada negocio antes de mostrarlo. La comisión es la acordada (hoy 5% de cada pedido entregado, sin el domicilio), se cobra fuera de la app y puede cambiar con aviso de 30 días. El negocio cuida su clave y su código de recuperación, mantiene su menú, precios y horario al día, y trata los datos de sus clientes solo para entregar los pedidos.') +
+        sec('Cambios y contacto', 'Si cambiamos estos términos, lo avisamos en la app. Contacto: ' + contacto + '.') +
+        '<div class="xs muted center mt16">Vigente desde el 22 de noviembre de 2026.</div>';
+    }
+    return h + '</div>';
   }
   function scrLoading(title) {
     return '<div class="screen">' + topbar(title || 'Pido y Ido', '/') + '<div class="skel" style="height:150px"></div><div class="skel mt12" style="height:18px;width:60%"></div><div class="skel mt8" style="height:14px;width:40%"></div><div class="skel mt20" style="height:150px"></div><div class="skel mt12" style="height:18px;width:55%"></div><div class="sr-only">Cargando…</div></div>';
@@ -1496,7 +1540,7 @@
         '<div class="divider dashed"></div><div class="row between small" style="padding:3px 0"><span>Productos</span><span class="b">La tienda confirma el precio</span></div>' +
         '<div class="row between small" style="padding:3px 0"><span class="' + (fee ? '' : 'green b') + '">' + (S.cart.mode === 'dom' ? 'Domicilio' : 'Recoges tú') + '</span><span class="' + (fee ? '' : 'green b') + '">' + (fee ? fmt(fee) : 'Gratis') + '</span></div>' +
         '<div class="note green mt12">Te avisamos aquí el precio total. Si no estás de acuerdo, puedes cancelar antes de que salga.</div>' +
-        '<button class="btn btn-ghost btn-block mt8" data-a="clearCart">Borrar mi pedido</button>';
+        '<button class="btn btn-ghost btn-block mt8" data-a="clearCart">Borrar mi pedido</button>' + orderLegal();
       return h + '</div><div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="placeOrder"' + (ctaOff(r) || ui.busy || far ? ' disabled' : '') + '>' + ctaTxt(r, 'Enviar pedido a ' + esc(r.short)) + '</button></div>';
     }
     h += '</div><div class="card mt12">' + lines.map(function (l) { return '<div class="row between small" style="padding:3px 0"><span>' + l.qty + ' × ' + l.name + '</span><span>' + fmt(l.qty * l.price) + '</span></div>'; }).join('') +
@@ -1505,9 +1549,17 @@
       '<div class="divider dashed"></div><div class="row between"><span class="t-h3">Total</span><span class="num" style="font-size:18px">' + fmt(total) + '</span></div></div>' +
       (!disc && rw && rw.ready && sub < rw.min ? '<div class="note green mt12">Tienes un premio de ' + fmt(rw.amount) + '. Se usa en pedidos desde ' + fmt(rw.min) + '.</div>' : '') +
       (short > 0 ? '<div class="note amber mt12">El pedido mínimo es ' + fmt(r.min) + '. Te faltan <b>' + fmt(short) + '</b>. <a class="b" href="#/r/' + r.id + '" style="text-decoration:underline">Agregar más</a></div>' : '') +
-      '<button class="btn btn-ghost btn-block mt8" data-a="clearCart">Vaciar carrito</button>';
+      '<button class="btn btn-ghost btn-block mt8" data-a="clearCart">Vaciar carrito</button>' + orderLegal();
     h += '</div><div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="placeOrder"' + (short > 0 || ctaOff(r) || ui.busy || far ? ' disabled' : '') + '>' + ctaTxt(r, 'Hacer pedido · ' + fmt(total)) + '</button></div>';
     return h;
+  }
+  // Ley 1581: el cliente autoriza el uso de sus datos antes del primer pedido (se pregunta una vez).
+  function legalCheck(on, action, html, err) {
+    return '<div class="mt12 legal-box' + (err ? ' err' : '') + '"><button class="radio-row check' + (on ? ' on' : '') + '" data-a="' + action + '" style="margin:0;align-items:flex-start"><span class="ring">' + (on ? ic('check', 14, { sw: 3 }) : '') + '</span><span class="grow small" style="text-align:left">' + html + '</span></button></div>';
+  }
+  function orderLegal() {
+    if (S.legalOk) return '';
+    return legalCheck(false, 'legalOk', 'Autorizo a Pido y Ido y al negocio a usar mi nombre, celular y dirección para entregar este pedido. <a class="link" href="#/legal/privacidad">Política de datos</a> · <a class="link" href="#/legal/terminos">Términos</a>', ui.legalErr);
   }
   function statusLine(o) {
     var r = R(o.restId);
@@ -1659,6 +1711,8 @@
       '<a class="menu-row" href="#/dom"><span class="mi">' + ic('bike', 20) + '</span><span class="grow">Quiero ser domiciliario</span>' + ic('right', 18) + '</a>' +
       '<a class="menu-row" href="#/rest"><span class="mi">' + ic('store', 20) + '</span><span class="grow">Panel del restaurante</span>' + ic('right', 18) + '</a>' +
       '<a class="menu-row" href="#/"><span class="mi">' + ic('swap', 20) + '</span><span class="grow">Cambiar de rol</span>' + ic('right', 18) + '</a>' +
+      '<a class="menu-row" href="#/legal/privacidad"><span class="mi">' + ic('lock', 20) + '</span><span class="grow">Tus datos y privacidad</span>' + ic('right', 18) + '</a>' +
+      '<a class="menu-row" href="#/legal/terminos"><span class="mi">' + ic('receipt', 20) + '</span><span class="grow">Términos de uso</span>' + ic('right', 18) + '</a>' +
       (ONLINE ? '' : '<button class="menu-row" data-a="resetAsk"><span class="mi" style="background:#FDE8E6;color:#A1291B">' + ic('refresh', 20) + '</span><span class="grow">Reiniciar datos de demo</span></button>') + '</div>' +
       installCard() + '<div class="xs muted center mt16">Pido y Ido · ' + (ONLINE ? 'Villanueva, Casanare' : 'prototipo de demostración') + '</div></div>' + tabs('cliente', 'perfil');
   }
@@ -1677,15 +1731,31 @@
       { ok: true, t: 'Cuenta creada', s: '' },
       { ok: !!String(r.sub || '').trim(), t: 'Cuenta qué vendes', s: 'Ej.: ' + kindOf(r).sub, href: '#/rest/menu' },
       { ok: hasLoc(r), t: 'Marca tu tienda en el mapa', s: 'Y hasta dónde entregas', href: '#/rest/menu' },
-      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' }
+      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' },
+      reviewStep(r)
     ];
     return [
       { ok: true, t: 'Cuenta creada', s: '' },
       { ok: r.dishes.length >= 3, t: 'Agrega tu menú', s: r.dishes.length ? r.dishes.length + ' de 3 platos o más' : 'Con precio y foto', href: '#/rest/menu' },
       { ok: !!r.img, t: 'Pon una foto de portada', s: own ? '' : 'Mejor una foto real de tu comida', href: '#/rest/menu' },
       { ok: hasLoc(r), t: 'Marca tu local en el mapa', s: 'Y hasta dónde entregas', href: '#/rest/menu' },
-      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' }
+      { ok: !!S.open[r.id], t: 'Abre para recibir pedidos', s: 'Toca Abierto arriba', a: 'toggleOpen' },
+      reviewStep(r)
     ];
+  }
+  // 017-lanzamiento.sql: Pido y Ido confirma cada negocio nuevo antes de que los clientes lo vean.
+  function reviewStep(r) { return { ok: r.aprobado !== false, t: 'Pido y Ido confirma tu negocio', s: 'Te escribimos por WhatsApp. Mientras tanto los clientes todavía no te ven.', a: 'reviewInfo' }; }
+  function recoveryCard() {
+    if (!ONLINE || S.hasRecovery !== false) return '';
+    return '<div class="card mt12 row" style="gap:12px;align-items:flex-start"><span class="pi">' + ic('lock', 18) + '</span><div class="grow"><div class="b">Guarda tu código para recuperar la clave</div>' +
+      '<div class="xs muted mt4">Si un día olvidas tu clave, con este código creas una nueva tú mismo.</div>' +
+      '<button class="btn btn-green btn-sm mt8" data-a="recoveryNew">Ver mi código</button></div></div>';
+  }
+  function notifCard() {
+    if (!ONLINE || !('Notification' in window) || Notification.permission !== 'default') return '';
+    return '<div class="card mt12 row" style="gap:12px;align-items:flex-start"><span class="pi">' + ic('bell', 18) + '</span><div class="grow"><div class="b">Activa los avisos de pedidos</div>' +
+      '<div class="xs muted mt4">Así te sale un aviso con sonido aunque estés en otra app. Deja Pido y Ido abierto en el celular o la tablet del negocio.</div>' +
+      '<button class="btn btn-green btn-sm mt8" data-a="notifOn">Activar avisos</button></div></div>';
   }
   function setupDone(r) { return setupItems(r).every(function (x) { return x.ok; }); }
   function setupCard(r) {
@@ -1717,7 +1787,7 @@
       '<div class="stat"><div class="xs muted">Ventas</div><div class="v">$' + Math.round((base[1] + today.reduce(function (a, o) { return a + o.total; }, 0)) / 1000) + 'k</div><div class="xs muted">COP</div></div>' +
       '<div class="stat"><div class="xs muted">Promedio</div><div class="v">' + avgMin + '</div><div class="xs muted">min</div></div></div>' +
       '<a class="card mt12 row mes-link" href="#/rest/mes">' + '<span class="mes-ic">' + ic('chart', 20) + '</span><div class="grow"><div class="b">Tu mes con Pido y Ido</div><div class="xs muted">Clientes nuevos, ventas y comisión de ' + ymTxt(ymOf(now())) + '</div></div>' + ic('right', 18) + '</a>' +
-      (ONLINE ? setupCard(r) : '') +
+      (ONLINE ? setupCard(r) : '') + recoveryCard() + notifCard() +
       (S.open[r.id] && r.horario && !enHorario(r, now()) ? '<div class="note grey mt12"><b style="color:var(--text)">Fuera de tu horario.</b> Los clientes ven: «' + estadoTxt(r) + '». Pueden programar pedidos para cuando abras. <a href="#/rest/menu" class="b orange">Cambiar horario</a></div>' : '') +
       (S.open[r.id] || (ONLINE && !setupDone(r)) ? '' : '<div class="note amber mt12"><b>Estás cerrado.</b> ' + (ONLINE ? 'Cuando quieras recibir pedidos, toca <b>Abierto</b> arriba.' : 'Los clientes ven tu menú, pero no pueden pedir.') + '</div>') +
       '<div class="chips scroll mt16">' + [['nuevos', 'Nuevos'], ['preparando', 'Preparando'], ['camino', 'En camino'], ['hechos', 'Terminados']].map(function (t) {
@@ -2335,6 +2405,7 @@
       case 'entrega': return ONLINE ? scrEntrega(p[1]) : scrStart();
       case 'rest':
         if (p[1] === 'registro') return scrRestRegistro();
+        if (ONLINE && p[1] === 'clave') return scrRestClave();
         if (ONLINE && p[1] === 'login') return CLOUD.restUid() ? (setTimeout(function () { go('/rest'); }, 0), scrLoading()) : scrRestLogin();
         if (ONLINE && p[1] === 'bolsa' && !S.restId) return scrBolsa(false);
         if (ONLINE && !ui.synced && !S.restId) return scrLoading('Panel del restaurante');
@@ -2348,6 +2419,7 @@
         return scrRest(rt.query);
       case 'dom': return p[1] === 'perfil' ? scrDomPerfil() : scrDom();
       case 'wa': return scrWa(p[1]);
+      case 'legal': return scrLegal(p[1]);
       case 'promo': return p[1] === 'ganancias' ? scrGanancias() : scrPromo();
       default: return scrStart();
     }
@@ -2362,6 +2434,7 @@
     document.getElementById('app').innerHTML = view(rt);
     if (same) window.scrollTo(0, y); else { window.scrollTo(0, 0); sheet(null); }
     ui.lastRoute = key;
+    if (ONLINE) keepAwake(rt.parts[0] === 'rest' && !!S.restId);
     if (rt.parts[0] === 'promo' && !rt.parts[1]) drawQR();
     if (rt.parts[0] === 'wa') { setTimeout(function () { window.scrollTo(0, document.body.scrollHeight); }, 30); }
     if (rt.parts[0] === 'buscar' && !same) { var q = document.getElementById('q'); if (q && !('ontouchstart' in window)) q.focus(); }
@@ -2441,6 +2514,43 @@
     },
     pay: function (el) { S.co.pay = el.dataset.v; save(); render(); },
     waOk: function () { S.user.waOk = !S.user.waOk; save(); render(); },
+    legalOk: function () { S.legalOk = Date.now(); ui.legalErr = false; save(); render(); },
+    regLegal: function () { ui.reg = ui.reg || {}; ui.reg.legal = !ui.reg.legal; if (ui.regErr) ui.regErr.legal = 0; render(); },
+    notifOn: function () {
+      try { Notification.requestPermission().then(function (p) { render(); toast(p === 'granted' ? 'Listo: te avisamos cada pedido nuevo' : 'Sin avisos. Puedes activarlos en los ajustes del navegador.'); }); } catch (e) {}
+    },
+    reviewInfo: function () {
+      var sup = supportWa();
+      sheet('<div class="t-h3">Pido y Ido confirma tu negocio</div><div class="small muted mt8">Antes de que los clientes te vean, te escribimos por WhatsApp para confirmar que el negocio y el número son tuyos. Casi siempre es el mismo día.</div>' +
+        '<div class="small muted mt8">Mientras tanto ya puedes subir tu menú, tus fotos y marcar tu local en el mapa.</div>' +
+        (sup ? '<a class="btn btn-green btn-block mt16" target="_blank" rel="noopener" href="' + waLink(sup, 'Hola, acabo de registrar mi negocio ' + (R(S.restId) || {}).name + ' en Pido y Ido.') + '">' + ic('msg', 18) + ' Escribirle a Pido y Ido</a>' : '') +
+        '<button class="btn btn-ghost btn-block mt8" data-a="closeSheet">Entendido</button>');
+    },
+    recoveryNew: function () {
+      if (!ONLINE || ui.busy) return;
+      CLOUD.newRecoveryCode().then(function (code) {
+        S.hasRecovery = true;
+        sheet('<div class="t-h3">Tu código para recuperar la clave</div><div class="small muted mt8">Guárdalo en un lugar seguro: anótalo o tómale una foto. Lo vas a necesitar si olvidas tu clave. No se lo des a nadie.</div>' +
+          '<div class="num center mt16" style="font-size:30px;letter-spacing:4px;padding:14px;border-radius:14px;background:var(--soft)">' + esc(code) + '</div>' +
+          '<div class="xs muted center mt8">Solo te lo mostramos esta vez. Si lo pierdes, crea uno nuevo desde tu panel.</div>' +
+          '<button class="btn btn-primary btn-block mt16" data-a="closeSheet">Ya lo guardé</button>');
+        render();
+      }, function (e) { toast(/not_allowed/.test(String(e && e.message)) ? 'Inicia sesión con tu negocio.' : errTxt(e)); });
+    },
+    claveDo: function () {
+      var f = ui.clave || {}, ph = String(f.phone || '').replace(/\D/g, '');
+      if (ph.length !== 10) { ui.claveMsg = 'Escribe el WhatsApp del negocio (10 números).'; render(); return; }
+      if (String(f.code || '').trim().length < 6) { ui.claveMsg = 'Escribe tu código de recuperación.'; render(); return; }
+      if (String(f.pass || '').length < 6) { ui.claveMsg = 'La clave nueva debe tener mínimo 6 letras o números.'; render(); return; }
+      if (ui.busy) return;
+      ui.busy = true; ui.claveMsg = ''; render();
+      CLOUD.resetClave(ph, f.code, f.pass).then(function (r) {
+        ui.busy = false;
+        var msg = { incorrecto: 'Ese código no es correcto.', bloqueado: 'Demasiados intentos. Escríbele a Pido y Ido para que te ayudemos.', sin_codigo: 'Este negocio no tiene código guardado. Escríbele a Pido y Ido.', no_existe: 'No hay ningún negocio con ese número.', clave_corta: 'La clave nueva debe tener mínimo 6 letras o números.' }[r];
+        if (msg) { ui.claveMsg = msg; render(); return; }
+        ui.login = { phone: f.phone, pass: '' }; ui.clave = null; go('/rest/login'); toast('Listo. Entra con tu clave nueva.');
+      }, function (e) { ui.busy = false; ui.claveMsg = errTxt(e); render(); });
+    },
     markPaid: function (el) {
       var o = order(el.dataset.id); if (!o || o.paidClaimAt) return;
       o.paidClaimAt = now(); save(); render(); toast('Listo, le avisamos a ' + R(o.restId).short);
@@ -2468,6 +2578,7 @@
       var lines = cartLines(), shop = cartShop();
       if (shop && !wishHas()) { toast('Escribe lo que necesitas'); go('/r/' + S.cart.restId); return; }
       if (!lines.length && !shop) return;
+      if (!S.legalOk) { ui.legalErr = true; render(); toast('Marca la casilla para autorizar el uso de tus datos'); return; }
       var r = R(S.cart.restId);
       var addr = (S.user.address || '').trim(), phone = String(S.user.phone || '').replace(/\D/g, '');
       if (S.cart.mode === 'dom' && addr.length < 6) { toast('Escribe tu dirección para que te encuentren'); var a = document.getElementById('addr'); if (a) { a.classList.add('err'); a.focus(); } return; }
@@ -3002,6 +3113,10 @@
     if (/below_min/.test(m)) return 'No alcanza el pedido mínimo.';
     if (/too_soon|too_late|out_of_hours/.test(m)) return 'Esa hora ya no se puede programar. Elige otra.';
     if (/too_far/.test(m)) return 'Estás fuera de la zona de entrega. Elige Recoger.';
+    if (/not_approved/.test(m)) return 'Este negocio todavía no está activo en Pido y Ido.';
+    if (/too_many_open/.test(m)) return 'Ya tienes 3 pedidos en curso. Espera a que llegue uno para pedir otro.';
+    if (/too_many/.test(m)) return 'Hiciste muchos pedidos en poco tiempo. Intenta en un rato.';
+    if (/order_closed/.test(m)) return 'Este pedido ya está cerrado y no se puede cambiar.';
     if (/no_geo/.test(m)) return 'Marca tu casa en el mapa.';
     if (/dish_gone/.test(m)) return 'Un plato ya no está en el menú. Revisa tu carrito.';
     if (/already registered|already_exists|duplicate key.*users/i.test(m)) return 'Ese número ya tiene cuenta. Inicia sesión.';
@@ -3018,8 +3133,9 @@
     if (!logged && ph.length !== 10) err.phone = 1;
     if (String(f.addr || '').trim().length < 5) err.addr = 1;
     if (!logged && String(f.pass || '').length < 6) err.pass = 1;
+    if (!f.legal) err.legal = 1;
     ui.regErr = err;
-    ui.regMsg = err.name ? 'Escribe el nombre del negocio.' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : '';
+    ui.regMsg = err.name ? 'Escribe el nombre del negocio.' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : err.legal ? 'Para seguir, acepta los términos y la política de datos.' : '';
     if (ui.regMsg || ui.busy) { render(); return; }
     var name = f.name.trim();
     var slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) + '-' + Math.random().toString(36).slice(2, 6);
@@ -3030,6 +3146,7 @@
     (logged ? CLOUD.createRest(data) : CLOUD.restSignup(ph, f.pass, data)).then(function () { return sync(true); }).then(function () {
       ui.busy = false; ui.reg = null; ui.regErr = null; S.role = 'rest'; S.seen = S.seen || {}; S.seen.rest = true; save();
       go('/rest/menu'); toast(shop ? '¡Bienvenido! Ahora marca tu tienda en el mapa.' : '¡Bienvenido! Ahora agrega tu menú.');
+      if (!logged) setTimeout(function () { A.recoveryNew(); }, 600);
     }, function (e) { ui.busy = false; ui.regMsg = /kind/.test(String(e && e.message)) ? 'Las tiendas se activan muy pronto. Escríbele a Pido y Ido.' : errTxt(e); render(); });
   }
   var syncing = null, lastSig = '', seenNew = null;
@@ -3046,6 +3163,26 @@
     });
     if (ch) save();
     return ch;
+  }
+  // Aviso del sistema (también con la app en segundo plano, mientras siga abierta).
+  function notifyNew(text) {
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      var opt = { body: 'Ábrelo en Pido y Ido para aceptarlo.', icon: ((document.querySelector('link[sizes="192x192"]') || {}).href || ''), tag: 'pyi-nuevo', renotify: true, vibrate: [300, 150, 300] };
+      var plain = function () { try { new Notification(text, opt); } catch (e) {} };
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(function (reg) { if (reg) reg.showNotification(text, opt); else plain(); }, plain);
+      else plain();
+    } catch (e) {}
+  }
+  // La pantalla no se apaga mientras el panel del negocio está abierto (si el celular lo permite).
+  var wakeLock = null;
+  function keepAwake(on) {
+    try {
+      if (on && !wakeLock && navigator.wakeLock && document.visibilityState === 'visible') {
+        wakeLock = 1;
+        navigator.wakeLock.request('screen').then(function (w) { wakeLock = w; w.addEventListener('release', function () { wakeLock = null; }); }, function () { wakeLock = null; });
+      } else if (!on && wakeLock && wakeLock.release) { wakeLock.release(); wakeLock = null; }
+    } catch (e) {}
   }
   function beep() {
     try {
@@ -3065,13 +3202,14 @@
     S.myRiders = {}; if (d.myRest) S.myRiders[d.myRest] = d.myRiders;
     S.myProfile = d.myProfile;
     S.reward = d.reward || null;
+    S.hasRecovery = d.hasRecovery;
     S.restId = d.myRest;
     save();
     // new order sound for the restaurant
     var fresh = d.orders.filter(function (o) { return o.restId === d.myRest && o.status === 'recibido'; }).map(function (o) { return o.id; });
     if (seenNew) {
       var nuevos = fresh.filter(function (id) { return seenNew.indexOf(id) < 0; });
-      if (nuevos.length) { beep(); toast(nuevos.length > 1 ? nuevos.length + ' pedidos nuevos' : '¡Pedido nuevo #' + nuevos[0] + '!'); }
+      if (nuevos.length) { var nt = nuevos.length > 1 ? nuevos.length + ' pedidos nuevos' : '¡Pedido nuevo #' + nuevos[0] + '!'; beep(); toast(nt); notifyNew(nt); }
     }
     seenNew = d.myRest ? fresh : null;
     document.title = fresh.length ? '(' + fresh.length + ') Pido y Ido' : 'Pido y Ido';
@@ -3139,7 +3277,7 @@
   if (ONLINE) {
     CLOUD.live(function () { sync(); });
     setInterval(function () { if (document.visibilityState !== 'hidden') sync(); }, 10000);
-    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync(); });
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { sync(); keepAwake(parse().parts[0] === 'rest' && !!S.restId); } });
     window.addEventListener('online', function () { sync(); });
   }
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); ui.installEvt = e; if (parse().parts.length === 0) render(); });
