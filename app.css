@@ -544,3 +544,4 @@ select.input,select.input:focus{appearance:none;-webkit-appearance:none;backgrou
 .legal-box.err .radio-row { border-color: #E5484D; }
 .legal-txt { line-height: 1.55; color: var(--text); }
 .legal-txt b { font-weight: 600; }
+.adm-off { opacity: .6; }
