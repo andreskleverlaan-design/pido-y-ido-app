@@ -8,7 +8,7 @@ window.PYI_CONFIG = {
   // Poner en true cuando los avisos de WhatsApp desde el número de Pido y Ido estén listos (supabase/functions/avisos-whatsapp).
   whatsappAvisos: false,
   // WhatsApp de Pido y Ido para ayuda (clave olvidada, negocios nuevos). 10 números, ej. '3101234567'.
-  soporteWhatsapp: '',
+  soporteWhatsapp: '3006358524',
   // Quién responde por los datos (Ley 1581). Sale en "Tus datos y privacidad" y en "Términos".
-  legal: { responsable: '', documento: '', correo: '', direccion: '' }
+  legal: { responsable: 'Pido y Ido', documento: 'C.C. 1125718059', correo: 'ayuda@pidoyido.co', direccion: '' }
 };
