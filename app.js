@@ -1111,7 +1111,8 @@
     dots += '<i class="gift' + (rw.ready ? ' on' : '') + '">' + ic('gift', 18) + '</i>';
     return '<div class="card stamp-card ' + (cls || '') + '"><div class="row between"><div class="b">' + (rw.ready ? '¡Tu próximo pedido tiene ' + fmt(rw.amount) + ' de descuento!' : 'Tu 5º pedido: ' + fmt(rw.amount) + ' menos') + '</div></div>' +
       '<div class="stamps mt8">' + dots + '</div>' +
-      '<div class="xs muted mt8">' + (rw.ready ? 'Se aplica solo al pagar, en pedidos desde ' + fmt(rw.min) + '.' : 'Llevas ' + n + ' de 4 sellos. Cada pedido entregado por la app suma uno.') + ' Solo pidiendo por Pido y Ido.</div></div>';
+      '<div class="xs muted mt8">' + (rw.ready ? 'Se aplica solo al pagar, en pedidos desde ' + fmt(rw.min) + '.' : 'Llevas ' + n + ' de 4 sellos. Cada pedido entregado por la app suma uno.') + ' Solo pidiendo por Pido y Ido.</div>' +
+      (needLogin() ? '<a class="xs link mt8" style="display:inline-block" href="#/cuenta">' + ic('lock', 12) + ' Confirma tu número para no perder tus sellos</a>' : '') + '</div>';
   }
   // WhatsApp avisos desde el número de Pido y Ido (cuando esté activado en config.js).
   // ---------- Pedir de nuevo y favoritos ----------
@@ -1265,12 +1266,22 @@
     var A2 = ui.admin && ui.admin.key === key ? ui.admin : (ui.admin = { key: key, list: null, q: '', err: '' });
     if (!A2.list && !A2.loading && !A2.err) {
       A2.loading = true;
-      CLOUD.adminSettings(key).then(function (st) { A2.auto = !!(st && st.auto_visible); render(); }, function () {});
+      CLOUD.adminSettings(key).then(function (st) { st = st || {}; A2.auto = !!st.auto_visible; if ('need_phone' in st) { A2.need = !!st.need_phone; A2.wa = !!st.whatsapp_listo; A2.cods = st.codigos_30d; A2.codsBad = st.codigos_fallidos_30d; } render(); }, function () {});
       CLOUD.adminList(key).then(function (l) { A2.loading = false; A2.list = l || []; render(); },
         function (e) { A2.loading = false; A2.err = /not_admin/.test(String(e && e.message)) ? 'Este enlace no es válido.' : errTxt(e); render(); });
     }
-    var h = '<div class="screen">' + topbar('Negocios', '/', 'Pido y Ido · solo para ti');
+    var tab = A2.tab || 'neg';
+    var h = '<div class="screen">' + topbar(tab === 'cli' ? 'Clientes' : 'Negocios', '/', 'Pido y Ido · solo para ti');
     if (A2.err) return h + '<div class="empty">' + esc(A2.err) + '</div></div>';
+    h += '<div class="chips mt4"><button class="chip' + (tab === 'neg' ? ' on' : '') + '" data-a="adminTab" data-v="neg">Negocios</button><button class="chip' + (tab === 'cli' ? ' on' : '') + '" data-a="adminTab" data-v="cli">Clientes</button></div>';
+    if (tab === 'cli') {
+      if (A2.need != null) h += '<div class="card mt12 row" style="gap:12px"><div class="grow"><div class="b">Pedir número confirmado</div><div class="xs muted mt4">' +
+        (A2.need ? 'Solo piden clientes que confirmaron su número por WhatsApp.' : 'Cualquiera puede pedir. Actívalo cuando WhatsApp funcione.') +
+        (A2.wa != null ? '<br>WhatsApp: ' + (A2.wa ? 'listo' : '<b>falta configurar</b>') + ' · ' + (A2.cods || 0) + ' códigos en 30 días' + (A2.codsBad ? ' · ' + A2.codsBad + ' fallidos' : '') : '') + '</div></div>' +
+        '<button class="toggle" data-a="adminNeed" style="background:' + (A2.need ? 'var(--gtint)' : 'var(--track)') + ';color:' + (A2.need ? 'var(--green)' : 'var(--muted)') + '">' + (A2.need ? 'Sí' : 'No') +
+        '<span class="tr" style="background:' + (A2.need ? 'var(--green)' : '#C9C1B7') + ';--k:' + (A2.need ? '19px' : '3px') + '"></span></button></div>';
+      return h + (A2.cli ? admCliente(A2, A2.cli) : admClientes(A2)) + '</div>';
+    }
     if (!A2.list) return h + '<div class="empty">Cargando…</div></div>';
     var q = A2.q.toLowerCase(), list = A2.list.filter(function (r) { return !q || (r.name + ' ' + (r.town || '') + ' ' + (r.phone || '')).toLowerCase().indexOf(q) >= 0; });
     var hid = A2.list.filter(function (r) { return !r.visible; }).length;
@@ -1289,6 +1300,92 @@
         (r.phone ? '<a class="link small mt8" style="display:inline-block" target="_blank" rel="noopener" href="' + waLink(r.phone) + '">' + ic('msg', 14) + ' ' + phoneFmt(r.phone) + '</a>' : '') + '</div>';
     }).join('');
     return h + '</div>';
+  }
+  // ---------- Cuenta del cliente: número confirmado con código por WhatsApp (019-cuenta-whatsapp.sql) ----------
+  // Se activa con loginWhatsapp: true en config.js, cuando el número de Pido y Ido en WhatsApp esté listo.
+  function loginOn() { return ONLINE && !!(window.PYI_CONFIG || {}).loginWhatsapp; }
+  function needLogin() { return loginOn() && !S.custPhone; }
+  function scrCuenta(query) {
+    var next = (query && query.next) || '/perfil';
+    var f = ui.cuenta || (ui.cuenta = { phone: String(S.user.phone || '').replace(/\D/g, '').slice(-10), code: '', step: 1, msg: '' });
+    var h = '<div class="screen flush has-cta auth">' + authHero('Tu cuenta', S.custPhone ? 'Tu número está confirmado' : 'Confirma tu número', next, 'Clientes') + '<div class="auth-body">';
+    if (S.custPhone) {
+      return h + '<div class="card row" style="gap:12px;align-items:flex-start"><span class="pi" style="background:var(--gtint);color:var(--green)">' + ic('check', 18, { sw: 3 }) + '</span><div class="grow"><div class="b">' + phoneFmt(S.custPhone) + '</div>' +
+        '<div class="xs muted mt4">Tus pedidos y sellos quedan guardados en este número. Si cambias de celular, entra con el mismo número y los recuperas.</div></div></div>' +
+        '<button class="btn btn-ghost btn-block mt16" data-a="cuentaSalir">Salir de esta cuenta</button>' +
+        '<div class="xs muted center mt8">Solo si este celular lo usa otra persona.</div></div></div>' +
+        '<div class="cta-wrap"><a class="btn btn-primary btn-xl btn-block" href="#' + esc(next) + '">Listo</a></div>';
+    }
+    h += '<div class="card">';
+    if (f.step === 1) {
+      h += '<div class="small">Te mandamos un código por <b>WhatsApp</b>. Así tus sellos y pedidos quedan en tu número y no los pierdes si cambias de celular.</div>' +
+        fieldIc('cu1', 'Tu celular (WhatsApp)', 'msg', '<input class="input" id="cu1" data-m="ui.cuenta.phone" inputmode="tel" autocomplete="tel" data-enter="cuentaEnviar" value="' + esc(f.phone) + '" placeholder="310 000 0000">', '', '+57');
+    } else {
+      h += '<div class="small">Escribe el código de 6 números que te llegó por WhatsApp al <b>' + phoneFmt(f.phone) + '</b>.</div>' +
+        fieldIc('cu2', 'Código', 'lock', '<input class="input" id="cu2" data-m="ui.cuenta.code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" data-enter="cuentaVerificar" value="' + esc(f.code) + '" placeholder="000000" style="letter-spacing:6px;font-size:20px">') +
+        '<div class="row between mt8 small"><button class="link" data-a="cuentaCambiar">Cambiar número</button>' +
+        (f.sentAt && now() - f.sentAt < 60000 ? '<span class="muted">Reenviar en ' + Math.ceil((60000 - (now() - f.sentAt)) / 1000) + ' s</span>' : '<button class="link" data-a="cuentaEnviar">Reenviar código</button>') + '</div>';
+    }
+    if (f.msg) h += '<div class="err-msg">' + esc(f.msg) + '</div>';
+    h += '</div><div class="xs muted center mt16">Usamos tu número solo para tus pedidos. <a class="link" href="#/legal/privacidad">Tus datos y privacidad</a></div></div></div>';
+    var btn = f.step === 1 ? ['cuentaEnviar', ui.busy ? 'Enviando…' : 'Enviar código por WhatsApp'] : ['cuentaVerificar', ui.busy ? 'Revisando…' : 'Confirmar'];
+    return h + '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="' + btn[0] + '" data-next="' + esc(next) + '"' + (ui.busy ? ' disabled' : '') + '>' + btn[1] + '</button></div>';
+  }
+  function cuentaCard() {
+    if (!loginOn()) return '';
+    if (S.custPhone) return '<a class="card mt12 row" href="#/cuenta" style="gap:12px"><span class="pi" style="background:var(--gtint);color:var(--green)">' + ic('check', 18, { sw: 3 }) + '</span><div class="grow"><div class="b">Número confirmado</div><div class="xs muted mt4">Tus sellos y pedidos están guardados en ' + phoneFmt(S.custPhone) + '.</div></div>' + ic('right', 18) + '</a>';
+    return '<a class="card mt12 row" href="#/cuenta" style="gap:12px;align-items:flex-start"><span class="pi">' + ic('lock', 18) + '</span><div class="grow"><div class="b">Guarda tus sellos en tu número</div><div class="xs muted mt4">Confírmalo una vez con un código por WhatsApp. Si cambias de celular, no pierdes nada.</div><span class="btn btn-green btn-sm mt8">Confirmar mi número</span></div></a>';
+  }
+  // Pido y Ido: historia de cada cliente por número (pedidos, cancelados, no pagó, reclamos).
+  function admClientes(A2) {
+    if (!A2.cl && !A2.clLoading && !A2.clErr) {
+      A2.clLoading = true;
+      CLOUD.adminClientes(A2.key).then(function (l) { A2.clLoading = false; A2.cl = l || []; render(); },
+        function (e) { A2.clLoading = false; A2.clErr = /admin_clientes/.test(String(e && e.message)) ? 'Falta pegar 019-cuenta-whatsapp.sql en Supabase.' : errTxt(e); render(); });
+    }
+    if (A2.clErr) return '<div class="empty">' + esc(A2.clErr) + '</div>';
+    if (!A2.cl) return '<div class="empty">Cargando…</div>';
+    var q = (A2.cq || '').toLowerCase(), qd = q.replace(/\D/g, '');
+    var list = A2.cl.filter(function (c) { return !q || (qd && c.phone.indexOf(qd) >= 0) || String(c.name || '').toLowerCase().indexOf(q) >= 0; });
+    var h = '<div class="small muted mt12">' + A2.cl.length + ' clientes · primero los que tienen más problemas</div>' +
+      '<input class="input mt12" data-m="ui.admin.cq" data-enter="adminFind" value="' + esc(A2.cq || '') + '" placeholder="Buscar por número o nombre">';
+    if (qd.length === 10 && !list.length) h += '<button class="card mt12 row" style="width:100%;text-align:left" data-a="adminCli" data-v="' + qd + '"><div class="grow b">Ver ' + phoneFmt(qd) + '</div>' + ic('right', 18) + '</button>';
+    return h + list.slice(0, 100).map(function (c) {
+      var bad = [c.cancelados ? c.cancelados + ' cancelado' + (c.cancelados > 1 ? 's' : '') : '', c.no_entregados ? c.no_entregados + ' sin entregar' : '', c.no_pago ? c.no_pago + ' no pagó' : '', c.reclamos ? c.reclamos + ' reclamo' + (c.reclamos > 1 ? 's' : '') : ''].filter(Boolean).join(' · ');
+      return '<button class="card mt12' + (c.bloqueado ? ' adm-off' : '') + '" style="width:100%;text-align:left" data-a="adminCli" data-v="' + esc(c.phone) + '"><div class="row between" style="gap:10px"><div class="grow"><div class="b">' + esc(c.name || 'Sin nombre') + (c.bloqueado ? ' · <span style="color:#A1291B">bloqueado</span>' : '') + '</div>' +
+        '<div class="xs muted mt4">' + phoneFmt(c.phone) + ' · ' + (c.confirmado ? '✓ confirmado' : 'sin confirmar') + ' · último ' + new Date(c.ultimo).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + '</div>' +
+        '<div class="xs mt4">' + c.pedidos + ' pedidos · ' + c.entregados + ' entregados' + (bad ? ' · <b style="color:#A1291B">' + bad + '</b>' : '') + '</div></div>' + ic('right', 18) + '</div></button>';
+    }).join('');
+  }
+  function admCliente(A2, phone) {
+    var d = A2.det && A2.det.phone === phone ? A2.det : null;
+    if (!d && !A2.detLoading) {
+      A2.detLoading = true;
+      CLOUD.adminCliente(A2.key, phone).then(function (x) { A2.detLoading = false; A2.det = x; render(); }, function (e) { A2.detLoading = false; toast(errTxt(e)); });
+    }
+    var h = '<button class="link small" data-a="adminCliBack">' + ic('back', 14) + ' Todos los clientes</button>';
+    if (!d) return h + '<div class="empty">Cargando…</div>';
+    var ps = d.pedidos || [], cnt = function (f) { return ps.filter(f).length; };
+    var nombres = ps.map(function (o) { return o.name; }).filter(function (n, i, a) { return n && a.indexOf(n) === i; });
+    h += '<div class="card mt12"><div class="t-h3">' + esc(nombres[0] || 'Cliente') + '</div>' +
+      '<div class="small mt4"><a class="link" target="_blank" rel="noopener" href="' + waLink(d.phone) + '">' + ic('msg', 14) + ' ' + phoneFmt(d.phone) + '</a></div>' +
+      '<div class="xs muted mt4">' + (d.cuenta && d.cuenta.desde ? '✓ Número confirmado por WhatsApp desde ' + new Date(d.cuenta.desde).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Número sin confirmar (lo escribió el cliente)') + '</div>' +
+      (nombres.length > 1 ? '<div class="xs muted mt4">Otros nombres usados: ' + esc(nombres.slice(1).join(', ')) + '</div>' : '') +
+      '<div class="adm-stats mt12">' + [[ps.length, 'pedidos'], [cnt(function (o) { return o.status === 'entregado'; }), 'entregados'], [cnt(function (o) { return o.status === 'cancelado'; }), 'cancelados'],
+        [cnt(function (o) { return o.status === 'no_entregado' && !/^Tuvimos que cancelarlo/.test(o.reason || ''); }), 'sin entregar'], [cnt(function (o) { return o.no_pago; }), 'no pagó'], [cnt(function (o) { return o.issue; }), 'reclamos']].map(function (x) {
+        return '<div><b>' + x[0] + '</b><span>' + x[1] + '</span></div>'; }).join('') + '</div>' +
+      (d.bloqueo ? '<div class="note amber mt12"><b>Bloqueado</b> desde ' + new Date(d.bloqueo.at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + (d.bloqueo.reason ? ': ' + esc(d.bloqueo.reason) : '') + '. No puede hacer pedidos.</div>' : '') +
+      '<button class="btn btn-sm btn-block mt12 ' + (d.bloqueo ? 'btn-green' : 'btn-outline') + '" data-a="adminBlock">' + (d.bloqueo ? 'Desbloquear' : 'Bloquear este número') + '</button></div>';
+    h += '<div class="t-h3 mt16">Pedidos</div>' + ps.map(function (o) {
+      var bad = o.status !== 'entregado' && o.status !== 'recibido' && o.status !== 'preparando' && o.status !== 'listo' && o.status !== 'en_camino';
+      return '<div class="card mt8"><div class="row between"><div class="b">#' + String(o.id).padStart(4, '0') + ' · ' + esc(o.rest || '') + '</div><div class="b">' + fmt(o.total) + '</div></div>' +
+        '<div class="xs muted mt4">' + new Date(o.at).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + ' · ' + ({ ef: 'Efectivo', nequi: 'Nequi', davi: 'Daviplata' }[o.pay] || o.pay) + (o.phone_ok ? ' · ✓ número' : '') + '</div>' +
+        '<div class="small mt4" style="color:' + (bad || o.no_pago ? '#A1291B' : 'var(--green)') + '"><b>' + esc(STATUS_TXT[o.status] || o.status) + '</b>' + (o.no_pago ? ' · no pagó' : '') + (o.reason ? ' · ' + esc(o.reason) : '') + '</div>' +
+        (o.issue ? '<div class="xs mt4"><b>Reclamo:</b> ' + esc(o.issue) + (o.issue_note ? ' · ' + esc(o.issue_note) : '') + '</div>' : '') +
+        (o.rating ? '<div class="xs mt4" style="color:var(--orange)">' + '★★★★★'.slice(0, o.rating) + '</div>' : '') +
+        (o.address ? '<div class="xs muted mt4">' + esc(o.address) + '</div>' : '') + '</div>';
+    }).join('');
+    return h;
   }
   function supportWa() { return String((window.PYI_CONFIG || {}).soporteWhatsapp || '').replace(/\D/g, ''); }
   // Clave olvidada: WhatsApp + código de recuperación + clave nueva (017-lanzamiento.sql).
@@ -1314,21 +1411,21 @@
       '<div class="chips mt4"><a class="chip' + (priv ? ' on' : '') + '" href="#/legal/privacidad">Privacidad</a><a class="chip' + (priv ? '' : ' on') + '" href="#/legal/terminos">Términos</a></div>';
     if (priv) {
       h += sec('Quién trata tus datos', 'Responsable: ' + quien + '. Contacto para todo lo relacionado con tus datos: ' + contacto + '. Esta política cumple la Ley 1581 de 2012 y el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015).') +
-        sec('Qué datos guardamos', '<b>Clientes:</b> nombre, celular, dirección de entrega, el punto que marcas en el mapa, tus pedidos, calificaciones y reclamos. No pedimos cédula ni correo. No guardamos datos de tarjetas: el pago es en efectivo o por transferencia directa al negocio.<br><b>Negocios:</b> nombre, WhatsApp, dirección, ubicación, menú, fotos, horario, número de Nequi y sus domiciliarios (nombre y celular).<br><b>Domiciliarios en la bolsa:</b> lo que tú publicas (nombre, celular, barrio, vehículo, horario).') +
-        sec('Para qué los usamos', 'Solo para: (1) que el negocio reciba, prepare y entregue tu pedido; (2) mostrarte el estado del pedido y tu historial; (3) el premio de cliente fiel; (4) atender reclamos; (5) calcular la comisión de los negocios; (6) evitar fraudes y pedidos falsos. No vendemos tus datos ni te enviamos publicidad sin tu permiso.') +
-        sec('Quién más los ve', 'El negocio al que le pides ve tu nombre, celular, dirección y pedido. El domiciliario que el negocio elige ve tu nombre, dirección y el valor a cobrar. Los datos se guardan con proveedores de tecnología (Supabase, servidores en la Unión Europea, y GitHub para la página), que solo los guardan por encargo nuestro. Al aceptar, autorizas esa transmisión internacional.') +
+        sec('Qué datos guardamos', '<b>Clientes:</b> nombre, celular, dirección de entrega, el punto que marcas en el mapa, tus pedidos, calificaciones y reclamos. Si confirmas tu número, guardamos que lo confirmaste y cuándo (el código de WhatsApp vence en minutos y no lo guardamos). No pedimos cédula ni correo. No guardamos datos de tarjetas: el pago es en efectivo o por transferencia directa al negocio.<br><b>Negocios:</b> nombre, WhatsApp, dirección, ubicación, menú, fotos, horario, número de Nequi y sus domiciliarios (nombre y celular).<br><b>Domiciliarios en la bolsa:</b> lo que tú publicas (nombre, celular, barrio, vehículo, horario).') +
+        sec('Para qué los usamos', 'Solo para: (1) que el negocio reciba, prepare y entregue tu pedido; (2) mostrarte el estado del pedido y tu historial; (3) el premio de cliente fiel; (4) atender reclamos; (5) calcular la comisión de los negocios; (6) evitar fraudes y pedidos falsos: Pido y Ido revisa el historial de pedidos de cada número (entregados, cancelados, sin pagar y reclamos) y puede bloquear un número que abusa; (7) mandarte por WhatsApp el código para confirmar tu número. No vendemos tus datos ni te enviamos publicidad sin tu permiso.') +
+        sec('Quién más los ve', 'El negocio al que le pides ve tu nombre, celular, dirección y pedido. El domiciliario que el negocio elige ve tu nombre, dirección y el valor a cobrar. Los datos se guardan con proveedores de tecnología (Supabase, servidores en la Unión Europea; Meta/WhatsApp, que recibe tu número para mandarte el código; y GitHub para la página), que solo los guardan por encargo nuestro. Al aceptar, autorizas esa transmisión internacional.') +
         sec('Tus derechos', 'Puedes conocer, actualizar, corregir y pedir que borremos tus datos, saber cómo los usamos, revocar tu autorización y quejarte ante la Superintendencia de Industria y Comercio (SIC). Escríbenos por ' + contacto + '. Respondemos consultas en máximo 10 días hábiles y reclamos en máximo 15 días hábiles.') +
         sec('Cuánto tiempo', 'Mientras uses la app y hasta 5 años después del último pedido, por obligaciones contables y para atender reclamos. Después los borramos. La app no está dirigida a menores de 18 años.') +
-        '<div class="xs muted center mt16">Vigente desde el 22 de noviembre de 2026.</div>';
+        '<div class="xs muted center mt16">Vigente desde el 23 de noviembre de 2026.</div>';
     } else {
       h += sec('Qué es Pido y Ido', 'Pido y Ido es una herramienta tecnológica que conecta a clientes con negocios de su pueblo. ' + quien + ' opera la app. <b>Pido y Ido no vende los productos, no fija precios y no contrata ni maneja domiciliarios.</b>') +
         sec('El negocio responde por', 'Sus productos, precios, calidad, la factura cuando aplique, los tiempos y la entrega. El negocio elige y paga a sus propios domiciliarios. Ante cualquier problema con un pedido, usa «¿Algo salió mal?» o escríbele al negocio; el negocio debe responder según el Estatuto del Consumidor (Ley 1480 de 2011).') +
         sec('Pagos', 'Pagas directo al negocio, en efectivo o por transferencia (Nequi u otra). Pido y Ido no recibe tu dinero. Revisa el total antes de pagar.') +
         sec('Cancelaciones', 'Puedes cancelar mientras el negocio no haya aceptado el pedido. Las tiendas te muestran el precio antes de preparar y puedes cancelar si no estás de acuerdo. Si el negocio no responde en 15 minutos, el pedido se cierra solo.') +
-        sec('Uso correcto', 'No hagas pedidos falsos ni dejes de pagar pedidos entregados. Para evitar abusos hay un límite de pedidos abiertos por persona, y los negocios ven si un cliente tuvo pedidos sin pagar. Podemos bloquear a quien abuse.') +
+        sec('Uso correcto', 'No hagas pedidos falsos ni dejes de pagar pedidos entregados. Para evitar abusos hay un límite de pedidos abiertos por persona, y los negocios ven si un cliente tuvo pedidos sin pagar. Te podemos pedir que confirmes tu celular con un código por WhatsApp. Tu cuenta es tu número: no compartas el código con nadie. Podemos bloquear el número de quien abuse.') +
         sec('Para negocios', 'Registrarse es gratis. Pido y Ido puede revisar los negocios nuevos antes de mostrarlos y ocultar un negocio con datos falsos, quejas repetidas o que no cumpla estos términos. La comisión es la acordada (hoy 5% de cada pedido entregado, sin el domicilio), se cobra fuera de la app y puede cambiar con aviso de 30 días. El negocio cuida su clave y su código de recuperación, mantiene su menú, precios y horario al día, y trata los datos de sus clientes solo para entregar los pedidos.') +
         sec('Cambios y contacto', 'Si cambiamos estos términos, lo avisamos en la app. Contacto: ' + contacto + '.') +
-        '<div class="xs muted center mt16">Vigente desde el 22 de noviembre de 2026.</div>';
+        '<div class="xs muted center mt16">Vigente desde el 23 de noviembre de 2026.</div>';
     }
     return h + '</div>';
   }
@@ -1525,6 +1622,15 @@
     return ok;
   }
   function ctaOff(r) { return wantsLater(r) ? !S.co.when : !abierto(r); }
+  // Celular en el pedido: confirmado por WhatsApp (no se puede cambiar aquí) o escrito a mano.
+  function phoneField(ac) {
+    if (loginOn() && S.custPhone) return '<label class="label">Celular</label><a class="input row" href="#/cuenta?next=/confirmar" style="gap:6px;text-decoration:none;color:inherit"><span class="grow">' + phoneFmt(S.custPhone) + '</span><span style="color:var(--green)">' + ic('check', 16, { sw: 3 }) + '</span></a>';
+    return '<label class="label" for="ph">Celular</label><input class="input" id="ph" data-m="user.phone" inputmode="tel" value="' + esc(S.user.phone) + '"' + (ac ? ' autocomplete="tel"' : '') + '>';
+  }
+  function cuentaNote() {
+    if (!needLogin()) return '';
+    return '<div class="note green mt8 row" style="gap:8px;align-items:flex-start">' + ic('lock', 16) + '<span>La primera vez te mandamos un <b>código por WhatsApp</b> para confirmar tu celular. Así tus sellos quedan guardados en tu número.</span></div>';
+  }
   function scrConfirmar() {
     var lines = cartLines(), shop = cartShop();
     if (!lines.length && !wishHas()) {
@@ -1545,12 +1651,12 @@
         '<button class="dashed-btn mt8' + (co.geo ? ' done' : '') + (ONLINE && !co.geo ? ' need' : '') + '" data-a="geo">' + ic(co.geo ? 'check' : 'map', 18) + (co.geo ? 'Casa marcada en el mapa · cambiar' : ONLINE ? 'Marca tu casa en el mapa' : 'Poner pin en el mapa (opcional)') + '</button>' +
         (far ? '<div class="note amber mt8">Estás a ' + kmTxt(km(r, co.geo)) + ' y ' + esc(r.short) + ' entrega hasta ' + kmTxt(r.radius || 3) + '. Puedes elegir <b>Recoger</b>.</div>' : '') +
         '<div class="row mt12" style="gap:10px"><div class="grow"><label class="label" for="nm">Tu nombre</label><input class="input" id="nm" data-m="user.name" value="' + esc(S.user.name) + '" autocomplete="name"></div>' +
-        '<div class="grow"><label class="label" for="ph">Celular</label><input class="input" id="ph" data-m="user.phone" inputmode="tel" value="' + esc(S.user.phone) + '" autocomplete="tel"></div></div>' +
+        '<div class="grow">' + phoneField(true) + '</div></div>' + cuentaNote() +
         '<label class="label mt12" for="note">' + (shop ? 'Nota para la tienda' : 'Nota para la cocina') + '</label><input class="input" id="note" data-m="co.note" value="' + esc(co.note) + '" placeholder="' + (shop ? 'Ej.: si no hay, me llaman' : 'Ej.: carne término medio, sin ají') + '"></div>';
     } else {
       h += '<div class="card"><div class="row b" style="gap:8px"><span class="orange">' + ic('store', 18) + '</span>Recoges en ' + (shop ? 'la tienda' : 'el restaurante') + '</div><div class="small muted mt4">' + r.address + ' · listo en ' + r.pickup + '</div>' +
         '<div class="row mt12" style="gap:10px"><div class="grow"><label class="label" for="nm">Tu nombre</label><input class="input" id="nm" data-m="user.name" value="' + esc(S.user.name) + '"></div>' +
-        '<div class="grow"><label class="label" for="ph">Celular</label><input class="input" id="ph" data-m="user.phone" inputmode="tel" value="' + esc(S.user.phone) + '"></div></div>' +
+        '<div class="grow">' + phoneField(false) + '</div></div>' + cuentaNote() +
         '<label class="label mt12" for="note">' + (shop ? 'Nota para la tienda' : 'Nota para la cocina') + '</label><input class="input" id="note" data-m="co.note" value="' + esc(co.note) + '" placeholder="' + (shop ? 'Ej.: paso a las 5 p. m.' : 'Ej.: sin cebolla') + '"></div>';
     }
     h += whenCard(r);
@@ -1738,8 +1844,9 @@
     var c = avColor('luz');
     return '<div class="screen has-tabs">' + topbar('Perfil') +
       '<div class="card row"><div class="avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + initials(S.user.name) + '</div><div class="grow"><div class="t-h3">' + esc(S.user.name) + '</div><div class="small muted">' + (S.user.phone ? phoneFmt(S.user.phone) + ' · ' : '') + 'Villanueva</div></div></div>' +
+      cuentaCard() +
       '<div class="card mt12"><div class="field"><label class="label" for="pn">Nombre</label><input class="input" id="pn" data-m="user.name" value="' + esc(S.user.name) + '"></div>' +
-      '<div class="field"><label class="label" for="pp">Celular / WhatsApp</label><input class="input" id="pp" data-m="user.phone" inputmode="tel" value="' + esc(S.user.phone) + '"></div>' +
+      (loginOn() && S.custPhone ? '' : '<div class="field"><label class="label" for="pp">Celular / WhatsApp</label><input class="input" id="pp" data-m="user.phone" inputmode="tel" value="' + esc(S.user.phone) + '"></div>') +
       '<div class="field"><label class="label" for="pa">Dirección</label><textarea class="input" id="pa" data-m="user.address" rows="2">' + esc(S.user.address) + '</textarea></div>' +
       '<button class="btn btn-green btn-sm btn-block mt12" data-a="saveProfile">Guardar</button></div>' +
       '<div class="card mt12" style="padding:4px 14px">' +
@@ -1974,7 +2081,7 @@
   function restOrderCard(o) {
     var items = o.wish ? '<div class="wish-box">' + (o.wishImg ? wishPic(o, true) : '') + '<div class="grow"><div class="xs muted b" style="text-transform:uppercase;letter-spacing:.4px">Lista del cliente</div><div class="wish-txt mt4">' + esc(o.wish === '(Ver la foto)' ? 'Ver la foto' : o.wish) + '</div></div></div>'
       : o.items.map(function (i) { return '<div class="row between" style="padding:2px 0"><span><b>' + i.qty + '×</b> ' + esc(i.name) + '</span><span>' + fmt(i.qty * i.price) + '</span></div>'; }).join('');
-    var cust = '<div class="small mt8"><b>' + esc(o.customer.name) + '</b> · ' + (o.mode === 'rec' ? 'Recoge en el local' : esc(o.customer.address)) + (o.mode === 'dom' && o.geo ? ' · <a class="link" target="_blank" rel="noopener" href="' + mapsLink(o.geo) + '">Ver en el mapa</a>' : '') + '</div><div class="small mt4"><b>' + payTxt(o).split(' · ')[0] + '</b>' + (payTxt(o).indexOf(' · ') > 0 ? ' · ' + payTxt(o).split(' · ').slice(1).join(' · ') : '') + '</div>' + (o.status === 'recibido' ? restPayNotes(o) : '');
+    var cust = '<div class="small mt8"><b>' + esc(o.customer.name) + '</b>' + (o.phoneOk ? ' <span class="xs" style="color:var(--green)" title="Número confirmado por WhatsApp">' + ic('check', 12, { sw: 3 }) + ' número confirmado</span>' : '') + ' · ' + (o.mode === 'rec' ? 'Recoge en el local' : esc(o.customer.address)) + (o.mode === 'dom' && o.geo ? ' · <a class="link" target="_blank" rel="noopener" href="' + mapsLink(o.geo) + '">Ver en el mapa</a>' : '') + '</div><div class="small mt4"><b>' + payTxt(o).split(' · ')[0] + '</b>' + (payTxt(o).indexOf(' · ') > 0 ? ' · ' + payTxt(o).split(' · ').slice(1).join(' · ') : '') + '</div>' + (o.status === 'recibido' ? restPayNotes(o) : '');
     var note = o.note ? '<div class="note grey mt8">Nota: ' + esc(o.note) + '</div>' : '';
     var sf = o.scheduledFor;
     if (o.status === 'recibido') {
@@ -2461,6 +2568,7 @@
       case 'wa': return scrWa(p[1]);
       case 'legal': return scrLegal(p[1]);
       case 'admin': return ONLINE ? scrAdmin(p[1]) : scrStart();
+      case 'cuenta': return loginOn() ? scrCuenta(rt.query) : scrPerfil();
       case 'promo': return p[1] === 'ganancias' ? scrGanancias() : scrPromo();
       default: return scrStart();
     }
@@ -2578,6 +2686,49 @@
       }, function (e) { toast(/not_allowed/.test(String(e && e.message)) ? 'Inicia sesión con tu negocio.' : errTxt(e)); });
     },
     adminFind: function () { render(); },
+    adminTab: function (el) { if (ui.admin) { ui.admin.tab = el.dataset.v; ui.admin.cli = null; } render(); },
+    adminCli: function (el) { if (ui.admin) { ui.admin.cli = el.dataset.v; ui.admin.det = null; } render(); window.scrollTo(0, 0); },
+    adminCliBack: function () { if (ui.admin) { ui.admin.cli = null; ui.admin.det = null; ui.admin.cl = null; } render(); },
+    adminNeed: function () {
+      var A2 = ui.admin; if (!A2 || ui.busy) return;
+      ui.busy = true;
+      CLOUD.adminSetNeedPhone(A2.key, !A2.need).then(function () { ui.busy = false; A2.need = !A2.need; render(); toast(A2.need ? 'Ahora se pide número confirmado para pedir' : 'Ya no se pide número confirmado'); },
+        function (e) { ui.busy = false; toast(errTxt(e)); });
+    },
+    adminBlock: function () {
+      var A2 = ui.admin, d = A2 && A2.det; if (!d || ui.busy) return;
+      var on = !d.bloqueo, why = '';
+      if (on) { why = window.prompt('¿Por qué lo bloqueas? (lo ves solo tú)', 'No pagó'); if (why === null) return; }
+      ui.busy = true;
+      CLOUD.adminBlock(A2.key, d.phone, on, why).then(function () { ui.busy = false; d.bloqueo = on ? { reason: why, at: new Date().toISOString() } : null; A2.cl = null; render(); toast(on ? 'Número bloqueado' : 'Número desbloqueado'); },
+        function (e) { ui.busy = false; toast(errTxt(e)); });
+    },
+    cuentaEnviar: function () {
+      var f = ui.cuenta; if (!f || ui.busy) return;
+      var ph = String(f.phone || '').replace(/\D/g, '').slice(-10);
+      if (ph.length !== 10 || ph[0] !== '3') { f.msg = 'Escribe tu celular de 10 números (empieza por 3).'; render(); return; }
+      if (f.sentAt && now() - f.sentAt < 60000 && f.phone === f.sentTo) { f.step = 2; render(); return; }
+      f.phone = ph; f.msg = ''; ui.busy = true; render();
+      CLOUD.sendCode(ph).then(function () { ui.busy = false; f.step = 2; f.code = ''; f.sentAt = now(); f.sentTo = ph; render(); setTimeout(function () { var c = document.getElementById('cu2'); if (c) c.focus(); }, 50); },
+        function (e) { ui.busy = false; f.msg = codeErr(e); render(); });
+    },
+    cuentaCambiar: function () { if (ui.cuenta) { ui.cuenta.step = 1; ui.cuenta.msg = ''; } render(); },
+    cuentaVerificar: function (el) {
+      var f = ui.cuenta; if (!f || ui.busy) return;
+      var code = String(f.code || '').replace(/\D/g, '');
+      if (code.length !== 6) { f.msg = 'El código tiene 6 números.'; render(); return; }
+      var next = (el && el.dataset && el.dataset.next) || (parse().query.next) || '/perfil';
+      f.msg = ''; ui.busy = true; render();
+      CLOUD.verifyCode(f.phone, code).then(function (moved) {
+        ui.busy = false; S.custPhone = f.phone; S.user.phone = f.phone; ui.cuenta = null; save();
+        return sync(true).then(function () { go(next); toast(moved ? '¡Listo! Tu número quedó confirmado y tus pedidos quedaron guardados.' : '¡Listo! Tu número quedó confirmado.'); });
+      }, function (e) { ui.busy = false; f.msg = codeErr(e); render(); });
+    },
+    cuentaSalir: function () {
+      if (ui.busy) return;
+      ui.busy = true;
+      CLOUD.custLogout().then(function () { ui.busy = false; S.custPhone = ''; S.orders = S.orders.filter(function (o) { return !o.mine; }); S.reward = null; save(); return sync(true); }).then(function () { go('/perfil'); toast('Saliste de tu cuenta'); });
+    },
     adminAuto: function () {
       var A2 = ui.admin; if (!A2 || ui.busy) return;
       ui.busy = true;
@@ -2641,7 +2792,9 @@
       var when = wantsLater(r) ? S.co.when : null;
       if (wantsLater(r) && (!when || when < now() + 45 * 60000)) { S.co.when = null; render(); toast('Elige a qué hora lo quieres'); return; }
       if (!(S.user.name || '').trim()) { toast('Escribe tu nombre'); return; }
+      if (loginOn() && S.custPhone) phone = S.custPhone;
       if (phone.length < 10) { toast('Escribe tu celular (10 números)'); var pe = document.getElementById('ph'); if (pe) { pe.classList.add('err'); pe.focus(); } return; }
+      if (needLogin()) { ui.cuenta = { phone: phone.slice(-10), code: '', step: 1, msg: '' }; save(); go('/cuenta?next=/confirmar'); toast('Confirma tu número una vez y listo'); return; }
       var sub = cartSubtotal(), fee = cartFee(), disc = cartDiscount(), total = sub + fee - disc;
       var o = {
         id: String(S.nextId++).padStart(4, '0'), restId: r.id, mine: true,
@@ -3180,6 +3333,8 @@
     if (/not_approved/.test(m)) return 'Este negocio todavía no está activo en Pido y Ido.';
     if (/too_many_open/.test(m)) return 'Ya tienes 3 pedidos en curso. Espera a que llegue uno para pedir otro.';
     if (/too_many/.test(m)) return 'Hiciste muchos pedidos en poco tiempo. Intenta en un rato.';
+    if (/need_phone/.test(m)) return 'Confirma tu número con el código de WhatsApp para pedir.';
+    if (/blocked/.test(m)) return 'Este número no puede hacer pedidos. Escríbele a Pido y Ido.';
     if (/order_closed/.test(m)) return 'Este pedido ya está cerrado y no se puede cambiar.';
     if (/no_geo/.test(m)) return 'Marca tu casa en el mapa.';
     if (/dish_gone/.test(m)) return 'Un plato ya no está en el menú. Revisa tu carrito.';
@@ -3188,6 +3343,16 @@
     if (/anonymous/i.test(m)) return 'Falta un ajuste: en Supabase activa "Anonymous sign-ins".';
     if (/fetch|network|Failed|Load failed/i.test(m)) return 'Sin conexión. Revisa tu internet e intenta otra vez.';
     return 'No se pudo guardar (' + m.slice(0, 80) + ')';
+  }
+  // Errores del código de WhatsApp (Supabase Auth).
+  function codeErr(e) {
+    var m = String((e && (e.message || e.error_description || e.code)) || e || '');
+    if (/expired|invalid|otp_expired|Token has expired/i.test(m)) return 'Ese código no sirve o ya venció. Revisa los números o pide uno nuevo.';
+    if (/rate|seconds|too many|over_sms_send_rate_limit/i.test(m)) return 'Espera un minuto antes de pedir otro código.';
+    if (/phone_provider_disabled|Unsupported phone provider|provider/i.test(m)) return 'El inicio con WhatsApp todavía no está activo. Intenta más tarde.';
+    if (/configurado|hook/i.test(m)) return 'No pudimos mandar el WhatsApp. Intenta más tarde.';
+    if (/fetch|network|Failed|Load failed/i.test(m)) return 'Sin conexión. Revisa tu internet e intenta otra vez.';
+    return 'No se pudo (' + m.slice(0, 80) + ')';
   }
   function push(p) { if (p && p.then) p.then(function () { sync(); }, function (e) { console.warn(e); toast(errTxt(e)); sync(true); }); }
   function shortName(n) { return String(n || '').trim().replace(/^(asadero|restaurante|pizzería|pizzeria|cafetería|cafeteria|droguería|drogueria|farmacia|minimercado|supermercado|tienda|licorera|floristería|floristeria|ferretería|ferreteria)\s+/i, ''); }
@@ -3266,6 +3431,7 @@
     S.myRiders = {}; if (d.myRest) S.myRiders[d.myRest] = d.myRiders;
     S.myProfile = d.myProfile;
     S.reward = d.reward || null;
+    S.custPhone = d.custPhone || '';
     S.hasRecovery = d.hasRecovery;
     S.restId = d.myRest;
     save();
