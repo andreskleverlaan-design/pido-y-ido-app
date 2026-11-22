@@ -545,3 +545,8 @@ select.input,select.input:focus{appearance:none;-webkit-appearance:none;backgrou
 .legal-txt { line-height: 1.55; color: var(--text); }
 .legal-txt b { font-weight: 600; }
 .adm-off { opacity: .6; }
+/* 019: historia del cliente en #/admin */
+.adm-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.adm-stats div { background: var(--soft, #F3EFEA); border-radius: 12px; padding: 8px; text-align: center; }
+.adm-stats b { display: block; font-size: 20px; }
+.adm-stats span { font-size: 12px; color: var(--muted); }
