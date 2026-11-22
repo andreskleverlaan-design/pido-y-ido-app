@@ -1757,9 +1757,17 @@
     var progHead = o.scheduledFor && (o.status === 'recibido' || (o.status === 'preparando' && o.scheduledFor - now() > 45 * 60000));
     h += '<div class="small mt12" style="opacity:.85">' + (progHead ? (o.mode === 'rec' ? 'Programado para recoger' : 'Programado para') : o.status === 'en_camino' || o.status === 'preparando' ? 'Llega en' : '') + '</div><div class="eta">' + e[0] + '</div><div style="opacity:.9">' + e[1] + '</div></div>';
     var priced = o.wish && ['preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0;
-    h += '<div class="pad" style="margin-top:-44px"><div class="card raised"><div class="progress">' + steps.map(function (s, i) {
+    // Nequi / Daviplata: un paso propio para el pago, aparte del estado del pedido (pay_ok de 015-cierre.sql).
+    var cells = steps.map(function (s, i) {
       var cls = i < idx || o.status === 'entregado' ? 'done' : i === idx ? 'active' : '';
-      return '<div><div class="bar ' + cls + '"><i style="width:' + (cls === 'done' ? '100%' : cls === 'active' ? '50%' : '0') + '"></i></div><div class="lbl' + (i === idx ? ' on' : '') + '">' + s + '</div></div>';
+      return { t: s, cls: cls, on: i === idx };
+    });
+    if (o.pay !== 'ef' && !unpriced(o)) {
+      var pc = o.payOk === true || (o.status === 'entregado' && o.payOk !== false) ? 'done' : o.payOk === false ? 'bad' : o.status === 'recibido' ? '' : 'active';
+      cells.splice(2, 0, { t: pc === 'done' ? 'Pagado' : pc === 'bad' ? 'Pago no llegó' : o.paidClaimAt ? 'Revisando pago' : 'Pagar', cls: pc, on: pc === 'active' || pc === 'bad', pay: true });
+    }
+    h += '<div class="pad" style="margin-top:-44px"><div class="card raised"><div class="progress" style="grid-template-columns:repeat(' + cells.length + ',1fr)">' + cells.map(function (c) {
+      return '<div><div class="bar ' + c.cls + (c.pay ? ' pay' : '') + '"><i style="width:' + (c.cls === 'done' || c.cls === 'bad' ? '100%' : c.cls === 'active' ? '50%' : '0') + '"></i></div><div class="lbl' + (c.on ? ' on' : '') + (c.cls === 'bad' ? ' bad' : '') + (c.pay && c.cls === 'done' ? ' paid' : '') + '">' + c.t + '</div></div>';
     }).join('') + '</div>';
     var rd = riderOf(o);
     if (o.status === 'en_camino' && rd) {
