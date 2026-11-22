@@ -7,8 +7,11 @@ window.PYI_CONFIG = {
   supabaseKey: 'sb_publishable_Y6Ua8mn7l0CPxAFsIN9G4A_eeX3dpbs',
   // Poner en true cuando los avisos de WhatsApp desde el número de Pido y Ido estén listos (supabase/functions/avisos-whatsapp).
   whatsappAvisos: false,
+  // Poner en true cuando el código por WhatsApp funcione (019-cuenta-whatsapp.sql + plantilla pyi_codigo en Meta).
+  // Entonces el cliente confirma su número una vez y sus sellos y pedidos quedan guardados en su número.
+  loginWhatsapp: false,
   // WhatsApp de Pido y Ido para ayuda (clave olvidada, negocios nuevos). 10 números, ej. '3101234567'.
-  soporteWhatsapp: '',
+  soporteWhatsapp: '3006358524',
   // Quién responde por los datos (Ley 1581). Sale en "Tus datos y privacidad" y en "Términos".
-  legal: { responsable: '', documento: '', correo: '', direccion: '' }
+  legal: { responsable: 'Pido y Ido', documento: 'C.C. 1125718059', correo: 'ayuda@pidoyido.co', direccion: '' }
 };

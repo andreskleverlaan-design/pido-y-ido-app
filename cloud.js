@@ -27,6 +27,30 @@
     custUid = s.user.id;
     return custUid;
   }
+  // Cuenta del cliente con número confirmado por WhatsApp (019-cuenta-whatsapp.sql).
+  // phone = 10 dígitos si el número está confirmado, si no ''.
+  async function custAccount() {
+    var s = (await cust.auth.getSession()).data.session, u = s && s.user;
+    if (!u || u.is_anonymous || !u.phone || !u.phone_confirmed_at) return { phone: '' };
+    return { phone: String(u.phone).replace(/\D/g, '').slice(-10) };
+  }
+  function e164(phone) { return '57' + String(phone).replace(/\D/g, '').slice(-10); }
+  var ticket = null;
+  async function sendCode(phone) {
+    await ensureCust();
+    // Vale para pasar lo de este celular (pedidos, sellos) a la cuenta del número. Solo si hoy es anónimo.
+    try { var t = await cust.rpc('cust_ticket'); if (!t.error && t.data) ticket = t.data; } catch (e) {}
+    check(await cust.auth.signInWithOtp({ phone: e164(phone), options: { shouldCreateUser: true } }));
+  }
+  async function verifyCode(phone, code) {
+    var r = await cust.auth.verifyOtp({ phone: e164(phone), token: String(code).replace(/\D/g, ''), type: 'sms' });
+    check(r);
+    custUid = r.data.user.id; promoSlug = null;
+    var moved = 0;
+    if (ticket) { try { var m = await cust.rpc('cust_merge', { p_token: ticket }); if (!m.error) moved = m.data || 0; } catch (e) {} ticket = null; }
+    return moved;
+  }
+  async function custLogout() { try { await cust.auth.signOut({ scope: 'local' }); } catch (e) {} custUid = null; promoSlug = null; }
   async function restSession() {
     var s = (await rest.auth.getSession()).data.session;
     restUid = s && !s.user.is_anonymous ? s.user.id : null;
@@ -55,7 +79,7 @@
       geo: o.geo, ref: o.ref_slug ? { slug: o.ref_slug } : null, rating: o.rating, tags: o.tags || [], wish: o.wish || '', wishImg: o.wish_img || '',
       scheduledFor: ms(o.scheduled_for), createdAt: ms(o.created_at), acceptedAt: ms(o.accepted_at), sentAt: ms(o.sent_at), deliveredAt: ms(o.delivered_at),
       riderKey: o.rider_key || '', pickedAt: ms(o.picked_at), deliveredBy: o.delivered_by || '',
-      readyAt: ms(o.ready_at), payOk: o.pay_ok == null ? null : !!o.pay_ok, flags: 0,
+      phoneOk: !!o.phone_ok, readyAt: ms(o.ready_at), payOk: o.pay_ok == null ? null : !!o.pay_ok, flags: 0,
       issue: o.issue || '', issueNote: o.issue_note || '', issueAt: ms(o.issue_at), issueDoneAt: ms(o.issue_done_at)
     };
   }
@@ -75,7 +99,8 @@
     await ensureCust();
     await restSession();
     await closeStale();
-    var out = { custUid: custUid, restUid: restUid, myRest: null, restaurants: [], orders: [], riders: {}, myRiders: [], myProfile: null, reward: null };
+    var acct = await custAccount();
+    var out = { custPhone: acct.phone, custUid: custUid, restUid: restUid, myRest: null, restaurants: [], orders: [], riders: {}, myRiders: [], myProfile: null, reward: null };
     var q = [
       cust.from('restaurants').select('*').order('created_at'),
       cust.from('orders').select('*').eq('customer_uid', custUid).order('created_at', { ascending: false }).limit(50),
@@ -176,6 +201,15 @@
     await ensureCust();
     return check(await cust.rpc('reset_clave', { p_phone: String(phone).replace(/\D/g, '').slice(-10), p_code: code, p_pass: pass }));
   }
+  // Administración de Pido y Ido (018-sin-revision.sql).
+  async function adminList(key) { await ensureCust(); return check(await cust.rpc('admin_list', { p_key: key })); }
+  async function adminSet(key, id, visible) { await ensureCust(); return check(await cust.rpc('admin_set_visible', { p_key: key, p_id: id, p_visible: visible })); }
+  async function adminSettings(key) { await ensureCust(); return check(await cust.rpc('admin_settings', { p_key: key })); }
+  async function adminSetAuto(key, on) { await ensureCust(); return check(await cust.rpc('admin_set_auto', { p_key: key, p_on: on })); }
+  async function adminClientes(key) { await ensureCust(); return check(await cust.rpc('admin_clientes', { p_key: key })); }
+  async function adminCliente(key, phone) { await ensureCust(); return check(await cust.rpc('admin_cliente', { p_key: key, p_phone: phone })); }
+  async function adminBlock(key, phone, on, reason) { await ensureCust(); return check(await cust.rpc('admin_block', { p_key: key, p_phone: phone, p_on: !!on, p_reason: reason || '' })); }
+  async function adminSetNeedPhone(key, on) { await ensureCust(); return check(await cust.rpc('admin_set_need_phone', { p_key: key, p_on: !!on })); }
   async function restLogout() { await rest.auth.signOut(); restUid = null; myRest = null; }
   async function updateRest(fields) { return check(await rest.from('restaurants').update(fields).eq('id', myRest)); }
   async function updateOrder(dbId, fields) { return check(await rest.from('orders').update(fields).eq('id', dbId)); }
@@ -269,7 +303,8 @@
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder, payOk: payOk, notDelivered: notDelivered, reportIssue: reportIssue, issueDone: issueDone,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
     saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, restMonth: restMonth, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
-    newRecoveryCode: newRecoveryCode, resetClave: resetClave,
+    newRecoveryCode: newRecoveryCode, resetClave: resetClave, adminList: adminList, adminSet: adminSet, adminSettings: adminSettings, adminSetAuto: adminSetAuto,
+    adminClientes: adminClientes, adminCliente: adminCliente, adminBlock: adminBlock, adminSetNeedPhone: adminSetNeedPhone, sendCode: sendCode, verifyCode: verifyCode, custLogout: custLogout,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
   };
 })();
