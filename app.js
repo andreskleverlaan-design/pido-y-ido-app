@@ -252,7 +252,13 @@
     { id: 'salud', kind: 'drogueria', name: 'Droguería La Salud', short: 'La Salud', img: '', rating: 4.9, count: 23, eta: '20–30 min', pickup: '10 min', min: 0, fee: 2000,
       cats: [], sub: 'Medicamentos · Aseo personal · Bebés', address: 'Calle 9 # 7-15, El Centro', phone: '3100000004', nequi: '310 000 0004', dishes: [] }
   ];
-  var CATS = [['Empanadas', IMG.emp], ['Asados', IMG.carne], ['Pollo', IMG.pollo], ['Arepas', IMG.arepa], ['Almuerzos', IMG.almuerzo], ['Hamburguesas', IMG.burger], ['Pizza', IMG.pizza], ['Jugos', IMG.jugo]];
+  var CATS = [['Empanadas', IMG.emp], ['Asados', IMG.carne], ['Pollo', IMG.pollo], ['Arepas', IMG.arepa], ['Almuerzos', IMG.almuerzo], ['Hamburguesas', IMG.burger], ['Pizza', IMG.pizza], ['Jugos', IMG.jugo], ['Pescado', IMG.pescado], ['Comida rápida', IMG.pincho], ['Otros', '']];
+  // Categorías propias que escribió algún negocio visible (además de las fijas). 'Otros' siempre al final.
+  function catList() {
+    var fixed = CATS.map(function (c) { return c[0]; }), extra = [];
+    shown().forEach(function (r) { (r.cats || []).forEach(function (c) { if (fixed.indexOf(c) < 0 && extra.indexOf(c) < 0) extra.push(c); }); });
+    return CATS.slice(0, -1).concat(extra.slice(0, 8).map(function (c) { return [c, '']; }), [CATS[CATS.length - 1]]);
+  }
   var NO_REST = { id: '', name: 'Restaurante', short: 'Restaurante', img: '', rating: 0, count: 0, eta: '30–40 min', pickup: '15 min', min: 0, fee: 0, cats: [], sub: '', address: '', phone: '', nequi: '', dishes: [] };
   function R(id) { for (var i = 0; i < RESTAURANTS.length; i++) if (RESTAURANTS[i].id === id) return RESTAURANTS[i]; return ONLINE ? NO_REST : RESTAURANTS[0]; }
   // restaurants customers can order from (online: only those with a menu)
@@ -1352,8 +1358,8 @@
     if (tiendas) {
       var kinds = KINDS.filter(function (k) { return shops.concat(prShops).some(function (r) { return r.kind === k.id; }); });
       if (kinds.length > 1) h += '<div class="chips scroll mt16">' + kinds.map(function (k) { return '<button class="chip' + (ui.kind === k.id ? ' on' : '') + '" data-a="kindPick" data-v="' + k.id + '">' + ic(k.icon, 16) + k.t + '</button>'; }).join('') + '</div>';
-    } else h += '<div class="cats mt16">' + CATS.map(function (c) {
-      return '<button class="cat' + (ui.cat === c[0] ? ' on' : '') + '" data-a="cat" data-v="' + c[0] + '">' + photo(c[1]) + '<span>' + c[0] + '</span></button>';
+    } else h += '<div class="cats mt16">' + catList().map(function (c) {
+      return '<button class="cat' + (ui.cat === c[0] ? ' on' : '') + '" data-a="cat" data-v="' + esc(c[0]) + '">' + photo(c[1]) + '<span>' + esc(c[0]) + '</span></button>';
     }).join('') + '</div>';
     if (!ui.cat && !ui.kind) {
       var again = againList(6).filter(function (o) { return isShop(R(o.restId)) === !!tiendas; });
@@ -2156,6 +2162,7 @@
   // ---------- Restaurant: menu + data (online) ----------
   var PHOTOS = [['Asado', IMG.asado], ['Carne', IMG.carne], ['Parrilla', IMG.parrilla], ['Pollo', IMG.pollo], ['Empanadas', IMG.emp], ['Arepas', IMG.arepa], ['Almuerzo', IMG.almuerzo], ['Pescado', IMG.pescado], ['Hamburguesa', IMG.burger], ['Pizza', IMG.pizza], ['Pizza 2', IMG.pizza2], ['Pincho', IMG.pincho], ['Jugo', IMG.jugo]];
   // Gallery of stock photos + "upload your own" tile. kind = 'rest' (cover) | 'dish'
+  function ownCats(f) { var fixed = CATS.map(function (c) { return c[0]; }); return (f.cats || []).filter(function (c) { return fixed.indexOf(c) < 0; }); }
   function photoPick(cur, action, kind, noStock) {
     var own = cur && !PHOTOS.some(function (p) { return p[1] === cur; });
     var tile = 'padding:0;border-radius:14px;overflow:hidden;width:64px;height:64px;flex:none;';
@@ -2273,7 +2280,9 @@
       '<div class="row" style="gap:10px"><div class="grow field"><label class="label" for="rm4">WhatsApp</label><input class="input" id="rm4" data-m="ui.rm.phone" data-dirty="1" inputmode="tel" value="' + esc(f.phone) + '"></div>' +
       '<div class="grow field"><label class="label" for="rm5">Nequi / Daviplata</label><input class="input" id="rm5" data-m="ui.rm.nequi" data-dirty="1" inputmode="tel" value="' + esc(f.nequi) + '"></div></div>' +
       '<div class="xs muted" style="margin:-6px 0 8px">' + ic('lock', 12) + ' Los clientes no ven tu WhatsApp. El Nequi solo lo ve quien tiene un pedido aceptado contigo.</div>' +
-      (shop ? '' : '<div class="label mt8">Categorías</div><div class="chips">' + CATS.map(function (c) { return '<button class="chip sm' + (f.cats.indexOf(c[0]) >= 0 ? ' on' : '') + '" data-a="rmCat" data-v="' + c[0] + '">' + c[0] + '</button>'; }).join('') + '</div>') +
+      (shop ? '' : '<div class="label mt8">Categorías</div><div class="chips">' + CATS.map(function (c) { return '<button class="chip sm' + (f.cats.indexOf(c[0]) >= 0 ? ' on' : '') + '" data-a="rmCat" data-v="' + esc(c[0]) + '">' + esc(c[0]) + '</button>'; }).join('') +
+        ownCats(f).map(function (c) { return '<button class="chip sm on" data-a="rmCat" data-v="' + esc(c) + '" aria-label="Quitar ' + esc(c) + '">' + esc(c) + ' ' + ic('x', 12) + '</button>'; }).join('') + '</div>' +
+        (ownCats(f).length < 3 ? '<div class="row mt8" style="gap:8px"><input class="input grow" id="rmCatNew" data-m="ui.rm.catNew" data-enter="rmCatAdd" maxlength="20" value="' + esc(f.catNew || '') + '" placeholder="Otra, ej.: Mariscos"><button class="btn btn-ghost btn-sm" data-a="rmCatAdd">Agregar</button></div>' : '')) +
       '<button class="btn btn-green btn-block mt16" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Guardando…' : 'Guardar datos') + '</button></div>' +
       '<button class="btn btn-ghost btn-block mt12" data-a="restLogout">Cerrar sesión</button></div>' +
       '<div class="cta-wrap above-tabs save-bar' + (dirty ? ' show' : '') + '" id="saveBar"><button class="btn btn-green btn-block" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + ic('check', 18) + (ui.busy ? 'Guardando…' : 'Guardar cambios') + '</button></div>' + tabs('rest', 'menu');
@@ -2935,6 +2944,16 @@
       CLOUD.restLogout().then(function () { S.restId = null; S.myRiders = {}; S.orders = S.orders.filter(function (o) { return o.mine; }); ui.rm = null; save(); sheet(null); go('/'); toast('Sesión cerrada'); sync(true); });
     },
     rmSet: function (el) { var k = el.dataset.k; ui.rm[k] = (k === 'fee' || k === 'min' || k === 'radius') ? +el.dataset.v : el.dataset.v; render(); },
+    rmCatAdd: function () {
+      var f = ui.rm, t = String(f.catNew || '').replace(/\s+/g, ' ').trim().slice(0, 20);
+      if (t.length < 3) { toast('Escribe la categoría (mínimo 3 letras)'); return; }
+      t = t.charAt(0).toUpperCase() + t.slice(1);
+      var same = CATS.map(function (c) { return c[0]; }).concat(f.cats).filter(function (c) { return c.toLowerCase() === t.toLowerCase(); })[0];
+      if (same) { if (f.cats.indexOf(same) < 0) f.cats.push(same); }
+      else if (ownCats(f).length >= 3) { toast('Máximo 3 categorías propias'); return; }
+      else f.cats.push(t);
+      f.catNew = ''; render(); var sb = document.getElementById('saveBar'); if (sb) sb.classList.add('show');
+    },
     rmCat: function (el) { var c = ui.rm.cats, i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else c.push(el.dataset.v); render(); },
     rmImg: function (el) { ui.rm.img = el.dataset.v; render(); },
     horDay: function (el) {
