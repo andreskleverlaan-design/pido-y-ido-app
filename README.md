@@ -74,3 +74,12 @@ Code: `supabase/functions/avisos-whatsapp/index.ts` (Supabase Edge Function, Wha
 - **Favorieten:** het hartje bij een zaak werkt nu echt; favorieten staan op Inicio onder "Tus favoritos" (op het eigen toestel).
 - **Tu mes con Pido y Ido (zaak):** in het paneel, kaart boven de bestellingen (`#/rest/mes`). Per maand: afgeleverde bestellingen, omzet, nieuwe klanten (eerste keer via de app), terugkerende klanten, bestellingen per week, top 3 gerechten, de commissie, wat de zaak overhoudt en de vergelijking met een app van 25%.
 - **Database:** `supabase/010-resumen-mes.sql` (functie `rest_resumen_mes` en kolom `restaurants.comision_pct`, standaard 5). Voor een "fundador" zet je in Table Editor > restaurants > `comision_pct` bijvoorbeeld 0 of 4.5; de zaak kan dit zelf niet wijzigen. Zonder deze stap rekent de app het overzicht uit de laatste 100 bestellingen.
+
+## Bestellen en betalen na test (2026-11-27)
+- **Menu:** tik op een gerecht voor een grote foto. Menu in secties (Platos, Entradas, Combos, Adicionales, Bebidas, Postres) met knoppen bovenaan om direct te springen. Zaak kiest de sectie bij het toevoegen of tikt op het sectielabel in Menú. Oude gerechten zonder sectie worden op naam ingedeeld (jugo → Bebidas, enz.). Geen SQL nodig (zit in `dishes`).
+- **Celular:** landkeuze, standaard 🇨🇴 +57. Buitenlandse nummers worden opgeslagen met landcode (bv. 31612345678).
+- **Efectivo:** "Pago exacto" of de biljetten aantikken ($100 mil … $2 mil); app rekent vueltas uit.
+- **Bevestigen:** samenvatting aanpasbaar (+/−, verwijderen, "Agregar más").
+- **Nequi/Daviplata:** knop "Pagar con Nequi" kopieert het nummer en opent de app (Android); bij terugkomen vraagt de app "¿Ya transferiste?". Automatisch terugkeren kan Nequi niet zonder betaalgateway.
+- **Status:** volgorde Recibido → Pagar → Preparando → En camino → Entregado; kleur rood → oranje → geel → groen, ook de kop.
+- **Celebración:** confetti na bestelling (efectivo) of na "Ya transferí"; aparte animatie met stempelkaart bij de 5e bestelling.
