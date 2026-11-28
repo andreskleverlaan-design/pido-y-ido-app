@@ -106,6 +106,9 @@
     wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
     info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+    zap: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+    bank: '<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>',
     send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
     camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
     map: '<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/>',
@@ -157,7 +160,11 @@
   ];
   function kindOf(r) { var k = (r && r.kind) || 'restaurante'; for (var i = 0; i < KINDS.length; i++) if (KINDS[i].id === k) return KINDS[i]; return KINDS[KINDS.length - 1]; }
   // Secciones del menú (platos, adicionales, bebidas…). Platos viejos sin sección se adivinan por el nombre.
-  var SECS = ['Platos', 'Entradas', 'Combos', 'Adicionales', 'Bebidas', 'Postres'];
+  // El orden es el de una carta: entradas, platos fuertes, combos, adicionales, bebidas, postres. 'Platos' se muestra como «Platos fuertes».
+  var SECS = ['Entradas', 'Platos', 'Combos', 'Adicionales', 'Bebidas', 'Postres'];
+  var SEC_TXT = { Platos: 'Platos fuertes' };
+  var SEC_HINT = { Entradas: 'Para empezar: empanadas, patacones, sopas…', Platos: 'El plato principal: carnes, pollo, pescado…', Combos: 'Plato + bebida, o para compartir', Adicionales: 'Porciones extra, salsas, papas…', Bebidas: 'Jugos, gaseosas, cerveza, café…', Postres: 'Tortas, helados, flan…' };
+  function secTxt(x) { return SEC_TXT[x] || x; }
   function secOf(d) {
     if (d.sec && SECS.indexOf(d.sec) >= 0) return d.sec;
     var n = String(d.name || '').toLowerCase();
@@ -167,8 +174,8 @@
     if (/combo/.test(n)) return 'Combos';
     return 'Platos';
   }
-  function secChips(cur, action, did) { return SECS.map(function (x) { return '<button class="chip sm' + (x === cur ? ' on' : '') + '" data-a="' + action + '" data-v="' + x + '"' + (did ? ' data-d="' + esc(did) + '"' : '') + '>' + x + '</button>'; }).join(''); }
-  function menuSecs(dishes) { return SECS.map(function (s) { return { t: s, list: dishes.filter(function (d) { return secOf(d) === s; }) }; }).filter(function (x) { return x.list.length; }); }
+  function secChips(cur, action, did) { return SECS.map(function (x) { return '<button class="chip sm' + (x === cur ? ' on' : '') + '" data-a="' + action + '" data-v="' + x + '"' + (did ? ' data-d="' + esc(did) + '"' : '') + '>' + secTxt(x) + '</button>'; }).join(''); }
+  function menuSecs(dishes) { return SECS.map(function (s) { return { t: secTxt(s), list: dishes.filter(function (d) { return secOf(d) === s; }) }; }).filter(function (x) { return x.list.length; }); }
   function isShop(r) { return !!r && !!r.kind && r.kind !== 'restaurante'; }
   function abreDe(r) { return (r && r.abre) || (isShop(r) ? '08:00' : '11:00'); }
   function cierraDe(r) { return (r && r.cierra) || (isShop(r) ? '20:00' : '21:00'); }
@@ -1075,12 +1082,12 @@
   function tabs(kind, active) {
     var T = {
       cliente: [['inicio', 'home', 'Inicio', '/inicio'], ['buscar', 'search', 'Buscar', '/buscar'], ['pedidos', 'receipt', 'Pedidos', '/pedidos'], ['perfil', 'user', 'Perfil', '/perfil']],
-      rest: [['pedidos', 'receipt', 'Pedidos', '/rest']].concat(ONLINE ? [['menu', 'store', isShop(R(S.restId)) ? 'Mi tienda' : 'Menú', '/rest/menu']] : [], [['riders', 'bike', 'Domiciliarios', '/rest/domiciliarios'], ['bolsa', 'users', 'Bolsa', '/rest/bolsa'], ['salir', 'swap', 'Cambiar rol', '/']]),
+      rest: [['pedidos', 'receipt', 'Pedidos', '/rest']].concat(ONLINE ? [['menu', 'store', isShop(R(S.restId)) ? 'Mi tienda' : 'Menú', '/rest/menu']] : [], [['riders', 'bike', 'Domiciliarios', '/rest/domiciliarios'], ['fact', 'wallet', 'Facturación', '/rest/facturacion']]),
       dom: [['msgs', 'msg', 'Mensajes', '/dom'], ['perfil', 'user', 'Mi perfil', '/dom/perfil'], ['salir', 'swap', 'Cambiar rol', '/']],
       promo: [['enlace', 'qr', 'Mi enlace', '/promo'], ['ganancias', 'chart', 'Ganancias', '/promo/ganancias'], ['salir', 'swap', 'Cambiar rol', '/']]
     }[kind];
     var dot = '';
-    return '<nav class="tabbar">' + T.map(function (t) {
+    return (kind === 'rest' ? newOrderBanner() : '') + '<nav class="tabbar">' + T.map(function (t) {
       var on = t[0] === active;
       var badge = '';
       if (kind === 'cliente' && t[0] === 'pedidos') { var n = S.orders.filter(function (o) { return o.mine && ['recibido', 'preparando', 'listo', 'en_camino'].indexOf(o.status) >= 0; }).length; if (n) badge = '<span class="dot">' + n + '</span>'; }
@@ -1192,23 +1199,25 @@
       '</div></div></div>';
   }
   var ROLES = [
-    { id: 'cliente', icon: 'bag', title: 'Quiero pedir comida', sub: 'Restaurantes de tu barrio', cta: 'Empezar a pedir', home: '/inicio' },
-    { id: 'rest', icon: 'store', title: 'Tengo un negocio', sub: 'Restaurante, droguería, tienda…', cta: 'Registrar mi negocio', home: '/rest', first: '/rest/registro' },
+    { id: 'cliente', icon: 'bag', title: 'Quiero pedir', sub: 'Comida y tiendas de tu pueblo, a domicilio', cta: 'Empezar a pedir', home: '/inicio' },
+    { id: 'rest', icon: 'store', title: 'Tengo un negocio', sub: 'Vende a domicilio: restaurante, droguería, tienda…', cta: 'Registrar mi negocio', home: '/rest', first: '/rest/registro' },
     { id: 'rider', icon: 'bike', title: 'Soy domiciliario', sub: 'Encuentra restaurantes que te contraten', cta: 'Crear mi perfil', home: '/dom', first: '/dom/perfil' },
     { id: 'promo', icon: 'gift', title: 'Quiero recomendar y ganar', sub: 'Comparte tu enlace y gana', cta: 'Obtener mi enlace', home: '/promo' }
   ];
   function roleById(id) { for (var i = 0; i < ROLES.length; i++) if (ROLES[i].id === id) return ROLES[i]; return ROLES[0]; }
   function scrStart() {
-    var sel = ui.rolePick || S.role || 'cliente';
-    var cur = roleById(sel);
+    // Primera vez: nada marcado, así queda claro que hay que elegir.
+    var sel = ui.rolePick || S.role || '';
+    var cur = sel ? roleById(sel) : null;
     return '<div class="welcome"><div class="welcome-hero">' + photo(IMG.asado, '', 'position:absolute;inset:0;height:100%;width:100%') +
       '<div class="welcome-fade"></div><div class="welcome-brand">' + logo(36, 'icon') + '<span>Pido y Ido</span></div>' +
-      '<div class="welcome-title"><h1>La comida de Villanueva, a tu puerta</h1><div class="muted" style="font-size:15px">¿Cómo quieres usar la app?</div></div></div>' +
+      '<div class="welcome-title"><h1>Si lo quieres, lo tienes</h1><div class="welcome-sub">Bienvenido a Pido y Ido. ¿Qué quieres hacer aquí?</div></div></div>' +
+      '<div class="welcome-pick">Elige una opción para empezar</div>' +
       '<div class="welcome-roles">' + ROLES.map(function (r) {
         var on = r.id === sel;
         return '<button class="role-card' + (on ? ' on' : '') + '" data-a="rolePick" data-v="' + r.id + '"><span class="ic">' + ic(r.icon, 22, { sw: 1.75 }) + '</span><span class="grow"><span class="rt">' + r.title + '</span><span class="rs">' + r.sub + (r.id === 'promo' ? ' ' + S.promo.pct + '%' : '') + '</span></span><span class="ring"></span></button>';
       }).join('') + '</div>' +
-      '<div class="welcome-cta"><button class="btn btn-primary btn-block" style="height:58px;font-size:17px;font-weight:600" data-a="roleGo">' + cur.cta + '</button>' +
+      '<div class="welcome-cta"><button class="btn btn-primary btn-block" style="height:58px;font-size:17px;font-weight:600" data-a="roleGo"' + (cur ? '' : ' disabled') + '>' + (cur ? cur.cta : 'Elige una opción') + '</button>' +
       (ONLINE ? '<a class="welcome-login" href="#/rest/login">¿Tienes negocio? <b>Iniciar sesión</b></a>' +
       '<div class="xs muted center"><a class="link" href="#/legal/terminos">Términos</a> · <a class="link" href="#/legal/privacidad">Privacidad</a></div>'
         : '<button class="welcome-login" data-a="login">¿Ya tienes cuenta? <b>Iniciar sesión</b></button>' +
@@ -1284,9 +1293,20 @@
         function (e) { A2.loading = false; A2.err = /not_admin/.test(String(e && e.message)) ? 'Este enlace no es válido.' : errTxt(e); render(); });
     }
     var tab = A2.tab || 'neg';
-    var h = '<div class="screen">' + topbar(tab === 'cli' ? 'Clientes' : 'Negocios', '/', 'Pido y Ido · solo para ti');
+    var h = '<div class="screen">' + topbar(tab === 'cli' ? 'Clientes' : tab === 'pag' ? 'Pagos de facturas' : 'Negocios', '/', 'Pido y Ido · solo para ti');
     if (A2.err) return h + '<div class="empty">' + esc(A2.err) + '</div></div>';
-    h += '<div class="chips mt4"><button class="chip' + (tab === 'neg' ? ' on' : '') + '" data-a="adminTab" data-v="neg">Negocios</button><button class="chip' + (tab === 'cli' ? ' on' : '') + '" data-a="adminTab" data-v="cli">Clientes</button></div>';
+    h += '<div class="chips mt4"><button class="chip' + (tab === 'neg' ? ' on' : '') + '" data-a="adminTab" data-v="neg">Negocios</button><button class="chip' + (tab === 'cli' ? ' on' : '') + '" data-a="adminTab" data-v="cli">Clientes</button><button class="chip' + (tab === 'pag' ? ' on' : '') + '" data-a="adminTab" data-v="pag">Pagos</button></div>';
+    if (tab === 'pag') {
+      if (!A2.pagos && !A2.pagLoading) { A2.pagLoading = true; CLOUD.adminFacturas(key).then(function (l) { A2.pagLoading = false; A2.pagos = l || []; render(); }, function (e) { A2.pagLoading = false; A2.pagos = []; A2.pagErr = errTxt(e); render(); }); }
+      if (!A2.pagos) return h + '<div class="empty">Cargando…</div></div>';
+      if (A2.pagErr) h += '<div class="note red mt12">' + esc(A2.pagErr) + '</div>';
+      var MT = { nequi: 'Nequi', banco: 'Transferencia', breb: 'Bre-B', otro: 'Otro' };
+      return h + (A2.pagos.length ? A2.pagos.map(function (x) {
+        var e = { enviado: ['amber', 'Por revisar'], pagado: ['green', 'Pagado'], no_llego: ['red', 'No llegó'] }[x.estado] || ['grey', x.estado];
+        return '<div class="card mt12"><div class="row between" style="gap:10px;align-items:flex-start"><div class="grow"><div class="b">' + esc(x.name) + '</div><div class="xs muted mt4">' + capi(ymTxt(x.mes)) + ' ' + x.mes.slice(0, 4) + ' · ' + fmt(x.monto) + ' · ' + (MT[x.metodo] || x.metodo) + (x.referencia ? ' · ' + esc(x.referencia) : '') + '</div></div><span class="badge ' + e[0] + '">' + e[1] + '</span></div>' +
+          (x.estado === 'enviado' ? '<div class="row mt12" style="gap:8px"><button class="btn btn-green btn-sm grow" data-a="adminPago" data-r="' + esc(x.rest_id) + '" data-ym="' + esc(x.mes) + '" data-v="pagado">Sí llegó</button><button class="btn btn-ghost btn-sm grow" data-a="adminPago" data-r="' + esc(x.rest_id) + '" data-ym="' + esc(x.mes) + '" data-v="no_llego">No llegó</button></div>' : '') + '</div>';
+      }).join('') : '<div class="empty">Todavía nadie ha avisado un pago.</div>') + '</div>';
+    }
     if (tab === 'cli') {
       if (A2.need != null) h += '<div class="card mt12 row" style="gap:12px"><div class="grow"><div class="b">Pedir número confirmado</div><div class="xs muted mt4">' +
         (A2.need ? 'Solo piden clientes que confirmaron su número por WhatsApp.' : 'Cualquiera puede pedir. Actívalo cuando WhatsApp funcione.') +
@@ -1946,9 +1966,10 @@
   // ---------- Restaurant ----------
   function restHeader(r) {
     var open = S.open[r.id];
-    return '<div class="row">' + cover(r, 'thumb s44') + '<button class="grow" style="text-align:left" data-a="pickRest"><div class="xs muted">' + (isShop(r) ? 'Panel de tu ' + kindOf(r).t.toLowerCase() : 'Panel del restaurante') + '</div><div class="b row" style="gap:4px"><span class="ellipsis">' + r.name + '</span>' + ic('down', 16) + '</div></button>' +
+    return '<div class="row">' + cover(r, 'thumb s44') + '<button class="grow" style="text-align:left" data-a="pickRest"><div class="xs muted">' + (isShop(r) ? 'Panel de tu ' + kindOf(r).t.toLowerCase() : 'Panel del restaurante') + '</div><div class="b row" style="gap:4px"><span class="clamp2">' + esc(r.name) + '</span>' + ic('down', 16) + '</div></button>' +
       '<button class="toggle" data-a="toggleOpen" style="background:' + (open ? 'var(--gtint)' : 'var(--track)') + ';color:' + (open ? 'var(--green)' : 'var(--muted)') + '">' + (open ? 'Abierto' : 'Cerrado') +
-      '<span class="tr" style="background:' + (open ? 'var(--green)' : '#C9C1B7') + ';--k:' + (open ? '19px' : '3px') + '"></span></button></div>';
+      '<span class="tr" style="background:' + (open ? 'var(--green)' : '#C9C1B7') + ';--k:' + (open ? '19px' : '3px') + '"></span></button>' +
+      '<button class="icon-btn acct-btn" data-a="restAcct" aria-label="Mi cuenta y cerrar sesión">' + ic('user', 20) + '</button></div>';
   }
   // Online: "get ready" card until the restaurant has a menu, a photo, a map pin and is open.
   function setupItems(r) {
@@ -2100,10 +2121,10 @@
   }
   function scrRestMes(query) {
     var r = R(S.restId), cur = ymOf(now()), ym = query && /^\d{4}-\d{2}$/.test(query.m || '') && query.m <= cur ? query.m : cur;
-    var h = '<div class="screen has-tabs">' + topbar('Tu mes con Pido y Ido', '/rest', r.name) +
-      '<div class="chips scroll">' + [0, -1, -2].map(function (n) { var m = ymShift(cur, n); return '<a class="chip' + (m === ym ? ' on' : '') + '" href="#/rest/mes?m=' + m + '">' + capi(ymTxt(m)) + (n === 0 ? ' (va)' : '') + '</a>'; }).join('') + '</div>';
+    var h = '<div class="screen has-tabs">' + factHead('mes', r) + '<div class="t-h2 mt16">Tu mes con Pido y Ido</div>' +
+      '<div class="chips scroll mt8">' + [0, -1, -2].map(function (n) { var m = ymShift(cur, n); return '<a class="chip' + (m === ym ? ' on' : '') + '" href="#/rest/mes?m=' + m + '">' + capi(ymTxt(m)) + (n === 0 ? ' (va)' : '') + '</a>'; }).join('') + '</div>';
     var st = restMonth(r, ym);
-    if (!st) return h + '<div class="empty">' + ic('chart', 26) + '<div class="mt8">Sumando tus pedidos…</div></div></div>' + tabs('rest', 'pedidos');
+    if (!st) return h + '<div class="empty">' + ic('chart', 26) + '<div class="mt8">Sumando tus pedidos…</div></div></div>' + tabs('rest', 'fact');
     var pct = +st.comision_pct, com = Math.round(st.ventas * pct / 100), net = Math.max(com - st.premios, 0), queda = st.ventas - com;
     var otra = Math.round(st.ventas * OTRA_APP / 100), ticket = st.pedidos ? Math.round(st.ventas / st.pedidos) : 0, enCurso = ym === cur;
     var mesTxt = ymTxt(ym), antes = ymTxt(ymShift(ym, -1));
@@ -2112,7 +2133,7 @@
       (st.antes && st.antes.pedidos && !enCurso ? '<div class="mt8 small">' + trendTxt(st.pedidos, st.antes.pedidos, antes).replace('xs muted', 'xs') + '</div>' : '') + '</div>';
     if (!st.pedidos) {
       h += '<div class="empty">' + (enCurso ? 'Todavía no hay pedidos entregados este mes. Aquí vas a ver cuántos clientes nuevos te trae la app.' : 'En ' + mesTxt + ' no hubo pedidos entregados por la app.') + '</div>';
-      return h + '</div>' + tabs('rest', 'pedidos');
+      return h + '</div>' + tabs('rest', 'fact');
     }
     h += '<div class="stats mt12"><div class="stat"><div class="xs muted">Clientes nuevos</div><div class="v green">' + st.nuevos + '</div><div class="xs muted">primera vez</div></div>' +
       '<div class="stat"><div class="xs muted">Volvieron</div><div class="v">' + st.volvieron + '</div><div class="xs muted">ya te conocían</div></div>' +
@@ -2139,7 +2160,93 @@
     if (st.top && st.top.length) h += '<div class="card mt12"><div class="t-h3">' + (isShop(r) ? 'Lo que más piden' : 'Tus platos más pedidos') + '</div>' + st.top.map(function (t, i) {
       return '<div class="row between small mt8"><span><b class="orange">' + (i + 1) + '.</b> ' + esc(t.name) + '</span><span class="muted">' + t.qty + '×</span></div>'; }).join('') + '</div>';
     h += '<div class="xs muted mt12 center">Solo cuenta pedidos entregados por la app. Un cliente es nuevo si ese mes te pidió por primera vez por Pido y Ido.' + (st.parcial ? ' (Cuenta aproximada con tus últimos 100 pedidos.)' : '') + (ONLINE ? '' : ' En la demo los números son de ejemplo.') + '</div>';
-    return h + '</div>' + tabs('rest', 'pedidos');
+    return h + '</div>' + tabs('rest', 'fact');
+  }
+  // ---------- Facturación: lo que el negocio le paga a Pido y Ido (comisión de los pedidos entregados) ----------
+  // Cada mes cerrado es una factura: comisión (5%, fundador 4,5%, mes gratis 0%) menos los premios que pagó Pido y Ido.
+  // Se factura el 1 del mes siguiente y vence el día FACT_VENCE. El negocio avisa «Ya pagué» y Pido y Ido lo confirma (020-facturacion.sql).
+  var FACT_VENCE = 10;
+  function factHead(on, r) {
+    return topbar('Facturación', null, esc(r.name)) + '<div class="seg mt4"><a class="' + (on === 'fact' ? 'on' : '') + '" href="#/rest/facturacion">' + ic('receipt', 16) + 'Facturas</a><a class="' + (on === 'mes' ? 'on' : '') + '" href="#/rest/mes">' + ic('chart', 16) + 'Tu mes</a></div>';
+  }
+  function payCfg() { return (window.PYI_CONFIG || {}).pago || {}; }
+  // Formas de pagarle a Pido y Ido (config.js > pago). Solo salen las que tienen datos.
+  function payMethods() {
+    var p = payCfg(), out = [];
+    if (p.nequi) out.push({ id: 'nequi', t: 'Nequi', icon: 'phone', lines: [['Número', phoneFmt(p.nequi)], ['A nombre de', p.titular || 'Pido y Ido']], copy: String(p.nequi).replace(/\D/g, '') });
+    if (p.llaveBreB) out.push({ id: 'breb', t: 'Bre-B (llave)', icon: 'zap', lines: [['Llave', p.llaveBreB], ['A nombre de', p.titular || 'Pido y Ido']], copy: p.llaveBreB, sub: 'Desde cualquier banco o billetera, al instante' });
+    if (p.cuenta) out.push({ id: 'banco', t: 'Transferencia bancaria', icon: 'bank', lines: [['Banco', p.banco || ''], ['Cuenta de ' + (p.tipoCuenta || 'ahorros'), p.cuenta], ['Titular', p.titular || ''], [p.documento ? 'Documento' : '', p.documento || '']].filter(function (x) { return x[0] && x[1]; }), copy: String(p.cuenta).replace(/\D/g, '') });
+    return out;
+  }
+  function payMethodsHtml() {
+    var ms = payMethods(), sop = (window.PYI_CONFIG || {}).soporteWhatsapp;
+    if (!ms.length) return '<div class="note amber">Muy pronto te damos aquí el Nequi y la cuenta de Pido y Ido para pagar. ' + (sop ? '<a class="b orange" target="_blank" rel="noopener" href="' + waLink(sop, 'Hola, quiero pagar mi factura de Pido y Ido.') + '">Escríbenos por WhatsApp</a>' : '') + '</div>';
+    return ms.map(function (m) {
+      return '<div class="pay-m"><div class="row" style="gap:10px"><span class="pi">' + ic(m.icon, 18) + '</span><div class="grow"><div class="b">' + m.t + '</div>' + (m.sub ? '<div class="xs muted">' + m.sub + '</div>' : '') + '</div>' +
+        '<button class="btn btn-soft btn-sm" data-a="copyPay" data-v="' + esc(m.copy) + '">' + ic('copy', 15) + ' Copiar</button></div>' +
+        '<div class="pay-lines">' + m.lines.map(function (l) { return '<div class="row between xs"><span class="muted">' + esc(l[0]) + '</span><span class="b">' + esc(l[1]) + '</span></div>'; }).join('') + '</div></div>';
+    }).join('');
+  }
+  // Pagos avisados: online desde factura_pagos, demo en este celular.
+  function factPagos() {
+    if (!ONLINE) return S.fpagos || (S.fpagos = {});
+    var c = ui.fact;
+    if (!c || (!c.loading && now() - c.at > 60000)) {
+      ui.fact = { loading: true, at: now(), map: c && c.map };
+      CLOUD.factPagos().then(function (l) { var m = {}; (l || []).forEach(function (x) { m[x.mes] = x; }); ui.fact = { map: m, at: now() }; render(); },
+        function () { ui.fact = { map: (c && c.map) || {}, at: now(), off: true }; render(); });
+    }
+    return (ui.fact && ui.fact.map) || {};
+  }
+  function factOf(r, ym, pagos) {
+    var st = restMonth(r, ym); if (!st) return null;
+    var pct = +st.comision_pct, com = Math.round(st.ventas * pct / 100), total = Math.max(com - (st.premios || 0), 0), p = pagos[ym];
+    var vence = Date.UTC(+ymShift(ym, 1).slice(0, 4), +ymShift(ym, 1).slice(5) - 1, FACT_VENCE, 23, 59) + CO_OFF;
+    var est = !total ? 'cero' : p && p.estado === 'pagado' ? 'pagada' : p && p.estado === 'enviado' ? 'revision' : p && p.estado === 'no_llego' ? 'nollego' : now() > vence ? 'vencida' : 'pendiente';
+    return { ym: ym, st: st, pct: pct, com: com, total: total, pago: p, est: est, vence: vence, num: 'PYI-' + ym.replace('-', '') + '-' + String(r.id).replace(/[^a-z0-9]/gi, '').slice(0, 4).toUpperCase() };
+  }
+  var FACT_EST = { cero: ['grey', 'Sin cobro'], pagada: ['green', 'Pagada'], revision: ['amber', 'Revisando tu pago'], nollego: ['red', 'El pago no llegó'], vencida: ['red', 'Vencida'], pendiente: ['orange', 'Por pagar'] };
+  function factMethodChips() {
+    var ms = payMethods().map(function (m) { return [m.id, m.t.replace(/ \(.*\)/, '')]; }).concat([['otro', 'Otro']]);
+    return ms.map(function (m) { return '<button class="chip sm' + (ui.fpay.metodo === m[0] ? ' on' : '') + '" data-a="factMetodo" data-v="' + m[0] + '">' + m[1] + '</button>'; }).join('');
+  }
+  function factDue(f) { return f.est === 'pendiente' || f.est === 'vencida' || f.est === 'nollego'; }
+  function diaTxt(t) { var d = new Date(t - CO_OFF); return d.getUTCDate() + ' de ' + MESES[d.getUTCMonth()]; }
+  function planTxt(pct) { return pct === 0 ? 'Mes gratis' : pct === 4.5 ? 'Fundador · 4,5%' : pctTxt(pct) + ' por pedido entregado'; }
+  function scrRestFact() {
+    var r = R(S.restId), cur = ymOf(now()), pagos = factPagos();
+    var since = r.createdAt ? ymOf(r.createdAt) : ymShift(cur, -3), months = [];
+    for (var n = 1; n <= 6; n++) { var m = ymShift(cur, -n); if (m < since) break; months.push(m); }
+    var facts = months.map(function (m) { return factOf(r, m, pagos); }), loading = facts.some(function (f) { return !f; });
+    facts = facts.filter(function (f) { return f; });
+    var debe = facts.filter(factDue), sum = debe.reduce(function (a, f) { return a + f.total; }, 0);
+    var now0 = restMonth(r, cur), pctNow = now0 ? +now0.comision_pct : COMISION;
+    var h = '<div class="screen has-tabs">' + factHead('fact', r);
+    // Lo que debe ahora
+    h += '<div class="fact-hero mt16' + (sum ? '' : ' ok') + '"><div class="xs" style="opacity:.85">' + (sum ? 'Por pagar a Pido y Ido' : 'Tu cuenta con Pido y Ido') + '</div>' +
+      (sum ? '<div class="mes-big mt4">' + fmt(sum) + '</div><div class="small">' + debe.length + (debe.length === 1 ? ' factura' : ' facturas') + ' · ' + (debe.some(function (f) { return f.est === 'vencida'; }) ? '<b>vencida</b>' : 'vence el ' + diaTxt(debe[debe.length - 1].vence)) + '</div>' +
+        '<button class="btn btn-block mt12 fact-pay" data-a="factVer" data-v="' + debe[debe.length - 1].ym + '">Pagar ' + capi(ymTxt(debe[debe.length - 1].ym)) + '</button>'
+        : '<div class="row mt8" style="gap:8px">' + ic('check', 22, { sw: 2.6 }) + '<span class="t-h2" style="color:#fff">Estás al día</span></div><div class="small mt4">' + (loading ? 'Revisando tus facturas…' : 'No debes nada. ¡Gracias!') + '</div>') + '</div>';
+    // Mes en curso
+    if (now0) {
+      var comNow = Math.max(Math.round(now0.ventas * pctNow / 100) - (now0.premios || 0), 0);
+      h += '<div class="card mt12 row" style="gap:12px"><span class="pi">' + ic('clock', 18) + '</span><div class="grow"><div class="b">' + capi(ymTxt(cur)) + ', hasta hoy</div><div class="xs muted">' + now0.pedidos + ' pedidos entregados · se factura el 1 de ' + ymTxt(ymShift(cur, 1)) + '</div></div><div class="b">' + fmt(comNow) + '</div></div>';
+    }
+    // Plan
+    h += '<div class="card mt12"><div class="row between"><span class="t-h3">Tu plan</span><span class="badge ' + (pctNow < COMISION ? 'green' : 'orange') + '">' + planTxt(pctNow) + '</span></div>' +
+      '<div class="small muted mt8">Solo pagas por pedidos <b>entregados</b> por la app: ' + pctTxt(pctNow) + ' del valor de la comida. Sin mensualidad ni contrato. Los domicilios no pagan comisión. Los premios de tus clientes (cada 5º pedido) los paga Pido y Ido y se restan de tu factura.</div></div>';
+    // Facturas
+    h += '<h2 class="t-h2 mt24">Tus facturas</h2>';
+    if (!facts.length) h += '<div class="card mt12"><div class="empty" style="padding:18px 8px">' + (loading ? 'Cargando…' : 'Aún no tienes facturas. La primera llega el 1 de ' + ymTxt(ymShift(cur, 1)) + ', con los pedidos de ' + ymTxt(cur) + '.') + '</div></div>';
+    else h += '<div class="card mt12" style="padding:4px 14px">' + facts.map(function (f) {
+      var e = FACT_EST[f.est];
+      return '<button class="list-row fact-row" data-a="factVer" data-v="' + f.ym + '"><span class="fact-ic ' + e[0] + '">' + ic(f.est === 'pagada' || f.est === 'cero' ? 'check' : 'receipt', 18) + '</span><div class="grow"><div class="b">' + capi(ymTxt(f.ym)) + ' ' + f.ym.slice(0, 4) + '</div><div class="xs muted">' + f.st.pedidos + ' pedidos · ' + f.num + '</div></div>' +
+        '<div style="text-align:right"><div class="b">' + fmt(f.total) + '</div><span class="badge ' + e[0] + '">' + e[1] + '</span></div></button>';
+    }).join('') + '</div>';
+    // Cómo pagar
+    h += '<h2 class="t-h2 mt24">Cómo pagar</h2><div class="card mt12">' + payMethodsHtml() + '<div class="xs muted mt8">Después de pagar toca la factura y <b>Ya pagué</b>. Nosotros lo revisamos y queda como pagada.</div></div>';
+    if (ONLINE && ui.fact && ui.fact.off) h += '<div class="xs muted mt12 center">El aviso «Ya pagué» se activa muy pronto.</div>';
+    return h + '</div>' + tabs('rest', 'fact');
   }
   function due(o) { return o.scheduledFor || (o.acceptedAt || o.createdAt || 0) + (o.etaMin || 30) * 60000; }
   function restPayNotes(o) {
@@ -2266,7 +2373,7 @@
   function scrMisRiders() {
     var r = R(S.restId);
     var ids = (S.myRiders[r.id] || []).filter(function (x) { return S.riders[x]; });
-    return '<div class="screen has-tabs">' + restHeader(r) + '<div class="row between mt20"><h1 class="t-title" style="font-size:22px">Mis domiciliarios</h1><a class="link" href="#/rest/bolsa">Buscar más</a></div>' +
+    return '<div class="screen has-tabs">' + restHeader(r) + '<div class="row between mt20"><h1 class="t-title" style="font-size:22px">Mis domiciliarios</h1><button class="link" data-a="toBolsa">Buscar más</button></div>' +
       '<div class="small muted mt4">Tu propia lista. Tú eliges a quién mandar cada pedido; el pago lo acuerdan ustedes.</div>' +
       '<div class="card mt12" style="padding:4px 14px">' + (ids.length ? ids.map(function (rid) {
         var rd = S.riders[rid], c = avColor(rid), busy = riderBusy(rid);
@@ -2276,9 +2383,13 @@
           '<button class="icon-btn" style="width:40px;height:40px;box-shadow:none;background:var(--track)" data-a="removeRider" data-v="' + rid + '" aria-label="Quitar">' + ic('x', 18) + '</button></div>';
       }).join('') : '<div class="empty">Aún no tienes domiciliarios guardados.</div>') + '</div>' +
       '<button class="dashed-btn mt12" data-a="addRiderForm">' + ic('plus', 18) + ' Guardar un domiciliario</button>' +
-      '<div class="note amber mt16">Consejo de prueba: guarda tu propio número como domiciliario. Al enviarle un pedido te llega el mensaje de verdad a WhatsApp.</div></div>' + tabs('rest', 'riders');
+      '<div class="note amber mt16">Consejo de prueba: guarda tu propio número como domiciliario. Al enviarle un pedido te llega el mensaje de verdad a WhatsApp.</div>' +
+      // La bolsa, en la misma página, abajo.
+      '<div id="bolsa" class="bolsa-sec"><div class="row" style="gap:10px"><span class="pi">' + ic('users', 18) + '</span><div class="grow"><h2 class="t-h2">Bolsa de domiciliarios</h2><div class="small muted">Gente de tu pueblo buscando trabajo. Escríbeles y acuerden pago y horario. Toca <b>Guardar</b> y queda en tu lista de arriba.</div></div></div>' +
+      bolsaList(true) + '</div></div>' + tabs('rest', 'riders');
   }
-  function scrBolsa(fromRest) {
+  // Lista de la bolsa (filtros + tarjetas). Se usa sola (domiciliario) y debajo de «Mis domiciliarios» (negocio).
+  function bolsaList(canSave) {
     var F = ui.bf;
     var list = Object.keys(S.riders).map(function (k) { return S.riders[k]; }).filter(function (rd) {
       if (!rd.board) return false;
@@ -2287,11 +2398,8 @@
       if (F.moto && rd.vehicle !== 'Moto') return false;
       return true;
     });
-    var my = S.myRiders[S.restId] || [];
-    var r = R(S.restId), canSave = !ONLINE || !!S.restId;
-    return '<div class="screen has-tabs">' + topbar('Bolsa de domiciliarios', fromRest ? '/rest/domiciliarios' : null) +
-      '<div class="muted small" style="margin-top:-8px">Gente de Villanueva buscando trabajo. Escríbeles y acuerden pago y horario.</div>' +
-      '<div class="chips mt12">' + [['noche', 'Noche'], ['finde', 'Fines de semana'], ['moto', 'Con moto']].map(function (f) { return '<button class="chip' + (F[f[0]] ? ' on' : '') + '" data-a="bf" data-v="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><div class="mt12">' +
+    var my = S.myRiders[S.restId] || [], r = R(S.restId);
+    return '<div class="chips mt12">' + [['noche', 'Noche'], ['finde', 'Fines de semana'], ['moto', 'Con moto']].map(function (f) { return '<button class="chip' + (F[f[0]] ? ' on' : '') + '" data-a="bf" data-v="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><div class="mt12">' +
       (list.length ? list.map(function (rd) {
         var c = avColor(rd.id), saved = my.indexOf(rd.id) >= 0;
         return '<div class="card" style="margin-bottom:12px"><div class="row"><div class="avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + initials(rd.name) + '</div><div class="grow"><div class="t-h3">' + esc(rd.name) + (rd.id === S.myProfile ? ' <span class="badge orange">Tú</span>' : '') + '</div><div class="small muted">' + esc(rd.vehicle) + ' · ' + esc(rd.barrio) + '</div></div></div>' +
@@ -2299,7 +2407,13 @@
           '<div class="row mt12" style="gap:8px"><a class="btn btn-green btn-sm grow" target="_blank" rel="noopener" href="' + waLink(rd.phone, 'Hola ' + first(rd.name) + ', te vi en la bolsa de domiciliarios de Pido y Ido.' + (canSave ? ' Te escribo de ' + r.name + ', ¿tienes tiempo para hacer domicilios?' : '')) + '">' + ic('msg', 18) + ' Escribir por WhatsApp</a>' +
           (canSave ? '<button class="btn btn-sm ' + (saved ? 'btn-soft' : 'btn-outline') + '" data-a="saveRider" data-v="' + rd.id + '" aria-label="Guardar">' + ic(saved ? 'check' : 'bookmark', 18) + (saved ? ' Guardado' : ' Guardar') + '</button>' : '') + '</div></div>';
       }).join('') : '<div class="empty">Nadie con esos filtros todavía.</div>') +
-      '</div><div class="note amber">Pido y Ido no revisa documentos ni recomienda a nadie. Revisa tú la licencia y el SOAT antes de trabajar con alguien.</div></div>' + (canSave ? tabs('rest', 'bolsa') : tabs('dom', 'perfil'));
+      '</div><div class="note amber">Pido y Ido no revisa documentos ni recomienda a nadie. Revisa tú la licencia y el SOAT antes de trabajar con alguien.</div>';
+  }
+  function scrBolsa(fromRest) {
+    var canSave = !ONLINE || !!S.restId;
+    return '<div class="screen has-tabs">' + topbar('Bolsa de domiciliarios', fromRest ? '/rest/domiciliarios' : null) +
+      '<div class="muted small" style="margin-top:-8px">Gente de tu pueblo buscando trabajo. Escríbeles y acuerden pago y horario.</div>' +
+      bolsaList(canSave) + '</div>' + (canSave ? tabs('rest', 'riders') : tabs('dom', 'perfil'));
   }
 
   // ---------- Rider ----------
@@ -2428,7 +2542,37 @@
   // Horario por día solo cuando la base de datos ya tiene el paso 012-horario.sql.
   function horOn() { return !ONLINE || RESTAURANTS.some(function (r) { return r.horOk; }); }
   function horDe(r) { return r.hor !== undefined ? r.hor : r.horario ? JSON.parse(JSON.stringify(r.horario)) : DIAS.map(function () { return [abreDe(r), cierraDe(r)]; }); }
-  function rmVal(r, k) { var v = k === 'radius' ? (r.radius || 3) : k === 'kind' ? (r.kind || 'restaurante') : k === 'abre' ? abreDe(r) : k === 'cierra' ? cierraDe(r) : k === 'hor' ? (horOn() ? horDe(r) : '') : r[k]; return JSON.stringify(v == null ? '' : v); }
+  function rmVal(r, k) { var v = k === 'radius' ? +(r.radius || 3) : k === 'fee' || k === 'min' ? +(r[k] || 0) : k === 'eta' ? etaOf(r) : k === 'kind' ? (r.kind || 'restaurante') : k === 'abre' ? abreDe(r) : k === 'cierra' ? cierraDe(r) : k === 'hor' ? (horOn() ? horDe(r) : '') : r[k]; return JSON.stringify(v == null ? '' : v); }
+  function madeRest(r) { return !ONLINE || !!r.open || !!(S.made && S.made[r.id]) || S.orders.some(function (o) { return o.restId === r.id; }); }
+  // Revisa y guarda los datos del negocio. then() corre al guardar bien.
+  function rmSaveDo(then) {
+    var f = ui.rm; if (!f || ui.busy) return;
+    if (!String(f.name || '').trim()) { toast('Escribe el nombre'); return; }
+    var num = function (v) { return +String(v == null ? '' : v).replace(',', '.').replace(/[^\d.]/g, ''); };
+    var rad = num(f.radius), fee = Math.round(num(f.fee)), min = Math.round(num(f.min)), ea = Math.round(num(f.etaA)), eb = Math.round(num(f.etaB));
+    if (!(rad >= 0.5 && rad <= 30)) { toast('¿Hasta dónde entregas? Escribe entre 0,5 y 30 km'); return; }
+    if (!(fee >= 0 && fee <= 50000)) { toast('El domicilio debe ser entre $0 y $50.000'); return; }
+    if (!(min >= 0 && min <= 500000)) { toast('Revisa el pedido mínimo'); return; }
+    if (!(ea >= 5 && eb >= ea && eb <= 180)) { toast('Tiempo de entrega: por ejemplo de 30 a 40 minutos'); return; }
+    var fields = { name: f.name.trim(), short: shortName(f.name), sub: String(f.sub || '').trim(), address: String(f.address || '').trim(),
+      phone: String(f.phone || '').replace(/\D/g, ''), nequi: String(f.nequi || '').trim(), fee: fee, min: min, eta: ea + '–' + eb + ' min', img: f.img, cats: f.cats.slice(), radius_km: rad };
+    if (horOn()) {
+      var bad = [1, 2, 3, 4, 5, 6, 0].filter(function (i) { return f.hor[i] && hm(f.hor[i][1]) < hm(f.hor[i][0]) + 60; })[0];
+      if (bad != null) { toast(capi(DIAS[bad]) + ': la hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
+      if (!f.hor.some(function (d) { return d; })) { toast('Deja al menos un día abierto'); return; }
+      if (!R(S.restId).horario || JSON.stringify(f.hor) !== JSON.stringify(R(S.restId).horario)) fields.horario = f.hor;
+    } else {
+      if (hm(f.cierra) < hm(f.abre) + 60) { toast('La hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
+      if (f.abre !== abreDe(R(S.restId)) || f.cierra !== cierraDe(R(S.restId))) { fields.abre = f.abre; fields.cierra = f.cierra; }
+    }
+    if (hasLoc(f)) { fields.lat = f.lat; fields.lng = f.lng; }
+    if ((f.kind || 'restaurante') !== (R(S.restId).kind || 'restaurante')) fields.kind = f.kind;
+    ui.busy = true; render();
+    var ok = function () { ui.busy = false; var rr = R(S.restId); Object.assign(rr, fields, { radius: fields.radius_km }); if (!ONLINE) save(); ui.rm = null; render(); if (then) then(); else toast('Datos guardados'); sync(); };
+    if (!ONLINE) { ok(); return; }
+    CLOUD.updateRest(fields).then(ok,
+      function (e) { ui.busy = false; render(); toast(/kind/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (004-tiendas.sql).' : /horario/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (012-horario.sql).' : /abre|cierra/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (009-programar.sql).' : errTxt(e)); });
+  }
   function rmDirty(r, f) { return RM_KEYS.some(function (k) { return rmVal(f, k) !== rmVal(r, k); }); }
   function hourSelect(id, path, cur, from, to) {
     var h = '<select class="input" id="' + id + '" data-m="' + path + '" data-dirty="1">';
@@ -2447,53 +2591,75 @@
       '<button class="chip sm mt12" data-a="horCopy">' + ic('refresh', 14) + 'Copiar el lunes a los demás días</button>' +
       '<div class="xs muted mt12">Los clientes ven <b>«Abierto hasta …»</b> o <b>«Cerrado · abre …»</b>. Fuera de este horario no te llegan pedidos para ya, solo <b>pedidos programados</b> para cuando abras. ¿Un día no abres o estás muy ocupado? Toca <b>Abierto</b> arriba para pausar.</div></div>';
   }
+  // "18–30 min" -> [18, 30]
+  function etaParts(t) { var m = String(t || '').match(/(\d+)\D+(\d+)/); return m ? [+m[1], +m[2]] : [30, 40]; }
+  function etaOf(f) { return f.etaA != null ? (+f.etaA || 0) + '–' + (+f.etaB || 0) + ' min' : f.eta; }
+  function saveBtn(dirty) {
+    return dirty ? '<button class="btn btn-green btn-block" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + ic('check', 18) + (ui.busy ? 'Guardando…' : 'Guardar cambios') + '</button>'
+      : '<button class="btn btn-block save-done" data-a="rmSave">' + ic('check', 18) + 'Todo guardado</button>';
+  }
+  // Campo con número escrito a mano + sugerencias rápidas debajo.
+  function numField(id, key, label, val, unit, pre, picks, fmtPick, hint) {
+    return '<div class="field"><label class="label" for="' + id + '">' + label + '</label><div class="input-ic num-in">' + (pre ? '<span class="pre">' + pre + '</span>' : '') +
+      '<input class="input" id="' + id + '" data-m="ui.rm.' + key + '" data-dirty="1" inputmode="decimal" value="' + esc(val) + '">' + (unit ? '<span class="unit">' + unit + '</span>' : '') + '</div>' +
+      '<div class="chips mt8">' + picks.map(function (v) { return '<button class="chip sm' + (String(val) === String(v) ? ' on' : '') + '" data-a="rmSet" data-k="' + key + '" data-v="' + v + '">' + fmtPick(v) + '</button>'; }).join('') + '</div>' +
+      (hint ? '<div class="xs muted mt4">' + hint + '</div>' : '') + '</div>';
+  }
   function scrRestMenu() {
     var r = R(S.restId);
-    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, kind: r.kind || 'restaurante', name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, img: r.img, cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3, abre: abreDe(r), cierra: cierraDe(r), hor: horOn() ? horDe(r) : undefined });
+    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, kind: r.kind || 'restaurante', name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, etaA: etaParts(r.eta)[0], etaB: etaParts(r.eta)[1], img: r.img, cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3, abre: abreDe(r), cierra: cierraDe(r), hor: horOn() ? horDe(r) : undefined });
     var shop = isShop(f), k = kindOf(f), word = shop ? 'tienda' : 'restaurante';
-    var chip = function (key, val, label) { return '<button class="chip sm' + (String(f[key]) === String(val) ? ' on' : '') + '" data-a="rmSet" data-k="' + key + '" data-v="' + esc(val) + '">' + label + '</button>'; };
-    var dirty = rmDirty(r, f);
-    var h = '<div class="screen has-tabs' + (dirty ? ' has-cta' : '') + '">' + restHeader(r) +
+    var dirty = rmDirty(r, f), made = madeRest(r);
+    var h = '<div class="screen has-tabs has-cta">' + restHeader(r) +
+      (made ? '' : '<div class="note green mt16 row" style="gap:10px;align-items:flex-start">' + ic('store', 18) + '<span>Llena los datos de tu ' + word + (shop ? '' : ', agrega tu menú') + ' y al final toca <b>Crear mi negocio</b>. Puedes guardar en cualquier momento con el botón verde de abajo.</span></div>') +
       // cover photo, as customers see it
       '<div class="cover mt16">' + cover(f, '', 'position:absolute;inset:0;width:100%;height:100%', 900) + '<div class="cover-fade"></div>' +
       '<div class="cover-txt"><div class="xs" style="opacity:.85">Así te ven los clientes</div><div class="t-h2" style="color:#fff">' + esc(f.name || r.name) + '</div></div></div>' +
       '<div class="label mt12">Foto de portada' + (shop ? ' <span class="muted" style="font-weight:500">(opcional: tu local o tus productos)</span>' : '') + '</div>' + photoPick(f.img, 'rmImg', 'rest', shop) +
-      (shop ? '<h2 class="t-h2 mt24">Cómo te piden</h2><div class="card mt12"><div class="row top" style="gap:12px"><span class="pi">' + ic('list', 18) + '</span><div class="grow small">Tus clientes <b>escriben su lista</b> o te mandan <b>una foto</b>' + (k.id === 'drogueria' ? ' (por ejemplo de la fórmula)' : '') + '. Tú pones el precio al aceptar y el cliente lo ve en su app. No necesitas subir productos.</div></div></div>' : '') +
-      // dishes
-      (shop ? '' : '<div class="row between mt24"><h2 class="t-h2">Tu menú</h2><span class="small muted">' + r.dishes.length + ' platos</span></div>' +
-      '<div class="card mt12" style="padding:4px 14px">' +
-      (r.dishes.length ? r.dishes.map(function (d) {
-        return '<div class="list-row">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b ellipsis">' + esc(d.name) + '</div><div class="small muted ellipsis">' + (d.desc ? esc(d.desc) : 'Sin descripción') + '</div><div class="row mt4" style="gap:8px"><span class="b" style="font-size:14px">' + fmt(d.price) + '</span><button class="sec-pill" data-a="dishSec" data-v="' + esc(d.id) + '">' + esc(secOf(d)) + ' ' + ic('down', 12) + '</button></div></div>' +
-          '<button class="icon-btn" style="width:40px;height:40px;box-shadow:none;background:var(--track)" data-a="dishDel" data-v="' + esc(d.id) + '" aria-label="Quitar">' + ic('x', 18) + '</button></div>';
-      }).join('') : '<div class="empty" style="padding:22px 8px"><div class="ic">' + ic('fire', 24) + '</div>Aún no hay platos. Agrega el primero: con foto y precio se vende más.</div>') + '</div>' +
-      '<button class="dashed-btn mt12" data-a="dishForm">' + ic('plus', 18) + ' Agregar un plato</button>') +
-      // delivery
-      '<h2 class="t-h2 mt24">Entrega</h2><div class="card mt12">' +
-      '<div class="label">Ubicación ' + (shop ? 'de la tienda' : 'del restaurante') + '</div><button class="dashed-btn' + (hasLoc(f) ? ' done' : ' need') + '" data-a="rmLoc">' + ic(hasLoc(f) ? 'check' : 'map', 18) + (hasLoc(f) ? 'Marcado en el mapa · cambiar' : 'Marcar mi ' + word + ' en el mapa') + '</button>' +
-      '<div class="label mt16">¿Hasta dónde entregas?</div><div class="chips">' + [2, 3, 5, 8].map(function (v) { return chip('radius', v, v + ' km'); }).join('') + '</div>' +
-      '<div class="label mt16">Domicilio</div><div class="chips">' + [0, 2000, 3000, 4000, 5000].map(function (v) { return chip('fee', v, v ? fmt(v) : 'Gratis'); }).join('') + '</div>' +
-      (shop ? '' : '<div class="label mt16">Pedido mínimo</div><div class="chips">' + [0, 10000, 15000, 20000].map(function (v) { return chip('min', v, v ? fmt(v) : 'Sin mínimo'); }).join('') + '</div>') +
-      '<div class="label mt16">Tiempo de entrega</div><div class="chips">' + ['20–30 min', '30–40 min', '40–60 min'].map(function (v) { return chip('eta', v, v); }).join('') + '</div></div>' +
-      // opening hours: per weekday (012) or one range for every day (009)
-      (horOn() ? horEditor(f) : progOn() ? '<h2 class="t-h2 mt24">Horario</h2><div class="card mt12"><div class="row" style="gap:10px">' +
-      '<div class="grow"><label class="label" for="rmAb">Abre</label>' + hourSelect('rmAb', 'ui.rm.abre', f.abre, 5 * 60, 14 * 60) + '</div>' +
-      '<div class="grow"><label class="label" for="rmCi">Cierra</label>' + hourSelect('rmCi', 'ui.rm.cierra', f.cierra, 12 * 60, 23 * 60 + 30) + '</div></div>' +
-      '<div class="xs muted mt8">Los clientes pueden <b>programar pedidos</b> para hoy o mañana dentro de este horario, también cuando estás cerrado. Tú los aceptas igual que los demás.</div></div>' : '') +
-      // details
+      // details first: name, address + map
       '<h2 class="t-h2 mt24">Datos ' + (shop ? 'de la tienda' : 'del restaurante') + '</h2><div class="card mt12">' +
       '<div class="label">Tipo de negocio</div><div class="chips" style="margin-bottom:14px">' + KINDS.map(function (x) { return '<button class="chip sm' + (x.id === k.id ? ' on' : '') + '" data-a="rmSet" data-k="kind" data-v="' + x.id + '">' + ic(x.icon, 14) + x.t + '</button>'; }).join('') + '</div>' +
       '<div class="field"><label class="label" for="rm1">Nombre</label><input class="input" id="rm1" data-m="ui.rm.name" data-dirty="1" value="' + esc(f.name) + '"></div>' +
       '<div class="field"><label class="label" for="rm2">Qué vendes (corto)</label><input class="input" id="rm2" data-m="ui.rm.sub" data-dirty="1" value="' + esc(f.sub) + '" placeholder="' + esc(k.sub) + '"></div>' +
-      '<div class="field"><label class="label" for="rm3">Dirección</label><input class="input" id="rm3" data-m="ui.rm.address" data-dirty="1" value="' + esc(f.address) + '"></div>' +
+      fieldIc('rm3', 'Dirección ' + (shop ? 'de la tienda' : 'del restaurante'), 'pin', '<input class="input" id="rm3" data-m="ui.rm.address" data-dirty="1" value="' + esc(f.address) + '" placeholder="Calle 10 # 8-24, El Centro" autocomplete="street-address">', 'Con barrio. Los clientes la ven en tu página.') +
+      '<button class="dashed-btn' + (hasLoc(f) ? ' done' : ' need') + '" style="margin-bottom:14px" data-a="rmLoc">' + ic(hasLoc(f) ? 'check' : 'map', 18) + (hasLoc(f) ? 'Marcado en el mapa · cambiar' : 'Marcar mi ' + word + ' en el mapa') + '</button>' +
       '<div class="row" style="gap:10px"><div class="grow field"><label class="label" for="rm4">WhatsApp</label><input class="input" id="rm4" data-m="ui.rm.phone" data-dirty="1" inputmode="tel" value="' + esc(f.phone) + '"></div>' +
       '<div class="grow field"><label class="label" for="rm5">Nequi / Daviplata</label><input class="input" id="rm5" data-m="ui.rm.nequi" data-dirty="1" inputmode="tel" value="' + esc(f.nequi) + '"></div></div>' +
       '<div class="xs muted" style="margin:-6px 0 8px">' + ic('lock', 12) + ' Los clientes no ven tu WhatsApp. El Nequi solo lo ve quien tiene un pedido aceptado contigo.</div>' +
       (shop ? '' : '<div class="label mt8">Categorías</div><div class="chips">' + CATS.map(function (c) { return '<button class="chip sm' + (f.cats.indexOf(c[0]) >= 0 ? ' on' : '') + '" data-a="rmCat" data-v="' + esc(c[0]) + '">' + esc(c[0]) + '</button>'; }).join('') +
         ownCats(f).map(function (c) { return '<button class="chip sm on" data-a="rmCat" data-v="' + esc(c) + '" aria-label="Quitar ' + esc(c) + '">' + esc(c) + ' ' + ic('x', 12) + '</button>'; }).join('') + '</div>' +
         (ownCats(f).length < 3 ? '<div class="row mt8" style="gap:8px"><input class="input grow" id="rmCatNew" data-m="ui.rm.catNew" data-enter="rmCatAdd" maxlength="20" value="' + esc(f.catNew || '') + '" placeholder="Otra, ej.: Mariscos"><button class="btn btn-ghost btn-sm" data-a="rmCatAdd">Agregar</button></div>' : '')) +
-      '<button class="btn btn-green btn-block mt16" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Guardando…' : 'Guardar datos') + '</button></div>' +
-      '<button class="btn btn-ghost btn-block mt12" data-a="restLogout">Cerrar sesión</button></div>' +
-      '<div class="cta-wrap above-tabs save-bar' + (dirty ? ' show' : '') + '" id="saveBar"><button class="btn btn-green btn-block" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + ic('check', 18) + (ui.busy ? 'Guardando…' : 'Guardar cambios') + '</button></div>' + tabs('rest', 'menu');
+      '</div>' +
+      (shop ? '<h2 class="t-h2 mt24">Cómo te piden</h2><div class="card mt12"><div class="row top" style="gap:12px"><span class="pi">' + ic('list', 18) + '</span><div class="grow small">Tus clientes <b>escriben su lista</b> o te mandan <b>una foto</b>' + (k.id === 'drogueria' ? ' (por ejemplo de la fórmula)' : '') + '. Tú pones el precio al aceptar y el cliente lo ve en su app. No necesitas subir productos.</div></div></div>' : '') +
+      // dishes, grouped by category
+      (shop ? '' : '<div class="row between mt24"><h2 class="t-h2">Tu menú</h2><span class="small muted">' + r.dishes.length + ' platos</span></div>' +
+      (r.dishes.length ? SECS.map(function (sx) {
+        var list = r.dishes.filter(function (d) { return secOf(d) === sx; }); if (!list.length) return '';
+        return '<div class="menu-sec-h">' + esc(secTxt(sx)) + ' <span class="muted">' + list.length + '</span></div><div class="card" style="padding:4px 14px">' + list.map(function (d) {
+          return '<div class="list-row">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b ellipsis">' + esc(d.name) + '</div><div class="small muted ellipsis">' + (d.desc ? esc(d.desc) : 'Sin descripción') + '</div><div class="row mt4" style="gap:8px"><span class="b" style="font-size:14px">' + fmt(d.price) + '</span><button class="sec-pill" data-a="dishSec" data-v="' + esc(d.id) + '">' + esc(secTxt(secOf(d))) + ' ' + ic('down', 12) + '</button></div></div>' +
+            '<button class="icon-btn" style="width:40px;height:40px;box-shadow:none;background:var(--track)" data-a="dishDel" data-v="' + esc(d.id) + '" aria-label="Quitar">' + ic('x', 18) + '</button></div>';
+        }).join('') + '</div>';
+      }).join('') : '<div class="card mt12"><div class="empty" style="padding:22px 8px"><div class="ic">' + ic('fire', 24) + '</div>Aún no hay platos. Agrega el primero: con foto y precio se vende más.</div></div>') +
+      '<button class="dashed-btn mt12" data-a="dishForm">' + ic('plus', 18) + ' Agregar un plato</button>') +
+      // delivery: typed by hand, with quick picks
+      '<h2 class="t-h2 mt24">Domicilios</h2><div class="card mt12">' +
+      numField('rmR', 'radius', '¿Hasta dónde entregas?', f.radius, 'km', '', [2, 3, 5, 8], function (v) { return v + ' km'; }, 'Desde tu ' + word + ' en línea recta. Más lejos no te pueden pedir.') +
+      numField('rmF', 'fee', 'Precio del domicilio', f.fee, '', '$', [0, 2000, 3000, 4000, 5000], function (v) { return v ? fmt(v) : 'Gratis'; }, '0 = domicilio gratis.') +
+      (shop ? '' : numField('rmM', 'min', 'Pedido mínimo', f.min, '', '$', [0, 10000, 15000, 20000], function (v) { return v ? fmt(v) : 'Sin mínimo'; }, '0 = sin mínimo.')) +
+      '<div class="field" style="margin-bottom:0"><div class="label">Tiempo de entrega</div><div class="row" style="gap:8px;align-items:center">' +
+      '<div class="input-ic num-in grow"><span class="pre">de</span><input class="input" id="rmEa" data-m="ui.rm.etaA" data-dirty="1" inputmode="numeric" value="' + esc(f.etaA) + '" aria-label="Mínimo de minutos"></div>' +
+      '<div class="input-ic num-in grow"><span class="pre">a</span><input class="input" id="rmEb" data-m="ui.rm.etaB" data-dirty="1" inputmode="numeric" value="' + esc(f.etaB) + '" aria-label="Máximo de minutos"><span class="unit">min</span></div></div>' +
+      '<div class="chips mt8">' + [[20, 30], [30, 40], [40, 60]].map(function (v) { return '<button class="chip sm' + (+f.etaA === v[0] && +f.etaB === v[1] ? ' on' : '') + '" data-a="rmEta" data-v="' + v[0] + '-' + v[1] + '">' + v[0] + '–' + v[1] + ' min</button>'; }).join('') + '</div></div></div>' +
+      // opening hours: per weekday (012) or one range for every day (009)
+      (horOn() ? horEditor(f) : progOn() ? '<h2 class="t-h2 mt24">Horario</h2><div class="card mt12"><div class="row" style="gap:10px">' +
+      '<div class="grow"><label class="label" for="rmAb">Abre</label>' + hourSelect('rmAb', 'ui.rm.abre', f.abre, 5 * 60, 14 * 60) + '</div>' +
+      '<div class="grow"><label class="label" for="rmCi">Cierra</label>' + hourSelect('rmCi', 'ui.rm.cierra', f.cierra, 12 * 60, 23 * 60 + 30) + '</div></div>' +
+      '<div class="xs muted mt8">Los clientes pueden <b>programar pedidos</b> para hoy o mañana dentro de este horario, también cuando estás cerrado. Tú los aceptas igual que los demás.</div></div>' : '') +
+      // finish: create the business (first time) or just save
+      (made ? '' : '<div class="card mt24 crear-card"><div class="t-h3">¿Listo?</div><div class="small muted mt4">Guardamos todo y abrimos tu ' + word + ' en Pido y Ido. Desde ahí ya te llegan pedidos.</div>' +
+        '<button class="btn btn-primary btn-xl btn-block mt12" data-a="crearNegocio"' + (ui.busy ? ' disabled' : '') + '>' + ic('store', 20) + ' Crear mi negocio</button></div>') +
+      '</div>' +
+      '<div class="cta-wrap above-tabs save-bar show" id="saveBar">' + saveBtn(dirty) + '</div>' + tabs('rest', 'menu');
     return h;
   }
   // Enlace del domiciliario: #/entrega/<id>-<clave>. Paso 1 "Ya lo recogí", paso 2 "Entregado" con el código del cliente.
@@ -2645,7 +2811,8 @@
         if (p[1] === 'enviar') return scrEnviar(p[2]);
         if (p[1] === 'mes') return scrRestMes(rt.query);
         if (p[1] === 'domiciliarios') return scrMisRiders();
-        if (p[1] === 'bolsa') return scrBolsa(true);
+        if (p[1] === 'bolsa') { try { history.replaceState(null, '', '#/rest/domiciliarios'); } catch (e) {} setTimeout(function () { A.toBolsa(); }, 60); return scrMisRiders(); }
+        if (p[1] === 'facturacion') return scrRestFact(rt.query);
         return scrRest(rt.query);
       case 'dom': return p[1] === 'perfil' ? scrDomPerfil() : scrDom();
       case 'wa': return scrWa(p[1]);
@@ -2664,6 +2831,7 @@
     var y = window.scrollY;
     var active = document.activeElement && document.activeElement.id;
     document.getElementById('app').innerHTML = view(rt);
+    document.getElementById('app').classList.toggle('alert-on', !!document.getElementById('newAlert'));
     if (same) window.scrollTo(0, y); else { window.scrollTo(0, 0); sheet(null); }
     ui.lastRoute = key;
     if (ONLINE) keepAwake(rt.parts[0] === 'rest' && !!S.restId);
@@ -2982,7 +3150,8 @@
     reset: function () { S = seed(); ui.rate = null; ui.signup = null; ui.choose = {}; save(); sheet(null); go('/'); toast('Demo reiniciada'); },
     rolePick: function (el) { ui.rolePick = el.dataset.v; render(); },
     roleGo: function () {
-      var r = roleById(ui.rolePick || S.role || 'cliente'), firstTime = !(S.seen || {})[r.id];
+      if (!ui.rolePick && !S.role) { toast('Elige una opción'); return; }
+      var r = roleById(ui.rolePick || S.role), firstTime = !(S.seen || {})[r.id];
       S.role = r.id; S.seen = S.seen || {}; S.seen[r.id] = true; ui.rolePick = null; save();
       go(firstTime && r.first && !(r.id === 'rider' && S.myProfile) ? r.first : r.home);
     },
@@ -2995,12 +3164,60 @@
     },
     install: function () { if (ui.installEvt) { ui.installEvt.prompt(); ui.installEvt.userChoice.then(function () { ui.installEvt = null; render(); }); } },
     // restaurant
-    pickRest: function () {
-      if (ONLINE) {
-        sheet('<div class="t-h2">' + esc(R(S.restId).name) + '</div><div class="small muted mt4">Entraste con el WhatsApp ' + phoneFmt(R(S.restId).phone) + '.</div>' +
-          '<a class="btn btn-outline btn-block mt16" href="#/rest/menu">' + (isShop(R(S.restId)) ? 'Editar mi tienda' : 'Editar menú y datos') + '</a><button class="btn btn-ghost btn-block mt8" data-a="restLogout">Cerrar sesión</button>');
-        return;
+    // Menú de la cuenta (botón arriba a la derecha): datos, cambiar de rol y cerrar sesión.
+    restAcct: function () {
+      var r = R(S.restId);
+      var row = function (href, a, icon, t, s2, red) { return (href ? '<a class="acct-row" href="' + href + '">' : '<button class="acct-row" data-a="' + a + '">') + '<span class="pi"' + (red ? ' style="background:#FDECEA;color:#A1291B"' : '') + '>' + ic(icon, 18) + '</span><span class="grow"><span class="b" style="display:block' + (red ? ';color:#A1291B' : '') + '">' + t + '</span>' + (s2 ? '<span class="xs muted">' + s2 + '</span>' : '') + '</span>' + (href ? '</a>' : '</button>'); };
+      sheet('<div class="row" style="gap:12px">' + cover(r, 'thumb s44') + '<div class="grow"><div class="t-h2">' + esc(r.name) + '</div><div class="small muted">' + (ONLINE ? 'Entraste con el WhatsApp ' + phoneFmt(r.phone) : 'Demo') + '</div></div></div><div class="mt16">' +
+        (ONLINE ? row('#/rest/menu', '', 'store', isShop(r) ? 'Editar mi tienda' : 'Editar menú y datos', 'Nombre, dirección, domicilios, horario') : row('', 'pickRestList', 'swap', 'Ver otro negocio de la demo', '')) +
+        row('#/rest/facturacion', '', 'wallet', 'Facturación', 'Tus facturas y cómo pagarlas') +
+        row('', 'restRole', 'users', 'Usar la app como cliente o domiciliario', 'Vuelve al inicio sin cerrar sesión') +
+        (ONLINE ? row('', 'restLogout', 'logout', 'Cerrar sesión', 'Para entrar otra vez necesitas tu WhatsApp y tu clave', true) : '') + '</div>');
+    },
+    factVer: function (el) {
+      var r = R(S.restId), f = factOf(r, el.dataset.v, factPagos()); if (!f) return;
+      var e = FACT_EST[f.est], st = f.st, ms = payMethods();
+      ui.fpay = { ym: f.ym, metodo: (f.pago && f.pago.metodo) || (ms[0] && ms[0].id) || 'otro', total: f.total };
+      var line = function (a, b, cls) { return '<div class="row between small mt8' + (cls ? ' ' + cls : '') + '"><span>' + a + '</span><span>' + b + '</span></div>'; };
+      var h = '<div class="row between"><div><div class="xs muted">Factura ' + f.num + '</div><div class="t-h2">' + capi(ymTxt(f.ym)) + ' ' + f.ym.slice(0, 4) + '</div></div><span class="badge ' + e[0] + '">' + e[1] + '</span></div>' +
+        '<div class="card flat mt12">' + line('Pedidos entregados', st.pedidos) + line('Ventas por la app', fmt(st.ventas)) + line('Comisión (' + pctTxt(f.pct) + ')', fmt(f.com)) +
+        (st.premios ? line('Premios de tus clientes (los paga Pido y Ido)', '−' + fmt(st.premios), 'green') : '') +
+        '<div class="divider dashed"></div><div class="row between"><span class="t-h3">Total a pagar</span><span class="num" style="font-size:20px">' + fmt(f.total) + '</span></div>' +
+        (f.total ? '<div class="xs muted mt4">Vence el ' + diaTxt(f.vence) + '.</div>' : '') + '</div>';
+      if (f.est === 'pagada') h += '<div class="note green mt12">' + ic('check', 14) + ' Pagada. ¡Gracias!</div>';
+      else if (f.est === 'revision') h += '<div class="note amber mt12">Nos avisaste que pagaste por ' + esc(({ nequi: 'Nequi', banco: 'transferencia', breb: 'Bre-B', otro: 'otro medio' })[f.pago.metodo] || '') + (f.pago.referencia ? ' (comprobante ' + esc(f.pago.referencia) + ')' : '') + '. Lo estamos revisando.</div>';
+      else if (f.total) {
+        if (f.est === 'nollego') h += '<div class="note red mt12">No encontramos tu pago. Revisa el comprobante y avísanos otra vez.</div>';
+        h += '<div class="t-h3 mt16">1. Paga ' + fmt(f.total) + '</div><div class="mt8">' + payMethodsHtml() + '</div>' +
+          '<div class="t-h3 mt16">2. Avísanos</div><div class="label mt8">¿Cómo pagaste?</div><div class="chips" id="fpM">' + factMethodChips() + '</div>' +
+          '<label class="label mt12" for="fpRef">Número del comprobante (opcional)</label><input class="input" id="fpRef" maxlength="60" placeholder="Ej.: M1234567" autocomplete="off">' +
+          '<div id="fpErr" class="err-msg"></div><button class="btn btn-primary btn-block btn-xl mt16" data-a="factPagado">' + ic('check', 18) + ' Ya pagué</button>';
       }
+      sheet(h);
+    },
+    factMetodo: function (el) { ui.fpay.metodo = el.dataset.v; document.getElementById('fpM').innerHTML = factMethodChips(); },
+    factPagado: function (el) {
+      var fp = ui.fpay; if (!fp) return;
+      var ref = ((document.getElementById('fpRef') || {}).value || '').trim().slice(0, 60);
+      var ok = function () { sheet(null); ui.fact = null; render(); toast('Gracias. Revisamos tu pago y te confirmamos'); };
+      if (!ONLINE) { S.fpagos = S.fpagos || {}; S.fpagos[fp.ym] = { mes: fp.ym, metodo: fp.metodo, monto: fp.total, referencia: ref, estado: 'enviado' }; save(); ok(); return; }
+      el.disabled = true;
+      CLOUD.factPagar(fp.ym, fp.metodo, fp.total, ref).then(ok, function (e) {
+        el.disabled = false; var t = document.getElementById('fpErr');
+        if (t) t.textContent = /factura|function|schema/i.test(String(e && e.message)) ? 'Esto se activa muy pronto. Mientras tanto mándanos el comprobante por WhatsApp.' : errTxt(e);
+      });
+    },
+    adminPago: function (el) {
+      var A2 = ui.admin; if (!A2) return; el.disabled = true;
+      CLOUD.adminFacturaSet(A2.key, el.dataset.r, el.dataset.ym, el.dataset.v).then(function () { A2.pagos = null; render(); toast(el.dataset.v === 'pagado' ? 'Marcado como pagado' : 'Marcado: no llegó'); }, function (e) { el.disabled = false; toast(errTxt(e)); });
+    },
+    alertGo: function (ev) { if (location.hash === '#/rest') { ui.rtab = 'nuevos'; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); } else { ui.rtab = 'nuevos'; go('/rest'); } },
+    alertMute: function () { ui.muted = (ui.muted || []).concat(waitingOrders().map(function (o) { return o.id; })); render(); toast('Sin sonido para estos pedidos. El aviso sigue arriba.'); },
+    toBolsa: function () { var b = document.getElementById('bolsa'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+    restRole: function () { sheet(null); S.role = null; save(); go('/'); },
+    pickRestList: function () { sheet(null); A.pickRest(); },
+    pickRest: function () {
+      if (ONLINE) { A.restAcct(); return; }
       sheet('<div class="t-h2">¿Qué negocio eres?</div><div class="small muted mt4">En la demo puedes ver el panel de cualquiera.</div><div class="mt12">' + RESTAURANTS.map(function (r) {
         return '<button class="radio-row' + (S.restId === r.id ? ' on' : '') + '" data-a="setRest" data-v="' + r.id + '">' + cover(r, 'thumb s44') + '<span class="grow b">' + r.name + '</span><span class="ring"></span></button>';
       }).join('') + '</div>');
@@ -3250,7 +3467,8 @@
       }, function (e) { ui.busy = false; ui.loginMsg = /invalid/i.test(e.message) ? 'Número o clave incorrectos.' : errTxt(e); render(); });
     },
     restLogout: function () {
-      CLOUD.restLogout().then(function () { S.restId = null; S.myRiders = {}; S.orders = S.orders.filter(function (o) { return o.mine; }); ui.rm = null; save(); sheet(null); go('/'); toast('Sesión cerrada'); sync(true); });
+      // Al cerrar sesión vuelve al inicio (elegir qué hacer), sin nada marcado. Desde ahí: «¿Tienes negocio? Iniciar sesión».
+      CLOUD.restLogout().then(function () { S.restId = null; S.role = null; S.myRiders = {}; S.orders = S.orders.filter(function (o) { return o.mine; }); ui.rm = null; ui.rolePick = null; ui.fact = null; ui.mes = null; save(); sheet(null); go('/'); toast('Cerraste sesión. ¡Hasta pronto!'); sync(true); });
     },
     rmSet: function (el) { var k = el.dataset.k; ui.rm[k] = (k === 'fee' || k === 'min' || k === 'radius') ? +el.dataset.v : el.dataset.v; render(); },
     rmCatAdd: function () {
@@ -3261,7 +3479,7 @@
       if (same) { if (f.cats.indexOf(same) < 0) f.cats.push(same); }
       else if (ownCats(f).length >= 3) { toast('Máximo 3 categorías propias'); return; }
       else f.cats.push(t);
-      f.catNew = ''; render(); var sb = document.getElementById('saveBar'); if (sb) sb.classList.add('show');
+      f.catNew = ''; render();
     },
     rmCat: function (el) { var c = ui.rm.cats, i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else c.push(el.dataset.v); render(); },
     rmImg: function (el) { ui.rm.img = el.dataset.v; render(); },
@@ -3272,45 +3490,40 @@
       render();
     },
     horCopy: function () { var h = ui.rm.hor, mon = h[1] || [abreDe(ui.rm), cierraDe(ui.rm)]; for (var i = 0; i < 7; i++) if (h[i]) h[i] = mon.slice(); render(); toast('Mismo horario todos los días abiertos'); },
-    rmSave: function () {
-      var f = ui.rm; if (!f || ui.busy) return;
-      if (!String(f.name || '').trim()) { toast('Escribe el nombre'); return; }
-      var fields = { name: f.name.trim(), short: shortName(f.name), sub: String(f.sub || '').trim(), address: String(f.address || '').trim(),
-        phone: String(f.phone || '').replace(/\D/g, ''), nequi: String(f.nequi || '').trim(), fee: +f.fee || 0, min: +f.min || 0, eta: f.eta, img: f.img, cats: f.cats.slice(), radius_km: +f.radius || 3 };
-      if (horOn()) {
-        var bad = [1, 2, 3, 4, 5, 6, 0].filter(function (i) { return f.hor[i] && hm(f.hor[i][1]) < hm(f.hor[i][0]) + 60; })[0];
-        if (bad != null) { toast(capi(DIAS[bad]) + ': la hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
-        if (!f.hor.some(function (d) { return d; })) { toast('Deja al menos un día abierto'); return; }
-        if (!R(S.restId).horario || JSON.stringify(f.hor) !== JSON.stringify(R(S.restId).horario)) fields.horario = f.hor;
-      } else {
-        if (hm(f.cierra) < hm(f.abre) + 60) { toast('La hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
-        if (f.abre !== abreDe(R(S.restId)) || f.cierra !== cierraDe(R(S.restId))) { fields.abre = f.abre; fields.cierra = f.cierra; }
-      }
-      if (hasLoc(f)) { fields.lat = f.lat; fields.lng = f.lng; }
-      if ((f.kind || 'restaurante') !== (R(S.restId).kind || 'restaurante')) fields.kind = f.kind;
-      ui.busy = true; render();
-      CLOUD.updateRest(fields).then(function () { ui.busy = false; Object.assign(R(S.restId), fields, { radius: fields.radius_km }); ui.rm = null; render(); toast('Datos guardados'); sync(); },
-        function (e) { ui.busy = false; render(); toast(/kind/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (004-tiendas.sql).' : /horario/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (012-horario.sql).' : /abre|cierra/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (009-programar.sql).' : errTxt(e)); });
+    rmEta: function (el) { var v = el.dataset.v.split('-'); ui.rm.etaA = +v[0]; ui.rm.etaB = +v[1]; render(); },
+    rmSave: function () { if (ui.rm && !rmDirty(R(S.restId), ui.rm)) { toast('Todo está guardado'); return; } rmSaveDo(); },
+    // Primera vez: guarda todo, revisa que no falte nada y abre el negocio.
+    crearNegocio: function () {
+      var r = R(S.restId), f = ui.rm, shop = isShop(f || r);
+      if (!f || ui.busy) return;
+      var falta = !String(f.name || '').trim() ? 'Escribe el nombre de tu negocio' : String(f.address || '').trim().length < 5 ? 'Escribe la dirección' : !hasLoc(f) ? 'Marca tu ' + (shop ? 'tienda' : 'restaurante') + ' en el mapa' : !shop && !r.dishes.length ? 'Agrega por lo menos un plato a tu menú' : '';
+      if (falta) { toast(falta); return; }
+      var open = function () {
+        S.made = S.made || {}; S.made[r.id] = true; S.open[r.id] = true; r.open = true; save();
+        if (ONLINE) push(CLOUD.updateRest({ open: true }));
+        go('/rest'); setTimeout(function () { toast('¡Listo! ' + r.name + ' ya está en Pido y Ido y abierto'); confetti(); }, 200);
+      };
+      if (rmDirty(r, f)) rmSaveDo(open); else open();
     },
     dishForm: function () {
       ui.dish = { img: IMG.asado, sec: 'Platos' };
       sheet('<div class="t-h2">Agregar un plato</div>' +
-        '<label class="label mt12" for="dn">Nombre</label><input class="input" id="dn" placeholder="Carne a la llanera" autocomplete="off">' +
-        '<label class="label mt12" for="dd">Descripción (opcional)</label><input class="input" id="dd" placeholder="300 g, yuca, papa y ají" autocomplete="off">' +
-        '<label class="label mt12" for="dp">Precio</label><input class="input" id="dp" inputmode="numeric" placeholder="25000">' +
-        '<div class="label mt12">Sección del menú</div><div class="chips" id="dSec">' + secChips('Platos', 'dishSecPick') + '</div>' +
-        '<div class="label mt12">Foto del plato</div><div id="dishPh">' + photoPick(ui.dish.img, 'dishImg', 'dish') + '</div><div class="xs muted mt4">Una foto propia vende más. Tómala con buena luz, de cerca.</div>' +
+        '<div class="label mt12">1. Categoría</div><div class="chips" id="dSec">' + secChips('Platos', 'dishSecPick') + '</div><div class="xs muted mt4" id="dSecHint">' + SEC_HINT.Platos + '</div>' +
+        '<label class="label mt12" for="dn">2. Nombre</label><input class="input" id="dn" placeholder="Carne a la llanera" autocomplete="off">' +
+        '<label class="label mt12" for="dd">3. Descripción (opcional)</label><input class="input" id="dd" placeholder="300 g, yuca, papa y ají" autocomplete="off">' +
+        '<label class="label mt12" for="dp">4. Precio</label><input class="input" id="dp" inputmode="numeric" placeholder="25000">' +
+        '<div class="label mt12">5. Foto del plato</div><div id="dishPh">' + photoPick(ui.dish.img, 'dishImg', 'dish') + '</div><div class="xs muted mt4">Una foto propia vende más. Tómala con buena luz, de cerca.</div>' +
         '<div id="dErr" class="err-msg"></div><button class="btn btn-primary btn-block mt16" data-a="dishAdd">Agregar al menú</button>');
     },
     dishImg: function (el) { ui.dish.img = el.dataset.v; refreshPick('dish'); },
-    dishSecPick: function (el) { ui.dish.sec = el.dataset.v; document.getElementById('dSec').innerHTML = secChips(ui.dish.sec, 'dishSecPick'); },
+    dishSecPick: function (el) { ui.dish.sec = el.dataset.v; document.getElementById('dSec').innerHTML = secChips(ui.dish.sec, 'dishSecPick'); var hn = document.getElementById('dSecHint'); if (hn) hn.textContent = SEC_HINT[ui.dish.sec] || ''; },
     dishSec: function (el) {
       var r = R(S.restId), d = r.dishes.filter(function (x) { return x.id === el.dataset.v; })[0]; if (!d) return;
       sheet('<div class="t-h2">¿En qué sección va?</div><div class="muted mt4">' + esc(d.name) + '</div><div class="chips mt16">' + secChips(secOf(d), 'dishSecSet', d.id) + '</div><div class="xs muted mt12">Tus clientes ven el menú separado por secciones y pueden saltar directo a Bebidas, Adicionales, etc.</div>');
     },
     dishSecSet: function (el) {
       var r = R(S.restId), dishes = r.dishes.map(function (x) { return x.id === el.dataset.d ? Object.assign({}, x, { sec: el.dataset.v }) : x; });
-      r.dishes = dishes; sheet(null); render(); push(CLOUD.updateRest({ dishes: dishes })); toast('Guardado en ' + el.dataset.v);
+      r.dishes = dishes; sheet(null); render(); push(CLOUD.updateRest({ dishes: dishes })); toast('Guardado en ' + secTxt(el.dataset.v));
     },
     dishAdd: function (el) {
       var n = document.getElementById('dn').value.trim(), d = document.getElementById('dd').value.trim(), pr = +String(document.getElementById('dp').value).replace(/\D/g, '');
@@ -3547,6 +3760,24 @@
       } else if (!on && wakeLock && wakeLock.release) { wakeLock.release(); wakeLock = null; }
     } catch (e) {}
   }
+  // ---------- Pedido nuevo: aviso fijo arriba hasta que el negocio lo acepte o lo rechace ----------
+  // Suena otra vez cada RING_S segundos mientras haya pedidos esperando (como la tablet de las apps grandes). «Silenciar» lo calla para esos pedidos.
+  var RING_S = 20;
+  function waitingOrders() { return S.restId ? S.orders.filter(function (o) { return o.restId === S.restId && o.status === 'recibido'; }).sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); }) : []; }
+  function newOrderBanner() {
+    var w = waitingOrders(); if (!w.length) return '';
+    var o = w[0], mins = Math.max(0, Math.floor((now() - (o.createdAt || now())) / 60000)), left = Math.max(1, Math.ceil((noRespAt(o) - now()) / 60000));
+    var muted = w.every(function (x) { return (ui.muted || []).indexOf(x.id) >= 0; });
+    return '<div class="new-alert" id="newAlert" role="alert"><button class="na-main" data-a="alertGo"><span class="na-bell">' + ic('bell', 20, { sw: 2.4 }) + '</span><span class="grow"><span class="na-t">' + (w.length > 1 ? w.length + ' pedidos nuevos esperando' : '¡Pedido nuevo #' + esc(o.id) + '!') + '</span>' +
+      '<span class="na-s">' + (o.scheduledFor ? 'Programado para ' + cuandoCo(o.scheduledFor) : (mins ? 'Hace ' + mins + ' min' : 'Ahora') + ' · ' + esc(first((o.customer || {}).name || 'Cliente')) + ' · ' + fmt(o.total) + ' · responde en ' + left + ' min') + '</span></span><span class="na-go">Ver</span></button>' +
+      '<button class="na-mute" data-a="alertMute" aria-label="' + (muted ? 'Sonido apagado' : 'Silenciar') + '">' + ic(muted ? 'x' : 'bell', 16) + '<span>' + (muted ? 'Mudo' : 'Silenciar') + '</span></button></div>';
+  }
+  setInterval(function () {
+    var w = waitingOrders(); if (!w.length) return;
+    var loud = w.some(function (x) { return (ui.muted || []).indexOf(x.id) < 0; });
+    if (loud && /^#\/rest/.test(location.hash) && document.visibilityState === 'visible') beep();
+    var el = document.getElementById('newAlert'); if (el) { var tmp = document.createElement('div'); tmp.innerHTML = newOrderBanner(); if (tmp.firstChild) el.replaceWith(tmp.firstChild); }
+  }, RING_S * 1000);
   function beep() {
     try {
       var A2 = window.AudioContext || window.webkitAudioContext; if (!A2) return;
@@ -3623,7 +3854,7 @@
       S.cart.wish = t.value; save();
       var cb = document.getElementById('cbar'); if (cb) cb.innerHTML = cartBar(false);
     }
-    if (t.dataset.dirty) { var sb = document.getElementById('saveBar'); if (sb) sb.classList.add('show'); }
+    if (t.dataset.dirty) { var sb = document.getElementById('saveBar'); if (sb && !sb.querySelector('[data-a="rmSave"].btn-green')) sb.innerHTML = saveBtn(true); }
     if (t.dataset.live === 'q') { ui.q = t.value; var res = document.getElementById('results'); if (res) res.innerHTML = searchResults(); }
   });
   document.addEventListener('change', function (ev) {
@@ -3720,7 +3951,7 @@
     if ((!h || h === '/') && S.role) location.replace('#' + roleById(S.role).home);
     var sp = document.createElement('div');
     sp.className = 'splash';
-    sp.innerHTML = '<div class="splash-mid">' + logo(104, 'white') + '<span>Pido y Ido</span></div><span class="splash-foot">VILLANUEVA · CASANARE</span>';
+    sp.innerHTML = '<div class="splash-mid">' + logo(104, 'white') + '<span>Pido y Ido</span></div><span class="splash-foot">SI LO QUIERES, LO TIENES</span>';
     document.body.appendChild(sp);
     setTimeout(function () { sp.classList.add('out'); setTimeout(function () { sp.remove(); }, 400); }, 1500);
   })();

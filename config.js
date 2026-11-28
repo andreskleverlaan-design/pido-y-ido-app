@@ -12,6 +12,9 @@ window.PYI_CONFIG = {
   loginWhatsapp: false,
   // WhatsApp de Pido y Ido para ayuda (clave olvidada, negocios nuevos). 10 números, ej. '3101234567'.
   soporteWhatsapp: '3006358524',
+  // Cómo le pagan los negocios sus facturas a Pido y Ido (pestaña Facturación). Solo salen los que tienen datos.
+  // Ej.: nequi: '3001234567', banco: 'Bancolombia', tipoCuenta: 'ahorros', cuenta: '123-456789-00', titular: 'Nombre Apellido', documento: 'C.C. 123', llaveBreB: '@pidoyido'
+  pago: { nequi: '', banco: '', tipoCuenta: 'ahorros', cuenta: '', titular: '', documento: '', llaveBreB: '' },
   // Quién responde por los datos (Ley 1581). Sale en "Tus datos y privacidad" y en "Términos".
   legal: { responsable: 'Pido y Ido', documento: 'C.C. 1125718059', correo: 'ayuda@pidoyido.co', direccion: '' }
 };
