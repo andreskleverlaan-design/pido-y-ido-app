@@ -61,7 +61,7 @@
     return {
       id: r.id, owner: r.owner, kind: r.kind || 'restaurante', name: r.name, short: r.short || r.name, sub: r.sub || '', img: r.img || '', cats: r.cats || [],
       eta: r.eta, pickup: r.pickup, min: r.min, fee: r.fee, address: r.address, phone: r.phone, nequi: r.nequi || r.phone,
-      dishes: Array.isArray(r.dishes) ? r.dishes : [], open: r.open,
+      dishes: Array.isArray(r.dishes) ? r.dishes : [], open: r.open, createdAt: r.created_at ? Date.parse(r.created_at) : null,
       // 017-lanzamiento.sql: negocio nuevo = en revisión hasta que Pido y Ido lo aprueba. Sin esa columna todo cuenta como aprobado.
       aprobado: r.aprobado !== false,
       rating: r.rating_count ? Number(r.rating_sum) / r.rating_count : 0, count: r.rating_count,
@@ -278,6 +278,11 @@
   async function bizExtra() { await ensureCust(); return check(await cust.rpc('pronto_extra')) || []; }
   async function bizCounts() { await ensureCust(); return check(await cust.rpc('pronto_counts')) || []; }
   // Resumen del mes del negocio (supabase/010-resumen-mes.sql). ym = 'AAAA-MM'.
+  // Facturación (020-facturacion.sql): pagos que el negocio avisó, y «Ya pagué».
+  async function factPagos() { if (!restUid) throw new Error('no_rest'); return check(await rest.from('factura_pagos').select('*').eq('rest_id', myRest)) || []; }
+  async function factPagar(ym, metodo, monto, ref) { return check(await rest.rpc('rest_factura_pagada', { p_mes: ym, p_metodo: metodo, p_monto: monto, p_ref: ref || '' })); }
+  async function adminFacturas(key) { await ensureCust(); return check(await cust.rpc('admin_facturas', { p_key: key })); }
+  async function adminFacturaSet(key, rest_id, ym, estado) { await ensureCust(); return check(await cust.rpc('admin_factura_set', { p_key: key, p_rest: rest_id, p_mes: ym, p_estado: estado })); }
   async function restMonth(ym) { if (!restUid) throw new Error('no_rest'); return check(await rest.rpc('rest_resumen_mes', { p_mes: ym })); }
   async function promoOrders() { await ensureCust(); return check(await cust.rpc('promo_orders')); }
 
@@ -302,7 +307,7 @@
     deliver: deliver, orderForRider: orderForRider, riderPicked: riderPicked, confirmReceived: confirmReceived,
     restLogin: restLogin, restSignup: restSignup, createRest: createRest, restLogout: restLogout, updateRest: updateRest, updateOrder: updateOrder, payOk: payOk, notDelivered: notDelivered, reportIssue: reportIssue, issueDone: issueDone,
     addMyRider: addMyRider, uploadPhoto: uploadPhoto, uploadList: uploadList, listUrl: listUrl, priceOrder: priceOrder, linkRider: linkRider, unlinkRider: unlinkRider,
-    saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, restMonth: restMonth, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
+    saveProfile: saveProfile, deleteProfile: deleteProfile, ensurePromoter: ensurePromoter, promoOrders: promoOrders, restMonth: restMonth, factPagos: factPagos, factPagar: factPagar, adminFacturas: adminFacturas, adminFacturaSet: adminFacturaSet, voteBiz: voteBiz, bizCounts: bizCounts, suggestBiz: suggestBiz, bizExtra: bizExtra,
     newRecoveryCode: newRecoveryCode, resetClave: resetClave, adminList: adminList, adminSet: adminSet, adminSettings: adminSettings, adminSetAuto: adminSetAuto,
     adminClientes: adminClientes, adminCliente: adminCliente, adminBlock: adminBlock, adminSetNeedPhone: adminSetNeedPhone, sendCode: sendCode, verifyCode: verifyCode, custLogout: custLogout,
     live: live, restUid: function () { return restUid; }, myRest: function () { return myRest; }
