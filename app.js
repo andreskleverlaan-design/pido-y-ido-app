@@ -286,7 +286,6 @@
   ];
   var CATS = [['Empanadas', IMG.emp], ['Asados', IMG.carne], ['Pollo', IMG.pollo], ['Arepas', IMG.arepa], ['Almuerzos', IMG.almuerzo], ['Hamburguesas', IMG.burger], ['Pizza', IMG.pizza], ['Jugos', IMG.jugo], ['Pescado', IMG.pescado], ['Comida rápida', IMG.pincho],
     ['Comida típica', IMG.almuerzo], ['Italiana', IMG.pizza], ['China', ''], ['Mexicana', ''], ['Mariscos', IMG.pescado], ['Panadería', ''], ['Saludable', ''], ['Otros', '']];
-  var MAX_CATS = 3;
   // Categorías propias que escribió algún negocio visible (además de las fijas). 'Otros' siempre al final.
   function catList() {
     var fixed = CATS.map(function (c) { return c[0]; }), extra = [];
@@ -1279,7 +1278,7 @@
         return '<button class="kind' + (x.id === k.id ? ' on' : '') + '" data-a="regKind" data-v="' + x.id + '" aria-pressed="' + (x.id === k.id) + '"><span class="ki kt-' + x.id + '">' + ic(x.icon, 20, { sw: 1.8 }) + '</span><span>' + x.t + '</span></button>';
       }).join('') + '</div>' +
       // Restaurantes y pollerías: qué tipo de comida (los clientes filtran por esto).
-      (shop ? '' : '<div id="rgCats" class="mt16' + (err.cats ? ' cats-err' : '') + '"><div class="label">2. ¿Qué tipo de comida vendes? <span class="muted" style="font-weight:500">(hasta ' + MAX_CATS + ')</span></div><div class="chips mt8">' +
+      (shop ? '' : '<div id="rgCats" class="mt16' + (err.cats ? ' cats-err' : '') + '"><div class="label">2. ¿Qué tipo de comida vendes? <span class="muted" style="font-weight:500">(elige todos los que apliquen)</span></div><div class="chips mt8">' +
         CATS.slice(0, -1).map(function (c) { var on = (f.cats || []).indexOf(c[0]) >= 0; return '<button class="chip sm' + (on ? ' on' : '') + '" data-a="regCat" data-v="' + esc(c[0]) + '">' + (on ? ic('check', 12, { sw: 3 }) : '') + esc(c[0]) + '</button>'; }).join('') + '</div>' +
         '<div class="xs muted mt4">¿No está el tuyo? Después lo escribes en tu panel.</div></div>') +
       (logged ? '' : '<div class="perks mt16">' + perks.map(function (p) { return '<div class="perk"><span class="pi">' + ic(p[0], 18) + '</span>' + p[1] + '</div>'; }).join('') + '</div>') +
@@ -3560,7 +3559,7 @@
       else f.cats.push(t);
       f.catNew = ''; render();
     },
-    rmCat: function (el) { var c = ui.rm.cats, i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else if (c.length >= MAX_CATS) { toast('Máximo ' + MAX_CATS + '. Quita uno primero.'); return; } else c.push(el.dataset.v); render(); },
+    rmCat: function (el) { var c = ui.rm.cats, i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else c.push(el.dataset.v); render(); },
     rmImg: function (el) { ui.rm.img = el.dataset.v; render(); },
     rmLogoDel: function () { ui.rm.logo = ''; render(); },
     horDay: function (el) {
@@ -3704,7 +3703,7 @@
     homeTab: function (el) { ui.home = el.dataset.v; ui.kind = null; ui.cat = null; render(); },
     kindPick: function (el) { ui.kind = el.dataset.v && ui.kind !== el.dataset.v ? el.dataset.v : null; render(); },
     regKind: function (el) { ui.reg = ui.reg || { name: '', phone: '', addr: '', pass: '' }; ui.reg.kind = el.dataset.v; render(); },
-    regCat: function (el) { var f = ui.reg, c = f.cats || (f.cats = []), i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else if (c.length >= MAX_CATS) { toast('Máximo ' + MAX_CATS + '. Quita uno primero.'); return; } else c.push(el.dataset.v); render(); },
+    regCat: function (el) { var f = ui.reg, c = f.cats || (f.cats = []), i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else c.push(el.dataset.v); render(); },
     wishImgDel: function () { S.cart.wishImg = ''; ui.wishPrev = null; save(); render(); }
   };
   // Shop sets the price of a free order and accepts it.
@@ -3794,7 +3793,7 @@
     if (!isShop(f) && !(f.cats || []).length) err.cats = 1;
     if (!f.legal) err.legal = 1;
     ui.regErr = err;
-    ui.regMsg = err.name ? 'Escribe el nombre del negocio.' : err.cats ? 'Elige qué tipo de comida vendes (máximo ' + MAX_CATS + ').' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : err.legal ? 'Para seguir, acepta los términos y la política de datos.' : '';
+    ui.regMsg = err.name ? 'Escribe el nombre del negocio.' : err.cats ? 'Elige qué tipo de comida vendes.' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : err.legal ? 'Para seguir, acepta los términos y la política de datos.' : '';
     if (ui.regMsg || ui.busy) {
       render();
       // Lleva al primer dato que falta (en el celular el formulario es largo).
@@ -3806,7 +3805,7 @@
     var name = f.name.trim();
     var slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) + '-' + Math.random().toString(36).slice(2, 6);
     var shop = isShop(f);
-    var data = { id: slug, name: name, short: shortName(name), sub: '', img: shop ? '' : IMG.asado, cats: shop ? [] : (f.cats || []).slice(0, MAX_CATS), address: f.addr.trim(), phone: ph, nequi: ph ? phoneFmt(ph) : '', dishes: [], open: false };
+    var data = { id: slug, name: name, short: shortName(name), sub: '', img: shop ? '' : IMG.asado, cats: shop ? [] : (f.cats || []).slice(), address: f.addr.trim(), phone: ph, nequi: ph ? phoneFmt(ph) : '', dishes: [], open: false };
     if ((f.kind || 'restaurante') !== 'restaurante') data.kind = f.kind;
     // Sin el paso 021 la base no conoce «polleria» / «carniceria»: se guarda con el tipo de antes.
     var create = function (d) { return CLOUD.restUid() ? CLOUD.createRest(d) : CLOUD.restSignup(ph, f.pass, d); };
