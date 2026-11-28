@@ -61,7 +61,7 @@
     return {
       id: r.id, owner: r.owner, kind: r.kind || 'restaurante', name: r.name, short: r.short || r.name, sub: r.sub || '', img: r.img || '', cats: r.cats || [],
       eta: r.eta, pickup: r.pickup, min: r.min, fee: r.fee, address: r.address, phone: r.phone, nequi: r.nequi || r.phone,
-      dishes: Array.isArray(r.dishes) ? r.dishes : [], open: r.open, createdAt: r.created_at ? Date.parse(r.created_at) : null,
+      dishes: Array.isArray(r.dishes) ? r.dishes : [], open: r.open, createdAt: r.created_at ? Date.parse(r.created_at) : null, logo: r.logo || '', logoOk: Object.prototype.hasOwnProperty.call(r, 'logo'),
       // 017-lanzamiento.sql: negocio nuevo = en revisión hasta que Pido y Ido lo aprueba. Sin esa columna todo cuenta como aprobado.
       aprobado: r.aprobado !== false,
       rating: r.rating_count ? Number(r.rating_sum) / r.rating_count : 0, count: r.rating_count,

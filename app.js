@@ -34,6 +34,7 @@
     if (w && /^https:\/\/images\.(pexels|unsplash)\.com\//.test(src)) src = src.replace(/([?&])w=\d+/, '$1w=' + w);
     return src;
   }
+  function priceTxt(n) { return n ? fmt(n) : 'Gratis'; }
   function fmt(n) { return '$' + String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function now() { return Date.now(); }
@@ -107,6 +108,8 @@
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
     info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+    drumstick: '<path d="M15.4 15.63a7.875 6 135 1 1 6.23-6.23 4.5 3.43 135 0 0-6.23 6.23"/><path d="m8.29 12.71-2.6 2.6a2.5 2.5 0 1 0-1.65 4.65A2.5 2.5 0 1 0 8.7 18.3l2.59-2.59"/>',
+    beef: '<circle cx="12.5" cy="8.5" r="2.5"/><path d="M12.5 2a6.5 6.5 0 0 0-6.22 4.6c-1.1 3.13-.78 3.9-3.18 6.08A3 3 0 0 0 5 18c4 0 8.4-1.8 11.4-4.3A6.5 6.5 0 0 0 12.5 2Z"/><path d="m18.5 6 2.19 4.5a6.48 6.48 0 0 1 .31 2 6.49 6.49 0 0 1-2.6 5.2C15.4 20.2 11 22 7 22a3 3 0 0 1-2.68-1.66L2.4 16.5"/>',
     zap: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
     bank: '<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>',
     send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
@@ -151,19 +154,21 @@
   // and the shop sets the price when it accepts.
   var KINDS = [
     { id: 'restaurante', t: 'Restaurante', icon: 'utensils', ex: 'Asadero El Llanero', sub: 'Carne a la llanera · Pollo asado' },
+    { id: 'polleria', t: 'Pollería', icon: 'drumstick', ex: 'Pollos Don Pepe', sub: 'Pollo asado · Broaster · Papas' },
+    { id: 'carniceria', t: 'Carnicería', icon: 'beef', ex: 'Carnes La Res', sub: 'Res · Cerdo · Pollo crudo', ph: 'Ej.:\n2 libras de carne molida\n1 kilo de costilla de cerdo\n1 pollo entero despresado', hint: 'Di cómo lo quieres: molido, en bistec, despresado…' },
     { id: 'drogueria', t: 'Droguería', icon: 'pill', ex: 'Droguería La Salud', sub: 'Medicamentos · Aseo personal · Bebés', ph: 'Ej.:\nAcetaminofén 500 mg x 10\nSuero oral x 2\nPañales etapa 3', hint: '¿Tienes fórmula médica? Mándale la foto. La droguería decide si te lo puede vender.' },
-    { id: 'minimercado', t: 'Minimercado', icon: 'basket', ex: 'Minimercado El Ahorro', sub: 'Mercado · Aseo · Bebidas', ph: 'Ej.:\nArroz Diana 1 kg\n6 huevos\nLeche Alquería x 2\nPan tajado' },
+    { id: 'minimercado', t: 'Mercado', icon: 'basket', ex: 'Minimercado El Ahorro', sub: 'Mercado · Aseo · Bebidas', ph: 'Ej.:\nArroz Diana 1 kg\n6 huevos\nLeche Alquería x 2\nPan tajado' },
     { id: 'licorera', t: 'Licorera', icon: 'wine', ex: 'Licorera La 10', sub: 'Cerveza · Aguardiente · Hielo', ph: 'Ej.:\n6 cervezas Águila\nAguardiente Llanero media\n1 bolsa de hielo', hint: 'Solo para mayores de 18 años. Te pueden pedir la cédula al entregar.' },
-    { id: 'floristeria', t: 'Floristería', icon: 'flower', ex: 'Floristería Las Rosas', sub: 'Ramos · Arreglos · Detalles', ph: 'Ej.:\nRamo de 12 rosas rojas\nTarjeta: "Feliz cumpleaños, mamá"\nPara las 4 p. m.' },
-    { id: 'ferreteria', t: 'Ferretería', icon: 'wrench', ex: 'Ferretería El Tornillo', sub: 'Herramientas · Eléctricos · Plomería', ph: 'Ej.:\nTubo PVC 1/2" x 3 m\n2 codos de 1/2"\nCinta teflón', hint: 'Si no sabes el nombre, mándale una foto de la pieza.' },
-    { id: 'otro', t: 'Otro negocio', icon: 'store', ex: 'Papelería La Esquina', sub: 'Qué vendes, en corto', ph: 'Escribe lo que necesitas, uno por línea.' }
+    { id: 'floristeria', t: 'Floristería', hide: 1, icon: 'flower', ex: 'Floristería Las Rosas', sub: 'Ramos · Arreglos · Detalles', ph: 'Ej.:\nRamo de 12 rosas rojas\nTarjeta: "Feliz cumpleaños, mamá"\nPara las 4 p. m.' },
+    { id: 'ferreteria', t: 'Ferretería', hide: 1, icon: 'wrench', ex: 'Ferretería El Tornillo', sub: 'Herramientas · Eléctricos · Plomería', ph: 'Ej.:\nTubo PVC 1/2" x 3 m\n2 codos de 1/2"\nCinta teflón', hint: 'Si no sabes el nombre, mándale una foto de la pieza.' },
+    { id: 'otro', t: 'Otro negocio', icon: 'store', ex: 'Ferretería El Tornillo', sub: 'Ferretería, papelería, floristería…', ph: 'Escribe lo que necesitas, uno por línea.' }
   ];
   function kindOf(r) { var k = (r && r.kind) || 'restaurante'; for (var i = 0; i < KINDS.length; i++) if (KINDS[i].id === k) return KINDS[i]; return KINDS[KINDS.length - 1]; }
   // Secciones del menú (platos, adicionales, bebidas…). Platos viejos sin sección se adivinan por el nombre.
   // El orden es el de una carta: entradas, platos fuertes, combos, adicionales, bebidas, postres. 'Platos' se muestra como «Platos fuertes».
   var SECS = ['Entradas', 'Platos', 'Combos', 'Adicionales', 'Bebidas', 'Postres'];
   var SEC_TXT = { Platos: 'Platos fuertes' };
-  var SEC_HINT = { Entradas: 'Para empezar: empanadas, patacones, sopas…', Platos: 'El plato principal: carnes, pollo, pescado…', Combos: 'Plato + bebida, o para compartir', Adicionales: 'Porciones extra, salsas, papas…', Bebidas: 'Jugos, gaseosas, cerveza, café…', Postres: 'Tortas, helados, flan…' };
+  var SEC_HINT = { Entradas: 'Para empezar: empanadas, patacones, sopas…', Platos: 'El plato principal: carnes, pollo, pescado…', Combos: 'Plato + bebida, o para compartir', Adicionales: 'Lo que el cliente le agrega a su plato: pollo extra, queso, salsas. Precio 0 = gratis. Salen al abrir cada plato.', Bebidas: 'Jugos, gaseosas, cerveza, café…', Postres: 'Tortas, helados, flan…' };
   function secTxt(x) { return SEC_TXT[x] || x; }
   function secOf(d) {
     if (d.sec && SECS.indexOf(d.sec) >= 0) return d.sec;
@@ -176,7 +181,13 @@
   }
   function secChips(cur, action, did) { return SECS.map(function (x) { return '<button class="chip sm' + (x === cur ? ' on' : '') + '" data-a="' + action + '" data-v="' + x + '"' + (did ? ' data-d="' + esc(did) + '"' : '') + '>' + secTxt(x) + '</button>'; }).join(''); }
   function menuSecs(dishes) { return SECS.map(function (s) { return { t: secTxt(s), list: dishes.filter(function (d) { return secOf(d) === s; }) }; }).filter(function (x) { return x.list.length; }); }
-  function isShop(r) { return !!r && !!r.kind && r.kind !== 'restaurante'; }
+  // Con menú (platos con precio): restaurante y pollería. Los demás reciben una lista escrita y ponen el precio.
+  var MENU_KINDS = ['restaurante', 'polleria'];
+  function isShop(r) { return !!r && !!r.kind && MENU_KINDS.indexOf(r.kind) < 0; }
+  // Tipos para elegir (ferretería y floristería quedan dentro de «Otro negocio»; los que ya existen se siguen viendo).
+  function pickKinds(cur) { return KINDS.filter(function (x) { return !x.hide || x.id === cur; }); }
+  // Pasos 021-negocios.sql: tipos nuevos y logo. Sin ese paso se guardan como antes.
+  var OLD_KIND = { polleria: 'restaurante', carniceria: 'otro' };
   function abreDe(r) { return (r && r.abre) || (isShop(r) ? '08:00' : '11:00'); }
   function cierraDe(r) { return (r && r.cierra) || (isShop(r) ? '20:00' : '21:00'); }
   // ---------- Horario por día (r.horario = 7 días desde el domingo; cada día ['11:00','21:00'] o null = cerrado) ----------
@@ -233,6 +244,7 @@
   function bizWord(r) { return isShop(r) ? 'la tienda' : 'el restaurante'; }
   // Cover for a business: its photo, or (shops without a photo yet) a branded tile with the kind's icon.
   function cover(r, cls, style, w) {
+    if (r && r.logo && /thumb/.test(cls || '')) return photo(r.logo, cls + ' logo-ph', style, w);
     if (r && r.img) return photo(r.img, cls, style, w);
     var k = kindOf(r), big = /thumb/.test(cls || '') ? 20 : 44;
     return '<div class="ph kt kt-' + k.id + ' ' + (cls || '') + '"' + (style ? ' style="' + style + '"' : '') + '><span class="kt-ico">' + ic(k.icon, big, { sw: 1.6 }) + '</span></div>';
@@ -272,7 +284,8 @@
     { id: 'salud', kind: 'drogueria', name: 'Droguería La Salud', short: 'La Salud', img: '', rating: 4.9, count: 23, eta: '20–30 min', pickup: '10 min', min: 0, fee: 2000,
       cats: [], sub: 'Medicamentos · Aseo personal · Bebés', address: 'Calle 9 # 7-15, El Centro', phone: '3100000004', nequi: '310 000 0004', dishes: [] }
   ];
-  var CATS = [['Empanadas', IMG.emp], ['Asados', IMG.carne], ['Pollo', IMG.pollo], ['Arepas', IMG.arepa], ['Almuerzos', IMG.almuerzo], ['Hamburguesas', IMG.burger], ['Pizza', IMG.pizza], ['Jugos', IMG.jugo], ['Pescado', IMG.pescado], ['Comida rápida', IMG.pincho], ['Otros', '']];
+  var CATS = [['Empanadas', IMG.emp], ['Asados', IMG.carne], ['Pollo', IMG.pollo], ['Arepas', IMG.arepa], ['Almuerzos', IMG.almuerzo], ['Hamburguesas', IMG.burger], ['Pizza', IMG.pizza], ['Jugos', IMG.jugo], ['Pescado', IMG.pescado], ['Comida rápida', IMG.pincho],
+    ['Comida típica', IMG.almuerzo], ['Italiana', IMG.pizza], ['China', ''], ['Mexicana', ''], ['Mariscos', IMG.pescado], ['Panadería', ''], ['Saludable', ''], ['Otros', '']];
   // Categorías propias que escribió algún negocio visible (además de las fijas). 'Otros' siempre al final.
   function catList() {
     var fixed = CATS.map(function (c) { return c[0]; }), extra = [];
@@ -282,7 +295,9 @@
   var NO_REST = { id: '', name: 'Restaurante', short: 'Restaurante', img: '', rating: 0, count: 0, eta: '30–40 min', pickup: '15 min', min: 0, fee: 0, cats: [], sub: '', address: '', phone: '', nequi: '', dishes: [] };
   function R(id) { for (var i = 0; i < RESTAURANTS.length; i++) if (RESTAURANTS[i].id === id) return RESTAURANTS[i]; return ONLINE ? NO_REST : RESTAURANTS[0]; }
   // restaurants customers can order from (online: only those with a menu)
-  function shown() { return RESTAURANTS.filter(function (r) { return !ONLINE || (r.aprobado !== false && (isShop(r) ? hasLoc(r) : r.dishes.length)); }); }
+  function shown() { return RESTAURANTS.filter(function (r) { return !ONLINE || (r.aprobado !== false && (isShop(r) ? hasLoc(r) : r.dishes.length >= MIN_DISHES)); }); }
+  // Un restaurante sale en la app con 3 platos o más.
+  var MIN_DISHES = 3;
   // ---------- Not on Pido y Ido yet ----------
   // Real Villanueva businesses that have NOT joined. Shown greyed out under "Pronto en Pido y Ido" so customers can
   // ask them to join. Name + type only (no phone, address or photos: they did not sign up). Not orderable.
@@ -826,7 +841,7 @@
     var towns = townsOf(allPronto()); if (towns.indexOf(f.town) < 0 && f.town) towns.push(f.town);
     return '<div class="screen has-cta">' + topbar('Sugerir un negocio', '/inicio', 'Restaurante o tienda que te gustaría ver aquí') +
       '<div class="card"><div class="field"><label class="label" for="sg1">Nombre del negocio</label><input class="input' + (err === 'name' ? ' err' : '') + '" id="sg1" data-m="ui.sug.name" value="' + esc(f.name) + '" maxlength="80" placeholder="Ej.: Asadero Los Compadres" autocomplete="off"></div>' +
-      '<div class="label mt12">¿Qué es?</div><div class="kinds">' + KINDS.map(function (x) {
+      '<div class="label mt12">¿Qué es?</div><div class="kinds">' + pickKinds().map(function (x) {
         return '<button class="kind' + (x.id === f.kind ? ' on' : '') + '" data-a="sugKind" data-v="' + x.id + '" aria-pressed="' + (x.id === f.kind) + '"><span class="ki kt-' + x.id + '">' + ic(x.icon, 20, { sw: 1.8 }) + '</span><span>' + x.t + '</span></button>';
       }).join('') + '</div>' +
       '<div class="field mt12"><label class="label" for="sg2">Pueblo</label><input class="input' + (err === 'town' ? ' err' : '') + '" id="sg2" data-m="ui.sug.town" value="' + esc(f.town) + '" maxlength="40" list="sgTowns" autocomplete="off"><datalist id="sgTowns">' + towns.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist></div>' +
@@ -1238,9 +1253,9 @@
     var f = ui.reg || (ui.reg = { name: '', phone: '', addr: '' });
     return '<div class="screen has-cta" style="padding-bottom:calc(170px + var(--safe-b))">' + topbar('Registra tu restaurante', '/', 'Gratis para empezar') +
       '<div class="muted small" style="margin-top:-6px">En 10 minutos recibes pedidos. Nosotros pasamos tu menú a la app con una foto de la carta.</div>' +
-      '<div class="card mt16"><div class="field"><label class="label" for="rg1">Nombre del restaurante</label><input class="input" id="rg1" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="Asadero El Llanero"></div>' +
-      '<div class="field"><label class="label" for="rg2">WhatsApp del negocio</label><input class="input" id="rg2" data-m="ui.reg.phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="310 000 0000"></div>' +
-      '<div class="field"><label class="label" for="rg3">Dirección</label><input class="input" id="rg3" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro"></div>' +
+      '<div class="card mt16"><div class="field"><label class="label" for="rg1">Nombre del restaurante</label><input class="input" id="rg1" enterkeyhint="next" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="Asadero El Llanero"></div>' +
+      '<div class="field"><label class="label" for="rg2">WhatsApp del negocio</label><input class="input" id="rg2" enterkeyhint="next" data-m="ui.reg.phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="310 000 0000"></div>' +
+      '<div class="field"><label class="label" for="rg3">Dirección</label><input class="input" id="rg3" enterkeyhint="next" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro"></div>' +
       '<label class="photo-up mt12' + (f.menu ? ' done' : '') + '" style="width:100%">' + ic(f.menu ? 'check' : 'camera', 18) + (f.menu ? 'Foto de la carta agregada' : 'Foto de tu carta (opcional)') + '<input type="file" accept="image/*" data-file="menu"></label></div>' +
       '<div class="note amber mt12">En la demo te mostramos el panel de <b>Asadero El Llanero</b> con pedidos de ejemplo, para que veas cómo funciona.</div></div>' +
       '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="regDo">Ver mi panel</button><a class="btn btn-ghost btn-block" style="height:44px" href="#/rest">Saltar</a></div>';
@@ -1269,18 +1284,23 @@
     var perks = [['bell', 'Los pedidos te llegan al celular, con sonido'], ['bike', 'Despachas con tus propios domiciliarios'], shop ? ['list', 'Sin menú: el cliente escribe su lista y tú pones el precio'] : ['clock', 'Listo en 10 minutos, sin papeleo']];
     return '<div class="screen flush has-cta auth" style="padding-bottom:calc(150px + var(--safe-b))">' + authHero('Gratis para empezar', logged ? 'Completa tu negocio' : 'Vende a domicilio en ' + esc(f.town), '/', 'Negocios') +
       '<div class="auth-body">' + steps(shop ? SHOP_STEPS : SETUP_STEPS, 0) +
-      '<div class="label mt16">¿Qué tipo de negocio tienes?</div><div class="kinds">' + KINDS.map(function (x) {
+      '<div class="reg-hint mt12">' + ic('down', 14) + (shop ? '2 partes: tipo de negocio y tus datos.' : '3 partes: tipo de negocio, tipo de comida y tus datos.') + ' Desliza hacia abajo.</div>' +
+      '<div class="label mt16">1. ¿Qué tipo de negocio tienes?</div><div class="kinds">' + pickKinds(k.id).map(function (x) {
         return '<button class="kind' + (x.id === k.id ? ' on' : '') + '" data-a="regKind" data-v="' + x.id + '" aria-pressed="' + (x.id === k.id) + '"><span class="ki kt-' + x.id + '">' + ic(x.icon, 20, { sw: 1.8 }) + '</span><span>' + x.t + '</span></button>';
       }).join('') + '</div>' +
+      // Restaurantes y pollerías: qué tipo de comida (los clientes filtran por esto).
+      (shop ? '' : '<div id="rgCats" class="mt16' + (err.cats ? ' cats-err' : '') + '"><div class="label">2. ¿Qué tipo de comida vendes? <span class="muted" style="font-weight:500">(elige todos los que apliquen)</span></div><div class="chips mt8">' +
+        CATS.slice(0, -1).map(function (c) { var on = (f.cats || []).indexOf(c[0]) >= 0; return '<button class="chip sm' + (on ? ' on' : '') + '" data-a="regCat" data-v="' + esc(c[0]) + '">' + (on ? ic('check', 12, { sw: 3 }) : '') + esc(c[0]) + '</button>'; }).join('') + '</div>' +
+        '<div class="xs muted mt4">¿No está el tuyo? Después lo escribes en tu panel.</div></div>') +
       (logged ? '' : '<div class="perks mt16">' + perks.map(function (p) { return '<div class="perk"><span class="pi">' + ic(p[0], 18) + '</span>' + p[1] + '</div>'; }).join('') + '</div>') +
-      '<div class="card mt16">' +
-      fieldIc('rg1', 'Nombre del negocio', k.icon, '<input class="input' + (err.name ? ' err' : '') + '" id="rg1" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="' + esc(k.ex) + '" autocomplete="organization">') +
-      (logged ? '' : fieldIc('rg2', 'WhatsApp del negocio', 'msg', '<input class="input' + (err.phone ? ' err' : '') + '" id="rg2" data-m="ui.reg.phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="310 000 0000" autocomplete="tel-national">', 'Con este número entras a tu panel.', '+57')) +
-      fieldIc('rgT', 'Pueblo', 'map', '<input class="input' + (err.town ? ' err' : '') + '" id="rgT" data-m="ui.reg.town" value="' + esc(f.town) + '" list="rgTowns" autocomplete="off"><datalist id="rgTowns">' + allTowns().map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist>') +
-      fieldIc('rg3', 'Dirección', 'pin', '<input class="input' + (err.addr ? ' err' : '') + '" id="rg3" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro" autocomplete="street-address">') +
+      '<div class="label mt16">' + (shop ? '2' : '3') + '. Tus datos</div><div class="card mt8">' +
+      fieldIc('rg1', 'Nombre del negocio', k.icon, '<input class="input' + (err.name ? ' err' : '') + '" id="rg1" enterkeyhint="next" data-m="ui.reg.name" value="' + esc(f.name) + '" placeholder="' + esc(k.ex) + '" autocomplete="organization">') +
+      (logged ? '' : fieldIc('rg2', 'WhatsApp del negocio', 'msg', '<input class="input' + (err.phone ? ' err' : '') + '" id="rg2" enterkeyhint="next" data-m="ui.reg.phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="310 000 0000" autocomplete="tel-national">', 'Con este número entras a tu panel.', '+57')) +
+      fieldIc('rgT', 'Pueblo', 'map', '<input class="input' + (err.town ? ' err' : '') + '" id="rgT" enterkeyhint="next" data-m="ui.reg.town" value="' + esc(f.town) + '" list="rgTowns" autocomplete="off"><datalist id="rgTowns">' + allTowns().map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist>') +
+      fieldIc('rg3', 'Dirección', 'pin', '<input class="input' + (err.addr ? ' err' : '') + '" id="rg3" enterkeyhint="next" data-m="ui.reg.addr" value="' + esc(f.addr) + '" placeholder="Calle 10 # 8-24, El Centro" autocomplete="street-address">') +
       (logged ? '' : fieldIc('rg4', 'Crea una clave', 'lock', '<input class="input' + (err.pass ? ' err' : '') + '" id="rg4" data-m="ui.reg.pass" type="password" autocomplete="new-password" value="' + esc(f.pass) + '" placeholder="Mínimo 6 letras o números">')) +
       (ui.regMsg ? '<div class="err-msg">' + esc(ui.regMsg) + '</div>' : '') + '</div>' +
-      legalCheck(!!f.legal, 'regLegal', 'Acepto los <a class="link" href="#/legal/terminos">términos para negocios</a> y la <a class="link" href="#/legal/privacidad">política de datos</a>.', err.legal) +
+      '<div id="rgLegal">' + legalCheck(!!f.legal, 'regLegal', 'Acepto los <a class="link" href="#/legal/terminos">términos para negocios</a> y la <a class="link" href="#/legal/privacidad">política de datos</a>.', err.legal) + '</div>' +
       (logged ? '' : '<div class="small muted center mt16">¿Ya tienes cuenta? <a class="link" href="#/rest/login">Inicia sesión</a></div>') + '</div></div>' +
       '<div class="cta-wrap"><button class="btn btn-primary btn-xl btn-block" data-a="regDo"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? 'Un momento…' : logged ? 'Crear mi negocio' : 'Crear mi cuenta') + (ui.busy ? '' : ic('right', 20)) + '</button></div>';
   }
@@ -1541,7 +1561,7 @@
     shownHere().forEach(function (r) {
       if (r.name.toLowerCase().indexOf(q) >= 0 || r.sub.toLowerCase().indexOf(q) >= 0 || (isShop(r) && kindOf(r).t.toLowerCase().indexOf(q) >= 0)) out.push('<a class="list-row" href="#/r/' + r.id + '">' + cover(r, 'thumb') + '<div class="grow"><div class="b">' + r.name + '</div><div class="small muted">' + kindOf(r).t + ' · ' + r.eta + '</div></div>' + ic('right', 18) + '</a>');
       r.dishes.forEach(function (d) {
-        if ((d.name + ' ' + d.desc).toLowerCase().indexOf(q) >= 0) out.push('<a class="list-row" href="#/r/' + r.id + '">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b">' + d.name + '</div><div class="small muted">' + r.short + ' · ' + fmt(d.price) + '</div></div>' + ic('right', 18) + '</a>');
+        if ((d.name + ' ' + d.desc).toLowerCase().indexOf(q) >= 0) out.push('<a class="list-row" href="#/r/' + r.id + '">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b">' + d.name + '</div><div class="small muted">' + r.short + ' · ' + priceTxt(d.price) + '</div></div>' + ic('right', 18) + '</a>');
       });
     });
     var later = pronto().filter(function (p) { return (p.name + ' ' + p.sub + ' ' + p.cats.join(' ')).toLowerCase().indexOf(q) >= 0; });
@@ -1560,17 +1580,31 @@
       : '<div class="qty"><button data-a="add" data-r="' + r.id + '" data-d="' + d.id + '" aria-label="Agregar ' + esc(d.name) + '">' + ic('plus', 20) + '</button></div>';
   }
   function dishRow(r, d) {
-    return '<div class="dish"><button class="grow dish-txt" data-a="dishView" data-r="' + r.id + '" data-d="' + d.id + '">' + (d.top ? '<span class="badge orange" style="margin-bottom:6px">Más pedido</span>' : '') + '<div class="b" style="font-size:15px">' + esc(d.name) + '</div><div class="small muted mt4">' + esc(d.desc || '') + '</div><div class="b mt8">' + fmt(d.price) + '</div></button>' +
+    return '<div class="dish"><button class="grow dish-txt" data-a="dishView" data-r="' + r.id + '" data-d="' + d.id + '">' + (d.top ? '<span class="badge orange" style="margin-bottom:6px">Más pedido</span>' : '') + '<div class="b" style="font-size:15px">' + esc(d.name) + '</div><div class="small muted mt4">' + esc(d.desc || '') + '</div><div class="b mt8">' + priceTxt(d.price) + '</div></button>' +
       '<div class="ph" style="width:96px;height:96px"><button class="imgwrap" data-a="dishView" data-r="' + r.id + '" data-d="' + d.id + '" aria-label="Ver foto de ' + esc(d.name) + '">' + (d.img ? '<img src="' + esc(imgSrc(d.img, 240)) + '" alt="" loading="lazy" decoding="async" onerror="this.classList.add(\'broken\')" style="width:100%;height:100%;object-fit:cover">' : '') + '</button>' +
       qtyCtl(r, d) + '</div></div>';
   }
   // Hoja con la foto grande del plato.
+  // «¿Le agregas algo?»: los Adicionales del restaurante (pollo extra, salsas…) salen al abrir cada plato.
+  // Cada adicional es un plato aparte en el pedido, así el precio lo calcula el servidor igual que siempre.
+  function dishExtras(r, d) {
+    if (secOf(d) === 'Adicionales') return '';
+    var xs = r.dishes.filter(function (x) { return secOf(x) === 'Adicionales'; });
+    if (!xs.length) return '';
+    return '<div class="t-h3 mt16">¿Le agregas algo?</div><div class="xs muted">Opcional</div><div class="extras mt8">' + xs.map(function (x) {
+      var q = dishQty(r, x);
+      return '<div class="extra-row' + (q ? ' on' : '') + '"><span class="grow"><span class="b" style="display:block">' + esc(x.name) + '</span><span class="xs muted">' + (x.price ? '+ ' + fmt(x.price) : 'Gratis') + '</span></span>' +
+        (q ? '<button class="qbtn" data-a="xDec" data-r="' + r.id + '" data-d="' + x.id + '" data-p="' + d.id + '" aria-label="Quitar">' + ic('minus', 16) + '</button><span class="b" style="min-width:18px;text-align:center">' + q + '</span>' : '') +
+        '<button class="qbtn add" data-a="xAdd" data-r="' + r.id + '" data-d="' + x.id + '" data-p="' + d.id + '" aria-label="Agregar ' + esc(x.name) + '">' + ic('plus', 16) + '</button></div>';
+    }).join('') + '</div>';
+  }
   function dishSheet(r, d) {
     var q = dishQty(r, d);
     return '<div class="dish-big">' + (d.img ? '<img src="' + esc(imgSrc(d.img, 900)) + '" alt="' + esc(d.name) + '" decoding="async" onerror="this.classList.add(\'broken\')">' : '') + '<button class="icon-btn dish-x" data-a="closeSheet" aria-label="Cerrar">' + ic('x', 20) + '</button></div>' +
-      '<div class="mt16">' + (d.top ? '<span class="badge orange" style="margin-bottom:6px">Más pedido</span>' : '') + '<div class="t-h2">' + esc(d.name) + '</div>' + (d.desc ? '<div class="muted mt4">' + esc(d.desc) + '</div>' : '') + '<div class="num mt8" style="font-size:20px">' + fmt(d.price) + '</div></div>' +
+      '<div class="mt16">' + (d.top ? '<span class="badge orange" style="margin-bottom:6px">Más pedido</span>' : '') + '<div class="t-h2">' + esc(d.name) + '</div>' + (d.desc ? '<div class="muted mt4">' + esc(d.desc) + '</div>' : '') + '<div class="num mt8" style="font-size:20px">' + priceTxt(d.price) + '</div></div>' +
       (q ? '<div class="note green mt12 row between"><span>Ya tienes <b>' + q + '</b> en tu carrito</span><button class="link b" data-a="dishSheetDec" data-r="' + r.id + '" data-d="' + d.id + '">Quitar 1</button></div>' : '') +
-      '<button class="btn btn-primary btn-block btn-xl mt16" data-a="dishSheetAdd" data-r="' + r.id + '" data-d="' + d.id + '">' + ic('plus', 18) + (q ? ' Agregar otro · ' : ' Agregar · ') + fmt(d.price) + '</button>';
+      dishExtras(r, d) +
+      '<button class="btn btn-primary btn-block btn-xl mt16" data-a="dishSheetAdd" data-r="' + r.id + '" data-d="' + d.id + '">' + ic('plus', 18) + (q ? ' Agregar otro · ' : ' Agregar · ') + priceTxt(d.price) + '</button>';
   }
   function scrMenu(id, query) {
     var r = R(id);
@@ -1581,7 +1615,7 @@
     var mode = S.cart.restId === r.id ? S.cart.mode : 'dom';
     var h = '<div class="screen flush' + (cartCount() ? ' has-cta' : '') + '"><div class="hero">' + photo(r.img, '', 'height:232px;width:100%') +
       '<a class="icon-btn back" href="#/inicio" aria-label="Volver">' + ic('back', 22) + '</a>' + favBtn(r) + '</div>' +
-      '<div class="card raised info-card"><h1 class="t-title" style="font-size:24px">' + r.name + '</h1><div class="small muted mt4"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + ' · ' + r.eta + ' · Mín. ' + fmt(r.min) + '</div>' +
+      '<div class="card raised info-card">' + (r.logo ? '<div class="info-logo">' + photo(r.logo, '', 'width:100%;height:100%', 200) + '</div>' : '') + '<h1 class="t-title" style="font-size:24px">' + r.name + '</h1><div class="small muted mt4"><span style="color:var(--orange)">★</span> ' + ratingTxt(r) + ' · ' + r.eta + ' · Mín. ' + fmt(r.min) + '</div>' +
       '<div class="seg mt12"><button class="' + (mode === 'dom' ? 'on' : '') + '" data-a="mode" data-v="dom" data-r="' + r.id + '">Domicilio · ' + (r.fee ? fmt(r.fee) : 'gratis') + '</button><button class="' + (mode === 'rec' ? 'on' : '') + '" data-a="mode" data-v="rec" data-r="' + r.id + '">Recoger · ' + r.pickup + '</button></div>' +
       horarioLine(r) +
       (open ? '' : '<div class="note amber mt12"><b>' + punto(estadoTxt(r)) + '</b> ' + (progOn() ? 'Puedes pedir y programarlo para más tarde.' : 'Puedes mirar el menú, pero no recibe pedidos.') + '</div>') +
@@ -2519,7 +2553,7 @@
           c0.getContext('2d').drawImage(im, 0, 0, c0.width, c0.height); URL.revokeObjectURL(url);
           return c0.toBlob(function (b) { b ? ok({ blob: b, dataUrl: c0.toDataURL('image/jpeg', 0.7) }) : bad(new Error('img')); }, 'image/jpeg', 0.8);
         }
-        var W = kind === 'dish' ? 640 : 1200, H = kind === 'dish' ? 640 : 800;
+        var W = kind === 'dish' ? 640 : kind === 'logo' ? 400 : 1200, H = kind === 'dish' ? 640 : kind === 'logo' ? 400 : 800;
         var sc = Math.max(W / im.width, H / im.height), sw = W / sc, sh = H / sc;
         if (sc > 1) { W = Math.round(W / sc); H = Math.round(H / sc); sc = 1; sw = W; sh = H; }
         var c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -2540,8 +2574,8 @@
       return CLOUD.uploadPhoto(x.blob);
     }).then(function (src) {
       ui.upBusy = false;
-      if (kind === 'dish') { ui.dish.img = src; } else if (ui.rm) { ui.rm.img = src; }
-      refreshPick(kind); toast(kind === 'dish' ? 'Foto lista' : 'Foto lista. Toca Guardar datos.');
+      if (kind === 'dish') { ui.dish.img = src; } else if (kind === 'logo' && ui.rm) { ui.rm.logo = src; } else if (ui.rm) { ui.rm.img = src; }
+      refreshPick(kind); toast(kind === 'dish' ? 'Foto lista' : kind === 'logo' ? 'Logo listo. Se guarda solo.' : 'Foto lista. Se guarda sola.');
     }, function (e) {
       ui.upBusy = false; refreshPick(kind);
       toast(/bucket|not found|no_upload|row-level|policy/i.test(String(e && e.message)) ? 'Subir tus propias fotos se activa muy pronto. Por ahora elige una de la lista.' : 'No se pudo subir la foto. Revisa tu internet.');
@@ -2551,40 +2585,68 @@
     if (kind === 'dish') { var w = document.getElementById('dishPh'); if (w) w.innerHTML = photoPick(ui.dish.img, 'dishImg', 'dish'); }
     else render();
   }
-  var RM_KEYS = ['name', 'sub', 'address', 'phone', 'nequi', 'fee', 'min', 'eta', 'img', 'cats', 'lat', 'lng', 'radius', 'kind', 'abre', 'cierra', 'hor'];
+  var RM_KEYS = ['name', 'sub', 'address', 'phone', 'nequi', 'fee', 'min', 'eta', 'img', 'logo', 'cats', 'lat', 'lng', 'radius', 'kind', 'abre', 'cierra', 'hor'];
   // Horario por día solo cuando la base de datos ya tiene el paso 012-horario.sql.
   function horOn() { return !ONLINE || RESTAURANTS.some(function (r) { return r.horOk; }); }
   function horDe(r) { return r.hor !== undefined ? r.hor : r.horario ? JSON.parse(JSON.stringify(r.horario)) : DIAS.map(function () { return [abreDe(r), cierraDe(r)]; }); }
   function rmVal(r, k) { var v = k === 'radius' ? +(r.radius || 3) : k === 'fee' || k === 'min' ? +(r[k] || 0) : k === 'eta' ? etaOf(r) : k === 'kind' ? (r.kind || 'restaurante') : k === 'abre' ? abreDe(r) : k === 'cierra' ? cierraDe(r) : k === 'hor' ? (horOn() ? horDe(r) : '') : r[k]; return JSON.stringify(v == null ? '' : v); }
   function madeRest(r) { return !ONLINE || !!r.open || !!(S.made && S.made[r.id]) || S.orders.some(function (o) { return o.restId === r.id; }); }
   // Revisa y guarda los datos del negocio. then() corre al guardar bien.
-  function rmSaveDo(then) {
+  // Revisa y guarda los datos del negocio. then() corre al guardar bien. auto = guardado automático (sin avisos).
+  function rmSaveDo(then, auto) {
     var f = ui.rm; if (!f || ui.busy) return;
-    if (!String(f.name || '').trim()) { toast('Escribe el nombre'); return; }
+    var fail = function (m) { if (auto) { ui.autoMsg = m; var sb = document.getElementById('saveBar'); if (sb) sb.innerHTML = saveBtn(true); } else toast(m); };
+    if (!String(f.name || '').trim()) { fail('Escribe el nombre'); return; }
     var num = function (v) { return +String(v == null ? '' : v).replace(',', '.').replace(/[^\d.]/g, ''); };
     var rad = num(f.radius), fee = Math.round(num(f.fee)), min = Math.round(num(f.min)), ea = Math.round(num(f.etaA)), eb = Math.round(num(f.etaB));
-    if (!(rad >= 0.5 && rad <= 30)) { toast('¿Hasta dónde entregas? Escribe entre 0,5 y 30 km'); return; }
-    if (!(fee >= 0 && fee <= 50000)) { toast('El domicilio debe ser entre $0 y $50.000'); return; }
-    if (!(min >= 0 && min <= 500000)) { toast('Revisa el pedido mínimo'); return; }
-    if (!(ea >= 5 && eb >= ea && eb <= 180)) { toast('Tiempo de entrega: por ejemplo de 30 a 40 minutos'); return; }
+    if (!(rad >= 0.5 && rad <= 30)) { fail('¿Hasta dónde entregas? Escribe entre 0,5 y 30 km'); return; }
+    if (!(fee >= 0 && fee <= 50000)) { fail('El domicilio debe ser entre $0 y $50.000'); return; }
+    if (!(min >= 0 && min <= 500000)) { fail('Revisa el pedido mínimo'); return; }
+    if (!(ea >= 5 && eb >= ea && eb <= 180)) { fail('Tiempo de entrega: por ejemplo de 30 a 40 minutos'); return; }
     var fields = { name: f.name.trim(), short: shortName(f.name), sub: String(f.sub || '').trim(), address: String(f.address || '').trim(),
       phone: String(f.phone || '').replace(/\D/g, ''), nequi: String(f.nequi || '').trim(), fee: fee, min: min, eta: ea + '–' + eb + ' min', img: f.img, cats: f.cats.slice(), radius_km: rad };
     if (horOn()) {
       var bad = [1, 2, 3, 4, 5, 6, 0].filter(function (i) { return f.hor[i] && hm(f.hor[i][1]) < hm(f.hor[i][0]) + 60; })[0];
-      if (bad != null) { toast(capi(DIAS[bad]) + ': la hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
-      if (!f.hor.some(function (d) { return d; })) { toast('Deja al menos un día abierto'); return; }
+      if (bad != null) { fail(capi(DIAS[bad]) + ': la hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
+      if (!f.hor.some(function (d) { return d; })) { fail('Deja al menos un día abierto'); return; }
       if (!R(S.restId).horario || JSON.stringify(f.hor) !== JSON.stringify(R(S.restId).horario)) fields.horario = f.hor;
     } else {
-      if (hm(f.cierra) < hm(f.abre) + 60) { toast('La hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
+      if (hm(f.cierra) < hm(f.abre) + 60) { fail('La hora de cerrar debe ser al menos 1 hora después de abrir'); return; }
       if (f.abre !== abreDe(R(S.restId)) || f.cierra !== cierraDe(R(S.restId))) { fields.abre = f.abre; fields.cierra = f.cierra; }
     }
     if (hasLoc(f)) { fields.lat = f.lat; fields.lng = f.lng; }
     if ((f.kind || 'restaurante') !== (R(S.restId).kind || 'restaurante')) fields.kind = f.kind;
-    ui.busy = true; render();
-    var ok = function () { ui.busy = false; var rr = R(S.restId); Object.assign(rr, fields, { radius: fields.radius_km }); if (!ONLINE) save(); ui.rm = null; render(); if (then) then(); else toast('Datos guardados'); sync(); };
+    if ((f.logo || '') !== (R(S.restId).logo || '')) fields.logo = f.logo || '';
+    ui.busy = true; ui.autoMsg = '';
+    if (auto) { var sb0 = document.getElementById('saveBar'); if (sb0) sb0.innerHTML = '<button class="btn btn-block save-done" disabled>' + ic('refresh', 18) + 'Guardando…</button>'; } else render();
+    var ok = function () {
+      ui.busy = false; var rr = R(S.restId); Object.assign(rr, fields, { radius: fields.radius_km }); if (!ONLINE) save();
+      if (auto) { var sb = document.getElementById('saveBar'); if (sb) sb.innerHTML = saveBtn(rmDirty(rr, ui.rm)); } else { ui.rm = null; render(); }
+      if (then) then(); else if (!auto) toast('Datos guardados');
+      if (!auto) sync();
+    };
     if (!ONLINE) { ok(); return; }
-    CLOUD.updateRest(fields).then(ok,
-      function (e) { ui.busy = false; render(); toast(/kind/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (004-tiendas.sql).' : /horario/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (012-horario.sql).' : /abre|cierra/.test(String(e && e.message)) ? 'Falta un paso en la base de datos (009-programar.sql).' : errTxt(e)); });
+    var send = function (fl) { return CLOUD.updateRest(fl).then(function () { fields = fl; }); };
+    send(fields).catch(function (e) {
+      var m = String(e && e.message);
+      // Sin el paso 021: tipo nuevo -> tipo de antes; sin columna logo -> se guarda todo lo demás.
+      if (/kind/.test(m) && OLD_KIND[fields.kind]) { var a = Object.assign({}, fields, { kind: OLD_KIND[fields.kind] }); if (fields.kind === 'carniceria' && !a.sub) a.sub = 'Carnicería'; ui.rm.kind = a.kind; return send(a); }
+      if (/logo/.test(m) && 'logo' in fields) { var b = Object.assign({}, fields); delete b.logo; ui.rm.logo = R(S.restId).logo || ''; if (!auto) toast('El logo se activa muy pronto. Lo demás quedó guardado.'); return send(b); }
+      throw e;
+    }).then(ok, function (e) {
+      ui.busy = false; if (!auto) render();
+      var m = String(e && e.message);
+      fail(/kind/.test(m) ? 'Falta un paso en la base de datos (004-tiendas.sql).' : /horario/.test(m) ? 'Falta un paso en la base de datos (012-horario.sql).' : /abre|cierra/.test(m) ? 'Falta un paso en la base de datos (009-programar.sql).' : errTxt(e));
+    });
+  }
+  // Guardado automático en «Menú»: 2,5 s después del último cambio.
+  var AUTO_MS = 2500;
+  function autoSave() {
+    clearTimeout(autoSave.t);
+    autoSave.t = setTimeout(function () {
+      if (!/^#\/rest\/menu/.test(location.hash) || !ui.rm || ui.busy || !R(S.restId) || ui.rm.id !== S.restId) return;
+      if (rmDirty(R(S.restId), ui.rm)) rmSaveDo(null, true);
+    }, AUTO_MS);
   }
   function rmDirty(r, f) { return RM_KEYS.some(function (k) { return rmVal(f, k) !== rmVal(r, k); }); }
   function hourSelect(id, path, cur, from, to) {
@@ -2608,7 +2670,8 @@
   function etaParts(t) { var m = String(t || '').match(/(\d+)\D+(\d+)/); return m ? [+m[1], +m[2]] : [30, 40]; }
   function etaOf(f) { return f.etaA != null ? (+f.etaA || 0) + '–' + (+f.etaB || 0) + ' min' : f.eta; }
   function saveBtn(dirty) {
-    return dirty ? '<button class="btn btn-green btn-block" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + ic('check', 18) + (ui.busy ? 'Guardando…' : 'Guardar cambios') + '</button>'
+    if (dirty && ui.autoMsg) return '<button class="btn btn-block save-warn" data-a="rmSave">' + ic('info', 18) + '<span class="sv-t"><b>Sin guardar</b><span>' + esc(ui.autoMsg) + '</span></span></button>';
+    return dirty ? '<button class="btn btn-green btn-block" data-a="rmSave"' + (ui.busy ? ' disabled' : '') + '>' + ic('check', 18) + (ui.busy ? 'Guardando…' : 'Guardar cambios') + '<span class="sv-auto">· se guarda solo</span></button>'
       : '<button class="btn btn-block save-done" data-a="rmSave">' + ic('check', 18) + 'Todo guardado</button>';
   }
   // Campo con número escrito a mano + sugerencias rápidas debajo.
@@ -2618,9 +2681,17 @@
       '<div class="chips mt8">' + picks.map(function (v) { return '<button class="chip sm' + (String(val) === String(v) ? ' on' : '') + '" data-a="rmSet" data-k="' + key + '" data-v="' + v + '">' + fmtPick(v) + '</button>'; }).join('') + '</div>' +
       (hint ? '<div class="xs muted mt4">' + hint + '</div>' : '') + '</div>';
   }
+  // Contador grande: un restaurante sale en la app desde MIN_DISHES platos.
+  function dishMeter(r) {
+    var n = r.dishes.length, ok = n >= MIN_DISHES;
+    if (ok && madeRest(r)) return '';
+    return '<div class="dish-meter mt12' + (ok ? ' ok' : '') + '"><div class="row between"><span class="b">' + (ok ? ic('check', 16, { sw: 3 }) + ' ¡Listo! Ya tienes ' + n + ' platos' : 'Platos: ' + n + ' de ' + MIN_DISHES) + '</span>' +
+      '<span class="dm-n">' + Math.min(n, MIN_DISHES) + '/' + MIN_DISHES + '</span></div><div class="dm-bar">' + [0, 1, 2].map(function (i) { return '<i class="' + (i < n ? 'on' : '') + '"></i>'; }).join('') + '</div>' +
+      '<div class="xs mt8">' + (ok ? 'Tu restaurante ya puede salir en la app. Puedes agregar todos los que quieras.' : 'Agrega mínimo ' + MIN_DISHES + ' platos para que los clientes vean tu restaurante. ' + (MIN_DISHES - n === 1 ? 'Te falta 1.' : 'Te faltan ' + (MIN_DISHES - n) + '.')) + '</div></div>';
+  }
   function scrRestMenu() {
     var r = R(S.restId);
-    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, kind: r.kind || 'restaurante', name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, etaA: etaParts(r.eta)[0], etaB: etaParts(r.eta)[1], img: r.img, cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3, abre: abreDe(r), cierra: cierraDe(r), hor: horOn() ? horDe(r) : undefined });
+    var f = ui.rm && ui.rm.id === r.id ? ui.rm : (ui.rm = { id: r.id, kind: r.kind || 'restaurante', name: r.name, sub: r.sub, address: r.address, phone: r.phone, nequi: r.nequi, fee: r.fee, min: r.min, eta: r.eta, etaA: etaParts(r.eta)[0], etaB: etaParts(r.eta)[1], img: r.img, logo: r.logo || '', cats: r.cats.slice(), lat: r.lat, lng: r.lng, radius: r.radius || 3, abre: abreDe(r), cierra: cierraDe(r), hor: horOn() ? horDe(r) : undefined });
     var shop = isShop(f), k = kindOf(f), word = shop ? 'tienda' : 'restaurante';
     var dirty = rmDirty(r, f), made = madeRest(r);
     var h = '<div class="screen has-tabs has-cta">' + restHeader(r) +
@@ -2628,10 +2699,14 @@
       // cover photo, as customers see it
       '<div class="cover mt16">' + cover(f, '', 'position:absolute;inset:0;width:100%;height:100%', 900) + '<div class="cover-fade"></div>' +
       '<div class="cover-txt"><div class="xs" style="opacity:.85">Así te ven los clientes</div><div class="t-h2" style="color:#fff">' + esc(f.name || r.name) + '</div></div></div>' +
-      '<div class="label mt12">Foto de portada' + (shop ? ' <span class="muted" style="font-weight:500">(opcional: tu local o tus productos)</span>' : '') + '</div>' + photoPick(f.img, 'rmImg', 'rest', shop) +
+      '<div class="label mt12">Foto de portada' + (shop ? ' <span class="muted" style="font-weight:500">(opcional: tu local o tus productos)</span>' : '') + '</div>' + photoPick(f.img, 'rmImg', 'rest', shop) + '<div class="xs muted mt4">La foto grande arriba de tu página. Mejor una foto real de tu comida o de tu local.</div>' +
+      '<div class="logo-up mt16"><label class="logo-circle">' + (f.logo ? photo(f.logo, '', 'width:100%;height:100%', 200) : ic(ui.upBusy === 'logo' ? 'refresh' : 'camera', 22)) + '<input type="file" accept="image/*" data-file="logoImg"></label>' +
+        '<div class="grow"><div class="b">Logo</div><div class="xs muted">Sale redondo al lado de tu nombre. Cuadrado, con fondo claro.</div>' +
+        '<div class="row mt8" style="gap:8px"><label class="btn btn-soft btn-sm" style="position:relative;overflow:hidden">' + ic('camera', 15) + (f.logo ? ' Cambiar logo' : ' Subir logo') + '<input type="file" accept="image/*" data-file="logoImg" style="position:absolute;inset:0;opacity:0"></label>' +
+        (f.logo ? '<button class="btn btn-ghost btn-sm" data-a="rmLogoDel">Quitar</button>' : '') + '</div></div></div>' +
       // details first: name, address + map
       '<h2 class="t-h2 mt24">Datos ' + (shop ? 'de la tienda' : 'del restaurante') + '</h2><div class="card mt12">' +
-      '<div class="label">Tipo de negocio</div><div class="chips" style="margin-bottom:14px">' + KINDS.map(function (x) { return '<button class="chip sm' + (x.id === k.id ? ' on' : '') + '" data-a="rmSet" data-k="kind" data-v="' + x.id + '">' + ic(x.icon, 14) + x.t + '</button>'; }).join('') + '</div>' +
+      '<div class="label">Tipo de negocio</div><div class="chips" style="margin-bottom:14px">' + pickKinds(k.id).map(function (x) { return '<button class="chip sm' + (x.id === k.id ? ' on' : '') + '" data-a="rmSet" data-k="kind" data-v="' + x.id + '">' + ic(x.icon, 14) + x.t + '</button>'; }).join('') + '</div>' +
       '<div class="field"><label class="label" for="rm1">Nombre</label><input class="input" id="rm1" data-m="ui.rm.name" data-dirty="1" value="' + esc(f.name) + '"></div>' +
       '<div class="field"><label class="label" for="rm2">Qué vendes (corto)</label><input class="input" id="rm2" data-m="ui.rm.sub" data-dirty="1" value="' + esc(f.sub) + '" placeholder="' + esc(k.sub) + '"></div>' +
       fieldIc('rm3', 'Dirección ' + (shop ? 'de la tienda' : 'del restaurante'), 'pin', '<input class="input" id="rm3" data-m="ui.rm.address" data-dirty="1" value="' + esc(f.address) + '" placeholder="Calle 10 # 8-24, El Centro" autocomplete="street-address">', 'Con barrio. Los clientes la ven en tu página.') +
@@ -2645,11 +2720,11 @@
       '</div>' +
       (shop ? '<h2 class="t-h2 mt24">Cómo te piden</h2><div class="card mt12"><div class="row top" style="gap:12px"><span class="pi">' + ic('list', 18) + '</span><div class="grow small">Tus clientes <b>escriben su lista</b> o te mandan <b>una foto</b>' + (k.id === 'drogueria' ? ' (por ejemplo de la fórmula)' : '') + '. Tú pones el precio al aceptar y el cliente lo ve en su app. No necesitas subir productos.</div></div></div>' : '') +
       // dishes, grouped by category
-      (shop ? '' : '<div class="row between mt24"><h2 class="t-h2">Tu menú</h2><span class="small muted">' + r.dishes.length + ' platos</span></div>' +
+      (shop ? '' : '<div class="row between mt24"><h2 class="t-h2">Tu menú</h2><span class="small muted">' + r.dishes.length + ' platos</span></div>' + dishMeter(r) +
       (r.dishes.length ? SECS.map(function (sx) {
         var list = r.dishes.filter(function (d) { return secOf(d) === sx; }); if (!list.length) return '';
         return '<div class="menu-sec-h">' + esc(secTxt(sx)) + ' <span class="muted">' + list.length + '</span></div><div class="card" style="padding:4px 14px">' + list.map(function (d) {
-          return '<div class="list-row">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b ellipsis">' + esc(d.name) + '</div><div class="small muted ellipsis">' + (d.desc ? esc(d.desc) : 'Sin descripción') + '</div><div class="row mt4" style="gap:8px"><span class="b" style="font-size:14px">' + fmt(d.price) + '</span><button class="sec-pill" data-a="dishSec" data-v="' + esc(d.id) + '">' + esc(secTxt(secOf(d))) + ' ' + ic('down', 12) + '</button></div></div>' +
+          return '<div class="list-row">' + photo(d.img, 'thumb') + '<div class="grow"><div class="b ellipsis">' + esc(d.name) + '</div><div class="small muted ellipsis">' + (d.desc ? esc(d.desc) : 'Sin descripción') + '</div><div class="row mt4" style="gap:8px"><span class="b" style="font-size:14px">' + priceTxt(d.price) + '</span><button class="sec-pill" data-a="dishSec" data-v="' + esc(d.id) + '">' + esc(secTxt(secOf(d))) + ' ' + ic('down', 12) + '</button></div></div>' +
             '<button class="icon-btn" style="width:40px;height:40px;box-shadow:none;background:var(--track)" data-a="dishDel" data-v="' + esc(d.id) + '" aria-label="Quitar">' + ic('x', 18) + '</button></div>';
         }).join('') + '</div>';
       }).join('') : '<div class="card mt12"><div class="empty" style="padding:22px 8px"><div class="ic">' + ic('fire', 24) + '</div>Aún no hay platos. Agrega el primero: con foto y precio se vende más.</div></div>') +
@@ -2845,6 +2920,7 @@
     var active = document.activeElement && document.activeElement.id;
     document.getElementById('app').innerHTML = view(rt);
     document.getElementById('app').classList.toggle('alert-on', !!document.getElementById('newAlert'));
+    if (rt.parts[0] === 'rest' && rt.parts[1] === 'menu' && ui.rm && !ui.busy && R(S.restId) && rmDirty(R(S.restId), ui.rm)) autoSave();
     if (same) window.scrollTo(0, y); else { window.scrollTo(0, 0); sheet(null); }
     ui.lastRoute = key;
     if (ONLINE) keepAwake(rt.parts[0] === 'rest' && !!S.restId);
@@ -2923,6 +2999,8 @@
       addToCart(r.id, d.id);
       if (dishQty(r, d) > before) { sheet(null); toast(d.name + ' en tu carrito'); }
     },
+    xAdd: function (el) { var r = R(el.dataset.r), p = r.dishes.filter(function (x) { return x.id === el.dataset.p; })[0]; addToCart(r.id, el.dataset.d); if (p && S.cart.restId === r.id) sheet(dishSheet(r, p)); },
+    xDec: function (el) { A.dec(el); var r = R(el.dataset.r), p = r.dishes.filter(function (x) { return x.id === el.dataset.p; })[0]; if (p) sheet(dishSheet(r, p)); },
     dishSheetDec: function (el) { A.dec(el); var r = R(el.dataset.r), d = r.dishes.filter(function (x) { return x.id === el.dataset.d; })[0]; if (d) sheet(dishSheet(r, d)); },
     secGo: function (el) {
       var t = document.getElementById('sec' + el.dataset.v), bar = document.getElementById('secTabs');
@@ -3238,7 +3316,7 @@
     setRest: function (el) { S.restId = el.dataset.v; save(); sheet(null); render(); },
     toggleOpen: function () {
       if (ONLINE && !S.open[S.restId] && isShop(R(S.restId)) && !hasLoc(R(S.restId))) { toast('Primero marca tu tienda en el mapa'); go('/rest/menu'); return; }
-      if (ONLINE && !S.open[S.restId] && !isShop(R(S.restId)) && !R(S.restId).dishes.length) { toast('Primero agrega tu menú'); go('/rest/menu'); return; }
+      if (ONLINE && !S.open[S.restId] && !isShop(R(S.restId)) && R(S.restId).dishes.length < MIN_DISHES) { toast('Agrega mínimo ' + MIN_DISHES + ' platos para salir en la app'); go('/rest/menu'); return; }
       S.open[S.restId] = !S.open[S.restId]; R(S.restId).open = S.open[S.restId]; save(); render(); toast(S.open[S.restId] ? 'Abierto: ya recibes pedidos' : 'Cerrado: no recibes pedidos');
       if (ONLINE) push(CLOUD.updateRest({ open: S.open[S.restId] }));
     },
@@ -3496,6 +3574,7 @@
     },
     rmCat: function (el) { var c = ui.rm.cats, i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else c.push(el.dataset.v); render(); },
     rmImg: function (el) { ui.rm.img = el.dataset.v; render(); },
+    rmLogoDel: function () { ui.rm.logo = ''; render(); },
     horDay: function (el) {
       var h = ui.rm.hor, i = +el.dataset.v;
       if (h[i]) h[i] = null;
@@ -3509,7 +3588,7 @@
     crearNegocio: function () {
       var r = R(S.restId), f = ui.rm, shop = isShop(f || r);
       if (!f || ui.busy) return;
-      var falta = !String(f.name || '').trim() ? 'Escribe el nombre de tu negocio' : String(f.address || '').trim().length < 5 ? 'Escribe la dirección' : !hasLoc(f) ? 'Marca tu ' + (shop ? 'tienda' : 'restaurante') + ' en el mapa' : !shop && !r.dishes.length ? 'Agrega por lo menos un plato a tu menú' : '';
+      var falta = !String(f.name || '').trim() ? 'Escribe el nombre de tu negocio' : String(f.address || '').trim().length < 5 ? 'Escribe la dirección' : !hasLoc(f) ? 'Marca tu ' + (shop ? 'tienda' : 'restaurante') + ' en el mapa' : !shop && !(f.cats || []).length ? 'Elige qué tipo de comida vendes' : !shop && r.dishes.length < MIN_DISHES ? 'Agrega ' + (MIN_DISHES - r.dishes.length) + (MIN_DISHES - r.dishes.length === 1 ? ' plato más' : ' platos más') + ' (mínimo ' + MIN_DISHES + ')' : '';
       if (falta) { toast(falta); return; }
       var open = function () {
         S.made = S.made || {}; S.made[r.id] = true; S.open[r.id] = true; r.open = true; save();
@@ -3541,7 +3620,8 @@
     dishAdd: function (el) {
       var n = document.getElementById('dn').value.trim(), d = document.getElementById('dd').value.trim(), pr = +String(document.getElementById('dp').value).replace(/\D/g, '');
       if (!n) { document.getElementById('dErr').textContent = 'Escribe el nombre del plato.'; return; }
-      if (!pr || pr < 500) { document.getElementById('dErr').textContent = 'Escribe el precio en pesos (ej.: 25000).'; return; }
+      var free = ui.dish.sec === 'Adicionales' && String(document.getElementById('dp').value).trim() === '0';
+      if (!free && (!pr || pr < 500)) { document.getElementById('dErr').textContent = ui.dish.sec === 'Adicionales' ? 'Escribe el precio en pesos (ej.: 3000), o 0 si es gratis (una salsa, por ejemplo).' : 'Escribe el precio en pesos (ej.: 25000).'; return; }
       var r = R(S.restId), dishes = r.dishes.concat([{ id: 'd' + now().toString(36), name: n, desc: d, price: pr, img: ui.dish.img, sec: ui.dish.sec || 'Platos', top: !r.dishes.length }]);
       el.disabled = true;
       CLOUD.updateRest({ dishes: dishes }).then(function () { r.dishes = dishes; sheet(null); render(); toast(n + ' agregado'); sync(); },
@@ -3636,6 +3716,7 @@
     homeTab: function (el) { ui.home = el.dataset.v; ui.kind = null; ui.cat = null; render(); },
     kindPick: function (el) { ui.kind = el.dataset.v && ui.kind !== el.dataset.v ? el.dataset.v : null; render(); },
     regKind: function (el) { ui.reg = ui.reg || { name: '', phone: '', addr: '', pass: '' }; ui.reg.kind = el.dataset.v; render(); },
+    regCat: function (el) { var f = ui.reg, c = f.cats || (f.cats = []), i = c.indexOf(el.dataset.v); if (i >= 0) c.splice(i, 1); else c.push(el.dataset.v); render(); },
     wishImgDel: function () { S.cart.wishImg = ''; ui.wishPrev = null; save(); render(); }
   };
   // Shop sets the price of a free order and accepts it.
@@ -3723,21 +3804,37 @@
     if (String(f.addr || '').trim().length < 5) err.addr = 1;
     if (String(f.town || '').trim().length < 3) err.town = 1;
     if (!logged && String(f.pass || '').length < 6) err.pass = 1;
+    if (!isShop(f) && !(f.cats || []).length) err.cats = 1;
     if (!f.legal) err.legal = 1;
     ui.regErr = err;
-    ui.regMsg = err.name ? 'Escribe el nombre del negocio.' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.town ? '¿En qué pueblo queda tu negocio?' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : err.legal ? 'Para seguir, acepta los términos y la política de datos.' : '';
-    if (ui.regMsg || ui.busy) { render(); return; }
+    ui.regMsg = err.name ? 'Escribe el nombre del negocio.' : err.cats ? 'Elige qué tipo de comida vendes.' : err.phone ? 'El WhatsApp debe tener 10 números.' : err.addr ? 'Escribe la dirección.' : err.town ? '¿En qué pueblo queda tu negocio?' : err.pass ? 'La clave debe tener mínimo 6 letras o números.' : err.legal ? 'Para seguir, acepta los términos y la política de datos.' : '';
+    if (ui.regMsg || ui.busy) {
+      render();
+      // Lleva al primer dato que falta (en el celular el formulario es largo).
+      var firstErr = ['name', 'cats', 'phone', 'addr', 'town', 'pass', 'legal'].filter(function (k) { return err[k]; })[0];
+      var el = firstErr && document.getElementById({ name: 'rg1', cats: 'rgCats', phone: 'rg2', addr: 'rg3', town: 'rgT', pass: 'rg4', legal: 'rgLegal' }[firstErr]);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (el.tagName === 'INPUT') setTimeout(function () { el.focus(); }, 350); }
+      return;
+    }
     var name = f.name.trim();
     var slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) + '-' + Math.random().toString(36).slice(2, 6);
     var shop = isShop(f);
-    var data = { id: slug, name: name, short: shortName(name), sub: '', img: shop ? '' : IMG.asado, cats: [], address: f.addr.trim(), phone: ph, nequi: ph ? phoneFmt(ph) : '', dishes: [], open: false };
+    var data = { id: slug, name: name, short: shortName(name), sub: '', img: shop ? '' : IMG.asado, cats: shop ? [] : (f.cats || []).slice(), address: f.addr.trim(), phone: ph, nequi: ph ? phoneFmt(ph) : '', dishes: [], open: false };
     var tw = String(f.town || '').replace(/\s+/g, ' ').trim(), known = allTowns().filter(function (t) { return t.toLowerCase() === tw.toLowerCase(); })[0];
     data.town = known || tw.replace(/(^|\s)(\S)/g, function (m, a, c) { return a + c.toUpperCase(); });
-    if (shop) data.kind = f.kind;
+    if ((f.kind || 'restaurante') !== 'restaurante') data.kind = f.kind;
+    // Sin el paso 021 la base no conoce «polleria» / «carniceria»: se guarda con el tipo de antes.
+    var create = function (d) { return CLOUD.restUid() ? CLOUD.createRest(d) : CLOUD.restSignup(ph, f.pass, d); };
+    var withOld = function (e) {
+      if (!/kind/.test(String(e && e.message)) || !OLD_KIND[data.kind]) throw e;
+      var d = Object.assign({}, data, { kind: OLD_KIND[data.kind] }); if (d.kind === 'restaurante') delete d.kind;
+      if (data.kind === 'carniceria') d.sub = 'Carnicería';
+      return create(d);
+    };
     ui.busy = true; render();
-    (logged ? CLOUD.createRest(data) : CLOUD.restSignup(ph, f.pass, data)).then(function () { return sync(true); }).then(function () {
+    create(data).catch(withOld).then(function () { return sync(true); }).then(function () {
       ui.busy = false; ui.reg = null; ui.regErr = null; S.role = 'rest'; S.seen = S.seen || {}; S.seen.rest = true; save();
-      go('/rest/menu'); toast(shop ? '¡Bienvenido! Ahora marca tu tienda en el mapa.' : '¡Bienvenido! Ahora agrega tu menú.');
+      go('/rest/menu'); toast(shop ? '¡Bienvenido! Ahora marca tu tienda en el mapa.' : '¡Bienvenido! Ahora agrega tus primeros ' + MIN_DISHES + ' platos.');
       if (!logged) setTimeout(function () { A.recoveryNew(); }, 600);
     }, function (e) { ui.busy = false; ui.regMsg = /kind/.test(String(e && e.message)) ? 'Las tiendas se activan muy pronto. Escríbele a Pido y Ido.' : errTxt(e); render(); });
   }
@@ -3870,18 +3967,29 @@
       S.cart.wish = t.value; save();
       var cb = document.getElementById('cbar'); if (cb) cb.innerHTML = cartBar(false);
     }
-    if (t.dataset.dirty) { var sb = document.getElementById('saveBar'); if (sb && !sb.querySelector('[data-a="rmSave"].btn-green')) sb.innerHTML = saveBtn(true); }
+    if (t.dataset.dirty) { var sb = document.getElementById('saveBar'); if (sb && !sb.querySelector('[data-a="rmSave"].btn-green')) sb.innerHTML = saveBtn(true); autoSave(); }
     if (t.dataset.live === 'q') { ui.q = t.value; var res = document.getElementById('results'); if (res) res.innerHTML = searchResults(); }
   });
   document.addEventListener('change', function (ev) {
     var t = ev.target;
     if (t.dataset.aChange === 'cc') { S.user.cc = t.value; save(); render(); var pi = document.getElementById('ph'); if (pi) pi.focus(); return; }
     if (t.dataset.file === 'wish' && t.files && t.files[0]) { uploadWish(t.files[0], t.dataset.r); t.value = ''; return; }
-    if ((t.dataset.file === 'restImg' || t.dataset.file === 'dishImg') && t.files && t.files[0]) { uploadOwnPhoto(t.files[0], t.dataset.file === 'dishImg' ? 'dish' : 'rest'); t.value = ''; return; }
+    if ((t.dataset.file === 'restImg' || t.dataset.file === 'dishImg' || t.dataset.file === 'logoImg') && t.files && t.files[0]) { uploadOwnPhoto(t.files[0], t.dataset.file === 'dishImg' ? 'dish' : t.dataset.file === 'logoImg' ? 'logo' : 'rest'); t.value = ''; return; }
     if (t.dataset.file && t.files && t.files[0]) { (t.dataset.file === 'menu' ? ui.reg : ui.signup)[t.dataset.file] = true; render(); toast('Foto agregada'); }
+  });
+  // Formularios largos en el celular: el campo con el cursor queda en el centro (no detrás del teclado ni del botón),
+  // y «Siguiente» en el teclado salta al próximo campo.
+  document.addEventListener('focusin', function (ev) {
+    var t = ev.target;
+    if (!t || !/INPUT|TEXTAREA|SELECT/.test(t.tagName) || t.type === 'file' || !t.closest('.auth-body,.screen.has-cta')) return;
+    setTimeout(function () { try { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }, 320);
   });
   document.addEventListener('keydown', function (ev) {
     var t = ev.target;
+    if (ev.key === 'Enter' && t.tagName === 'INPUT' && !t.dataset.enter && t.closest('.auth-body')) {
+      var all = Array.prototype.slice.call(t.closest('.auth-body').querySelectorAll('input:not([type=file]):not([type=hidden])')), nx = all[all.indexOf(t) + 1];
+      if (nx) { ev.preventDefault(); nx.focus(); return; }
+    }
     if (ev.key === 'Enter' && t.dataset && t.dataset.enter) { ev.preventDefault(); A[t.dataset.enter](t); }
   });
   function secMark(k) {
